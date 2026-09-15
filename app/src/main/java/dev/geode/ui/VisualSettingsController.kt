@@ -83,6 +83,7 @@ internal class VisualSettingsController(
 
     fun setTransitionStyle(style: TransitionStyle) {
         state.update { it.copy(transitionStyle = style, transitionId = style.name.lowercase()) }
+        vizStateStore.persist()
     }
 
     fun setTransitionId(id: String) {
@@ -92,10 +93,12 @@ internal class VisualSettingsController(
                 transitionStyle = TransitionCatalog.builtIn(id) ?: it.transitionStyle,
             )
         }
+        vizStateStore.persist()
     }
 
     fun setTransitionDuration(seconds: Float) {
         state.update { it.copy(transitionDurationSec = seconds.coerceIn(0.3f, 5f)) }
+        vizStateStore.persist()
     }
 
     fun applyPreset(preset: Preset) {

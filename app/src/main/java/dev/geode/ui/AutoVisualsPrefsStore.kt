@@ -9,7 +9,12 @@ class AutoVisualsPrefsStore(
 ) {
     fun applyTo(state: VizUiState): VizUiState {
         val entries = prefs.getString(KEY_PLAYLIST_ENTRIES, null)?.let(::entriesFromJson) ?: state.vizPlaylist
+        val playlistEnabled = prefs.getBoolean(KEY_PLAYLIST_ENABLED, state.vizPlaylistEnabled) && entries.isNotEmpty()
+        // Playlist mode and random mode are mutually exclusive (see AutoVisualsController), so a
+        // restore that finds both persisted as true favours the playlist and drops random.
+        val randomEnabled = prefs.getBoolean(KEY_RANDOM_ENABLED, state.randomEnabled) && !playlistEnabled
         return state.copy(
+            randomEnabled = randomEnabled,
             randomIntervalSec = prefs.getInt(KEY_RANDOM_INTERVAL, state.randomIntervalSec).coerceIn(INTERVAL_SEC),
             randomOnBeat = prefs.getBoolean(KEY_RANDOM_ON_BEAT, state.randomOnBeat),
             randomIncludeStyles = prefs.getBoolean(KEY_RANDOM_STYLES, state.randomIncludeStyles),
@@ -17,15 +22,17 @@ class AutoVisualsPrefsStore(
             randomIncludeMilk = prefs.getBoolean(KEY_RANDOM_MILK, state.randomIncludeMilk),
             randomizeColors = prefs.getBoolean(KEY_RANDOM_COLORS, state.randomizeColors),
             vizPlaylist = entries,
-            vizPlaylistEnabled = prefs.getBoolean(KEY_PLAYLIST_ENABLED, state.vizPlaylistEnabled) && entries.isNotEmpty(),
+            vizPlaylistEnabled = playlistEnabled,
             vizPlaylistIntervalSec = prefs.getInt(KEY_PLAYLIST_INTERVAL, state.vizPlaylistIntervalSec).coerceIn(INTERVAL_SEC),
             vizPlaylistIntelligent = prefs.getBoolean(KEY_PLAYLIST_INTELLIGENT, state.vizPlaylistIntelligent),
+            sectionStaging = prefs.getBoolean(KEY_SECTION_STAGING, state.sectionStaging),
         )
     }
 
     fun save(state: VizUiState) {
         prefs
             .edit()
+            .putBoolean(KEY_RANDOM_ENABLED, state.randomEnabled)
             .putInt(KEY_RANDOM_INTERVAL, state.randomIntervalSec)
             .putBoolean(KEY_RANDOM_ON_BEAT, state.randomOnBeat)
             .putBoolean(KEY_RANDOM_STYLES, state.randomIncludeStyles)
@@ -36,12 +43,14 @@ class AutoVisualsPrefsStore(
             .putInt(KEY_PLAYLIST_INTERVAL, state.vizPlaylistIntervalSec)
             .putBoolean(KEY_PLAYLIST_INTELLIGENT, state.vizPlaylistIntelligent)
             .putString(KEY_PLAYLIST_ENTRIES, entriesToJson(state.vizPlaylist))
+            .putBoolean(KEY_SECTION_STAGING, state.sectionStaging)
             .apply()
     }
 
     companion object {
         val INTERVAL_SEC: IntRange = 5..300
 
+        private const val KEY_RANDOM_ENABLED = "auto_random_enabled"
         private const val KEY_RANDOM_INTERVAL = "auto_random_interval_sec"
         private const val KEY_RANDOM_ON_BEAT = "auto_random_on_beat"
         private const val KEY_RANDOM_STYLES = "auto_random_include_styles"
@@ -52,6 +61,7 @@ class AutoVisualsPrefsStore(
         private const val KEY_PLAYLIST_INTERVAL = "auto_playlist_interval_sec"
         private const val KEY_PLAYLIST_INTELLIGENT = "auto_playlist_intelligent"
         private const val KEY_PLAYLIST_ENTRIES = "auto_playlist_entries"
+        private const val KEY_SECTION_STAGING = "auto_section_staging"
 
         internal fun entriesToJson(entries: List<VizPlaylistEntry>): String {
             val arr = JSONArray()
