@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <optional>
 #include <string>
 
 namespace geode::library {
@@ -26,19 +27,23 @@ struct TrackTags {
     int durationMs = 0;
 };
 
+// A field left as std::nullopt is left unchanged by writeTags; an engaged empty string clears it.
 struct TrackTagEdit {
-    std::string title;
-    std::string artist;
-    std::string album;
-    std::string albumArtist;
-    std::string genre;
-    std::string comment;
+    std::optional<std::string> title;
+    std::optional<std::string> artist;
+    std::optional<std::string> album;
+    std::optional<std::string> albumArtist;
+    std::optional<std::string> genre;
+    std::optional<std::string> comment;
     int year = 0;
     int track = 0;
 };
 
+// Why writeTags returned false; kNone otherwise (and whenever it returned true).
+enum class TagsWriteError { kNone, kOpenFailed, kReadOnly, kUnsupported, kSaveFailed };
+
 // Both take a file descriptor they own; it is closed before they return.
 bool readTags(int fd, TrackTags& out);
-bool writeTags(int fd, const TrackTagEdit& edit);
+bool writeTags(int fd, const TrackTagEdit& edit, TagsWriteError* error = nullptr);
 
 }  // namespace geode::library
