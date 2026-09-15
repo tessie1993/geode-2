@@ -240,6 +240,7 @@ class ThemeStore(
             touchTransform = prefs.getBoolean(KEY_TOUCH_TRANSFORM, true),
             keyColor = prefs.getBoolean(KEY_KEY_COLOR, false),
             secondScreen = prefs.getBoolean(KEY_SECOND_SCREEN, true),
+            micReactive = prefs.getBoolean(KEY_MIC_REACTIVE, false),
         )
     }
 
@@ -295,6 +296,7 @@ class ThemeStore(
             putBoolean(KEY_TOUCH_TRANSFORM, gui.touchTransform)
             putBoolean(KEY_KEY_COLOR, gui.keyColor)
             putBoolean(KEY_SECOND_SCREEN, gui.secondScreen)
+            putBoolean(KEY_MIC_REACTIVE, gui.micReactive)
         }
     }
 
@@ -336,5 +338,6 @@ class ThemeStore(
         const val KEY_TOUCH_TRANSFORM = "gui_touch_transform"
         const val KEY_KEY_COLOR = "gui_key_color"
         const val KEY_SECOND_SCREEN = "gui_second_screen"
+        const val KEY_MIC_REACTIVE = "gui_mic_reactive"
     }
 }

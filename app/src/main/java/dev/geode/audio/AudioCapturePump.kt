@@ -78,6 +78,10 @@ abstract class AudioCapturePump(
                             }
                             read
                         }
+                    // stop() bumps runGeneration before it returns, so a read that was
+                    // already blocked when stop() was called but only unblocks afterwards
+                    // lands here with a stale generation — skip writing into a sink this run
+                    // no longer owns.
                     if (runGeneration != generation) break
                     if (n > 0) {
                         val frames = n / channels
@@ -90,6 +94,8 @@ abstract class AudioCapturePump(
                         break
                     }
                 }
+                // This worker is the sole owner of `rec`; release it regardless of whether the
+                // generation moved on, since nobody else will.
                 bestEffort(TAG, "rec.stop()") { rec.stop() }
                 bestEffort(TAG, "rec.release()") { rec.release() }
                 if (runGeneration == generation) running = false
@@ -101,6 +107,10 @@ abstract class AudioCapturePump(
     @Synchronized
     fun stop() {
         running = false
+        // Invalidate the generation the worker captured at start. If join() below times out
+        // with the worker still inside a blocking rec.read(), this lets it notice on return
+        // and exit without writing into the sink or touching a record a later run now owns.
+        runGeneration++
         record?.let { runCatching { it.stop() } }
         worker?.let { runCatching { it.join(500) } }
         worker = null
