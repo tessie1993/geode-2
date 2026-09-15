@@ -9,8 +9,15 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import dev.geode.playback.MediaArtwork
 import dev.geode.playback.QueueOps
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class AbLoop(
     val startMs: Long,
@@ -45,6 +52,14 @@ internal class QueueController(
 
     private var lastBrowseContext: List<QueueTrack> = emptyList()
 
+    // Host exposes no coroutine scope, so title resolution owns a small IO scope of its own,
+    // scoped to this controller's (effectively app-scoped) lifetime.
+    private val resolveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // Bumped by every open()/playFrom() so a title resolution batch from a superseded call can
+    // detect it is stale and skip applying its results.
+    private var openGeneration = 0
+
     fun playTrack(uri: String) = playFrom(PlaybackQueue.contextFor(uri, lastBrowseContext, host.deviceTracks, host.libraryTracks), uri)
 
     fun playFrom(
@@ -55,11 +70,25 @@ internal class QueueController(
         if (window.tracks.isEmpty()) return
         host.stopLiveInput()
         lastBrowseContext = tracks
-        player.setMediaItems(window.tracks.map { mediaItemFor(it) })
+        val generation = ++openGeneration
+        val unresolved = mutableListOf<Uri>()
+        val items =
+            window.tracks.map { track ->
+                if (track.title.isNotBlank()) {
+                    mediaItemFor(track)
+                } else {
+                    val uri = track.uri.toUri()
+                    val quick = quickMediaItem(uri)
+                    if (quick.unresolved) unresolved += uri
+                    quick.item
+                }
+            }
+        player.setMediaItems(items)
         player.prepare()
         player.seekTo(window.startIndex, 0L)
         player.play()
         host.onQueueStarted(window.tracks[window.startIndex].uri.toUri())
+        if (unresolved.isNotEmpty()) resolveTitlesAsync(unresolved, generation)
     }
 
     fun playAll(
@@ -72,10 +101,14 @@ internal class QueueController(
 
     fun open(uris: List<Uri>) {
         if (uris.isEmpty()) return
-        player.setMediaItems(uris.map { mediaItemFor(it) })
+        val generation = ++openGeneration
+        val quick = uris.map { quickMediaItem(it) }
+        player.setMediaItems(quick.map { it.item })
         player.prepare()
         player.play()
         host.onQueueStarted(uris.first())
+        val unresolved = uris.filterIndexed { i, _ -> quick[i].unresolved }
+        if (unresolved.isNotEmpty()) resolveTitlesAsync(unresolved, generation)
     }
 
     fun playNext(uri: String) {
@@ -92,7 +125,15 @@ internal class QueueController(
     fun mediaItemFor(uri: Uri): MediaItem {
         val known = host.libraryTracks.firstOrNull { it.uri == uri.toString() }
         val (t, a) = if (known != null) known.title to known.artist else metadataQuick(uri)
-        return MediaItem
+        return mediaItemFor(uri, t, a)
+    }
+
+    private fun mediaItemFor(
+        uri: Uri,
+        title: String,
+        artist: String = "",
+    ): MediaItem =
+        MediaItem
             .Builder()
             .setUri(uri)
             // Distinct per track: MediaMetadata.equals ignores extras, so without this two
@@ -101,11 +142,68 @@ internal class QueueController(
             .setMediaMetadata(
                 MediaMetadata
                     .Builder()
-                    .setTitle(t)
-                    .setArtist(a.ifBlank { null })
+                    .setTitle(title)
+                    .setArtist(artist.ifBlank { null })
                     .setExtras(MediaArtwork.embeddedArtExtras(uri.toString()))
                     .build(),
             ).build()
+
+    private data class QuickItem(
+        val item: MediaItem,
+        val unresolved: Boolean,
+    )
+
+    /**
+     * Builds a queue item without touching the ContentResolver: a known library title is used
+     * as-is, otherwise a placeholder (last path segment, or the uri itself) stands in until
+     * [resolveTitlesAsync] patches in the real DISPLAY_NAME off the main thread.
+     */
+    private fun quickMediaItem(uri: Uri): QuickItem {
+        val known = host.libraryTracks.firstOrNull { it.uri == uri.toString() }
+        return if (known != null) {
+            QuickItem(mediaItemFor(uri, known.title, known.artist), unresolved = false)
+        } else {
+            QuickItem(mediaItemFor(uri, placeholderTitle(uri)), unresolved = true)
+        }
+    }
+
+    private fun placeholderTitle(uri: Uri): String =
+        uri.lastPathSegment
+            ?.substringAfterLast('/')
+            ?.substringBeforeLast('.')
+            ?.takeIf { it.isNotBlank() }
+            ?: uri.toString()
+
+    /**
+     * Resolves DISPLAY_NAME for [uris] off the main thread, then patches the results into the
+     * still-live queue. Runs on [resolveScope] (IO) rather than blocking the caller, which used
+     * to run this ContentResolver query synchronously on the main thread for every item.
+     */
+    private fun resolveTitlesAsync(
+        uris: List<Uri>,
+        generation: Int,
+    ) {
+        resolveScope.launch {
+            // Queried concurrently: sequentially this can be hundreds of ContentResolver round
+            // trips for a large folder, trickling titles in one at a time over many seconds.
+            val resolved = uris.map { uri -> async { uri to metadataQuick(uri) } }.awaitAll()
+            withContext(Dispatchers.Main.immediate) {
+                // A newer open()/playFrom() replaced the queue before this batch finished;
+                // applying these titles now would land on the wrong tracks.
+                if (generation != openGeneration) return@withContext
+                resolved.forEach { (uri, meta) ->
+                    // A duplicate uri can appear more than once in the queue; patch every match.
+                    indicesOfMediaItem(uri).forEach { index ->
+                        player.replaceMediaItem(index, mediaItemFor(uri, meta.first, meta.second))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun indicesOfMediaItem(uri: Uri): List<Int> {
+        val target = uri.toString()
+        return (0 until player.mediaItemCount).filter { i -> player.getMediaItemAt(i).mediaId == target }
     }
 
     fun mediaItemFor(track: QueueTrack): MediaItem {
