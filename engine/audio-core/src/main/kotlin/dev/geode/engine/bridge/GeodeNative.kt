@@ -395,4 +395,12 @@ object GeodeNative {
     )
 
     external fun vizReleaseScenes(handle: Long)
+
+    /** Not RT-safe on the native side: only call this on a dsp handle not yet passed to [playerSetDsp]. */
+    external fun dspSetSampleRate(
+        handle: Long,
+        sampleRate: Int,
+    )
+
+    external fun dspSampleRate(handle: Long): Int
 }

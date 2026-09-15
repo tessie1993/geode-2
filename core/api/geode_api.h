@@ -158,6 +158,12 @@ GEODE_API void       geode_dsp_set_crossfeed(geode_dsp*, int enabled);
 GEODE_API void       geode_dsp_set_limiter(geode_dsp*, int enabled);
 GEODE_API void       geode_dsp_reset(geode_dsp*);                              /* clears filter state after a seek or flush */
 GEODE_API void       geode_dsp_process(geode_dsp*, float* interleaved, size_t frames);   /* in place, RT-safe */
+/* Rebuilds the chain's filters and lookahead buffers for a new rate; allocates, so it is not RT-safe and
+ * must only be called on a chain not yet installed via geode_player_set_dsp. The owner otherwise detects a
+ * rate mismatch (e.g. against geode_player_output_sample_rate) with geode_dsp_sample_rate and hands over a
+ * freshly built geode_dsp instead of mutating one already in use. */
+GEODE_API void       geode_dsp_set_sample_rate(geode_dsp*, int sample_rate);
+GEODE_API int        geode_dsp_sample_rate(geode_dsp*);   /* 0 for a null chain */
 
 /* Tag I/O through TagLib. Both calls take a file descriptor they own: it is closed before they return, so
  * the caller detaches it first. Text crosses as UTF-8. */

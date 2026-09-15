@@ -195,6 +195,16 @@ Java_dev_geode_engine_bridge_GeodeNative_dspProcess(JNIEnv* env, jobject, jlong 
 }
 
 JNIEXPORT void JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_dspSetSampleRate(JNIEnv*, jobject, jlong handle, jint sampleRate) {
+    geode_dsp_set_sample_rate(dspOf(handle), sampleRate);
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_dspSampleRate(JNIEnv*, jobject, jlong handle) {
+    return geode_dsp_sample_rate(dspOf(handle));
+}
+
+JNIEXPORT void JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_drumsStep(JNIEnv* env, jobject, jlong handle, jfloatArray bands, jfloatArray out) {
     FloatElements data(env, bands);
     if (!data.get() || !out || env->GetArrayLength(out) < 3) return;
