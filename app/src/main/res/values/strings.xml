@@ -311,6 +311,11 @@
     <string name="playlist_name_taken">There is already a playlist called \"%1$s\".</string>
     <string name="playlist_none_yet">No playlists yet. Start one with \"New playlist\" above, save the current queue from the queue panel in Now Playing, or use \"Add to playlist\" in any track\'s ⋮ menu.</string>
     <string name="playlist_untitled_track">Track %1$d</string>
+    <string name="playlist_import_action">Import playlist…</string>
+    <string name="playlist_import_done_title">Playlist imported</string>
+    <string name="playlist_import_summary">\"%1$s\" — %2$d track(s) added, %3$d not found, %4$d matched more than one file (first used).</string>
+    <string name="playlist_import_failed_title">Couldn\'t import playlist</string>
+    <string name="playlist_import_failed_body">That file isn\'t a playlist Geode can read (M3U, PLS or XSPF).</string>
     <string name="action_remove_from_playlist">Remove from playlist</string>
 
     <string name="folders_library">Library folders</string>
