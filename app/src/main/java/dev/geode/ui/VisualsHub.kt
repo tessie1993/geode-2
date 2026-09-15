@@ -49,10 +49,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.geode.R
 import dev.geode.data.Preset
 import dev.geode.render.VisualizerView
 import dev.geode.render.scene.CustomizeTab
@@ -202,6 +204,7 @@ private fun PresetsTreeTab(
     var movingPreset by remember { mutableStateOf<String?>(null) }
     var deletingPreset by remember { mutableStateOf<String?>(null) }
     var replacingPreset by remember { mutableStateOf<String?>(null) }
+    var showTemplates by remember { mutableStateOf(false) }
     val userPresets = viz.presets.filterNot { BuiltInPresets.isBuiltIn(it.name) }.distinctBy { it.name }
     val byFolder = userPresets.groupBy { presetFolders.folderOf(it.name) }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -231,6 +234,9 @@ private fun PresetsTreeTab(
                 CrystalButton(compact = true, filled = false, onClick = {
                     presetFilePicker.launch(arrayOf("*/*"))
                 }) { Text("Open a preset file") }
+                CrystalButton(compact = true, filled = false, onClick = { showTemplates = true }) {
+                    Text(stringResource(R.string.template_entry_point))
+                }
             }
             importNote?.let { note ->
                 Text(
@@ -475,9 +481,12 @@ private fun PresetsTreeTab(
             },
         )
     }
+    if (showTemplates) {
+        TemplatesSheet(viewModel, visualizerView, onDismiss = { showTemplates = false })
+    }
 }
 
-private fun clipboardText(context: android.content.Context): String? =
+internal fun clipboardText(context: android.content.Context): String? =
     runCatching {
         context
             .getSystemService(android.content.ClipboardManager::class.java)
