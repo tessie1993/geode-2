@@ -123,4 +123,10 @@ class StudioViewModel
         fun cancelStudioExport() = session.cancelStudioExport()
 
         fun clearStudioResult() = session.clearStudioResult()
+
+        val loopState: StateFlow<LoopUiState> get() = session.loopState
+
+        fun cancelLoopRender() = session.cancelLoopRender()
+
+        fun clearLoopResult() = session.clearLoopResult()
     }
