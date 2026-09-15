@@ -26,6 +26,11 @@ class NativeViz(
     private val assets: AssetManager = context.assets
     private val cacheDir: String = context.cacheDir.absolutePath
     private val milkTextureDir: String = File(context.filesDir, "milk/textures").absolutePath
+    // Written on the GL thread (surfaceCreated) and read/written from composition-time call
+    // sites on the main thread (e.g. milkdropAvailable, loadMilkPreset); @Volatile keeps every
+    // thread's read of a just-published handle current, and create()/destroy() are synchronised
+    // so two threads racing on a 0L handle cannot both create (and leak) a renderer.
+    @Volatile
     private var handle = 0L
     private val paramFrame = FloatArray(SceneParamsCodec.FIELDS)
     private val featureFrame = FloatArray(FeatureFrameLayout.FLOATS)
@@ -33,6 +38,7 @@ class NativeViz(
 
     val isCreated: Boolean get() = handle != 0L
 
+    @Synchronized
     fun create(): Boolean {
         if (handle == 0L) {
             verifyLayouts()
@@ -42,6 +48,7 @@ class NativeViz(
         return handle != 0L
     }
 
+    @Synchronized
     fun destroy() {
         if (handle == 0L) return
         GeodeNative.vizDestroy(handle)

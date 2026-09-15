@@ -67,6 +67,8 @@ class VisualizerRenderer(
     @Volatile
     var onShaderError: (String?) -> Unit = {}
 
+    // Assigned from Main (EnginePlumbing.kt) and read on the GL thread in onDrawFrame.
+    @Volatile
     var onMilkPresetLoaded: (String) -> Unit = {}
 
     @Volatile
