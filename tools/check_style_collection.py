@@ -23,18 +23,23 @@ def declared_uniforms(shader: str) -> set[str]:
 
 
 def uploaded_uniforms(scene: str) -> set[str]:
+    # Matches both the plain `loc("name")` calls used inside a scene and the
+    # `locs.loc("name")` / `uniforms_.loc("name")` forms used through UniformCache.
     return set(re.findall(r'loc\("(\w+)"\)', scene))
 
 
 def main() -> None:
-    catalog = read("app/src/main/java/dev/musicviz/render/scene/VisualStyleCatalog.kt")
-    cym_shader = read("app/src/main/res/raw/cymatics_field_frag.glsl")
-    cym_scene = read("app/src/main/java/dev/musicviz/render/scene/CymaticsScene.kt")
-    preview = read("tools/shaderpreview/lib/scenes.mjs")
-    crystal = read("app/src/main/java/dev/musicviz/ui/Crystal.kt")
-    renderer = read("app/src/main/java/dev/musicviz/render/VisualizerRenderer.kt")
-    hub = read("app/src/main/java/dev/musicviz/ui/VisualsHub.kt")
-    shell = read("app/src/main/java/dev/musicviz/ui/AppShell.kt")
+    catalog = read("engine/scenes/src/main/kotlin/dev/geode/render/scene/VisualStyleCatalog.kt")
+    cym_shader = read("app/src/main/assets/shaders/cymatics_field_frag.glsl")
+    cym_scene = read("core/viz/scenes/CymaticsScene.cpp")
+    # The touch-point uniforms are uploaded through the shared helper in
+    # SceneCommon.hpp (uploadSceneTouch), not inline in CymaticsScene.cpp itself.
+    scene_common = read("core/viz/scenes/SceneCommon.hpp")
+    scene_registry = read("core/viz/SceneRegistry.cpp")
+    hub = read("app/src/main/java/dev/geode/ui/VisualsHub.kt")
+    shell = read("app/src/main/java/dev/geode/ui/AppShell.kt")
+    crystal = read("app/src/main/java/dev/geode/ui/Crystal.kt")
+    theme_catalog = read("app/src/main/java/dev/geode/ui/theme/ThemePackCatalog.kt")
 
     # \s* after the paren: ktlint wraps long constructor calls onto their own
     # lines, so the id literal is not necessarily on the same line as the name.
@@ -47,34 +52,56 @@ def main() -> None:
         for style in range(1, 11):
             require(f"uStyle == {style}" in shader, f"{family} shader lacks branch {style}")
 
-    require(declared_uniforms(cym_shader) == uploaded_uniforms(cym_scene), "Cymatics uniform parity drift")
-    require("'uStyle'" in preview and "uStyle: { t: '1i'" in preview, "preview driver does not supply uStyle")
-    require("addAll(VisualStyleCatalog.cymaticsIds)" in renderer, "renderer does not offer Cymatics variants")
-    require("VisualStyleCatalog.cymatics(id)?.let" in renderer, "live factory does not resolve Cymatics variants")
-    # The export factory used to be a second hand-maintained switch (pinned
-    # builds through the same createScene the live registry uses, so the
-    # variant resolution pinned above covers export too - pin the routing.
-    require("createScene(sceneId" in renderer, "export factory no longer routes through createScene")
+    require(
+        declared_uniforms(cym_shader) == uploaded_uniforms(cym_scene + scene_common),
+        "Cymatics uniform parity drift",
+    )
+
+    # Scene resolution moved out of Kotlin (VisualizerRenderer just calls into
+    # the native renderer) and into core/viz/SceneRegistry.cpp, which is what
+    # actually lists, resolves and instantiates the Cymatics substyles now.
+    require(
+        "append(out, styles::cymaticsIds());" in scene_registry,
+        "native scene registry does not offer Cymatics variants",
+    )
+    require(
+        "styles::cymatics(id)" in scene_registry,
+        "native scene registry does not resolve Cymatics variants",
+    )
+    require(
+        "std::make_unique<CymaticsScene>(*style, loader_, host_)" in scene_registry,
+        "native scene registry no longer routes Cymatics creation through the shared style lookup",
+    )
     require("SceneList(VisualStyleCatalog.cymaticsIds" in hub, "Cymatics variants are absent from the picker")
 
-    named_crystals = [
-        "LAPIS",
-        "MALACHITE",
-        "CLEAR_QUARTZ",
-        "ROSE_QUARTZ",
-        "SUGILITE",
-        "AMETHYST",
-        "KYANITE",
-        "ONYX",
+    # The mineral texture system (CrystalTextureKind) was replaced by the
+    # ThemePack catalog; each named stone is a top-level val in ThemePackCatalog.kt.
+    named_themes = [
+        "lapisLazuli",
+        "sugilite",
+        "amethyst",
+        "clearQuartz",
+        "azurite",
+        "firestone",
+        "kyanite",
+        "malachite",
+        "mookaite",
+        "onyx",
     ]
-    for name in named_crystals:
-        require(f"CrystalTextureKind.{name}" in crystal, f"missing mineral texture for {name}")
-    require("CrystalMaterialTheme(" in shell, "shell does not propagate the active mineral theme")
-    require("LocalCrystalTheme provides appTheme" in crystal, "crystal panels do not receive the active theme")
+    for name in named_themes:
+        require(f"val {name} =" in theme_catalog, f"missing theme pack for {name}")
+    all_list_match = re.search(r"val all: List<ThemePack> = listOf\(([^)]*)\)", theme_catalog)
+    require(all_list_match is not None, "ThemePackCatalog has no `all` registry list")
+    if all_list_match:
+        registered = {n.strip() for n in all_list_match.group(1).split(",")}
+        require(registered == set(named_themes), "ThemePackCatalog.all is missing or has extra theme packs")
+
+    require("CrystalMaterialTheme(" in shell, "shell does not propagate the active theme pack")
+    require("LocalThemePack provides pack" in crystal, "crystal panels do not receive the active theme pack")
 
     print("style collection checks passed")
     print(f"  Cymatics substyles:   {len(cym_ids)}")
-    print(f"  Crystal materials:    {len(named_crystals)}")
+    print(f"  Theme packs:          {len(named_themes)}")
 
 
 if __name__ == "__main__":
