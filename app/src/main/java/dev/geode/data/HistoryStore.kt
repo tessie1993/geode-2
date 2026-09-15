@@ -142,7 +142,10 @@ class HistoryStore(
                     // (deduped by uri) so a heavily played old track isn't dropped from disk even
                     // though mostPlayed() ranks by playCount/listenedMs rather than recency.
                     val toPersist = LinkedHashMap<String, Entry>()
-                    entries.values.sortedByDescending { it.lastPlayedMs }.take(200).forEach { toPersist[it.uri] = it }
+                    entries.values
+                        .sortedByDescending { it.lastPlayedMs }
+                        .take(200)
+                        .forEach { toPersist[it.uri] = it }
                     entries.values
                         .filter { it.playCount > 0 }
                         .sortedWith(compareByDescending<Entry> { it.playCount }.thenByDescending { it.listenedMs })
