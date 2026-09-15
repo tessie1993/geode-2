@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "generated": "2026-08-15",
   "slice": "V2-A-02a",
-  "note": "Machine-readable provenance for the Visualizer 2.0 engine. One entry per repository, keyed to a MASTER_PLAN.md §3.1 ledger row. Every licence hash below was read from the licence file at the recorded commit, not from a repository badge. Intended input for the checkEngineProvenance Gradle task (§3.3, slice V2-1-04); EngineProvenanceRegistryTest validates it today.",
+  "note": "Machine-readable provenance for the Visualizer 2.0 engine. One entry per repository. Every licence hash below was read from the licence file at the recorded commit, not from a repository badge. Checked by the checkEngineProvenance Gradle task (build-logic/src/main/kotlin/geode.provenance.gradle.kts), which scans each module's sources against this registry and THIRD_PARTY_NOTICES.",
   "tiers": {
     "ADAPT": "Per-file code adaptation permitted after licence verification, with SPDX and origin markers, shipped notices and a statement of modifications.",
     "REIMPLEMENT": "Published algorithms may be implemented and validated independently. No code, shader text, constant table, name or layout is copied.",
