@@ -76,8 +76,16 @@
     <string name="tutorial_settings_title">Everything else is in Settings</string>
     <string name="tutorial_settings_body">Themes, audio, playback, folders and safety. Help lives here too — you can replay this walkthrough any time.</string>
 
-    <!-- Settings > Help -->
+    <!-- Settings tab bar. In the same order the tabs are shown. -->
+    <string name="settings_tab_look">Look</string>
+    <string name="settings_tab_audio">Audio</string>
+    <string name="settings_tab_export">Export</string>
+    <string name="settings_tab_folders">Folders</string>
+    <string name="settings_tab_behavior">Behavior</string>
     <string name="settings_tab_help">Help</string>
+    <string name="settings_tab_about">About</string>
+
+    <!-- Settings > Help -->
     <string name="help_tutorial_group">Walkthrough</string>
     <string name="help_tutorial_body">A short tour of the Player, Library, Visuals and Studio. It navigates the app as it goes, so you see the real thing.</string>
     <string name="help_tutorial_start">Start the walkthrough</string>
@@ -284,9 +292,6 @@
     <string name="library_sort_album">Album</string>
     <string name="library_sort_duration">Length</string>
     <string name="library_sort_added">Added</string>
-    <string name="action_visualise">Visualise</string>
-    <string name="action_export_now">Export now</string>
-    <string name="action_add_to_studio">Add to Studio</string>
 
     <string name="action_more">More</string>
     <string name="action_play_next">Play next</string>
@@ -458,6 +463,9 @@
     <!-- Settings › Audio: analysis, key colour, live input. -->
     <string name="audio_group_playback">Playback</string>
     <string name="audio_group_analysis">Analysis</string>
+    <!-- Shown once per audio-DSP screen (playback/EQ), so nobody files "the visuals didn't
+         change" as a bug per feature. See docs/AUDIO_CHAIN.md, "DSP does not move the visuals". -->
+    <string name="audio_dsp_visuals_notice">Nothing on this screen touches the visuals. The picture is drawn from the raw audio before the equalizer, ReplayGain or any other effect here runs, so turning a knob changes what you hear and never what you see.</string>
     <string name="audio_beat_sensitivity">"Beat sensitivity  %1$sσ — drag right for LESS sensitive (fewer beat flashes)"</string>
     <string name="audio_beat_min_gap">"Minimum gap between beats  %1$d ms — never flash faster than %2$d BPM"</string>
     <string name="audio_slow_track">Slow track</string>

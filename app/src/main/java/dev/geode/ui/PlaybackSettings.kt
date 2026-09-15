@@ -45,6 +45,11 @@ fun PlaybackSettingsSection(viewModel: SettingsViewModel) {
     val prefs by viewModel.playerPrefs.collectAsStateWithLifecycle()
     val sleepRemainingMs by playerViewModel.sleepTimerRemainingMs.collectAsStateWithLifecycle()
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            stringResource(R.string.audio_dsp_visuals_notice),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Column {
             Text(
                 stringResource(R.string.playback_speed, "%.2f".format(prefs.speed)),

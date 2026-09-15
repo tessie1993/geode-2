@@ -392,7 +392,14 @@ private fun ClipEditor(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(vertical = 12.dp),
     ) {
-        item { ClipEditorHeader(clip = clip, onClose = onClose) }
+        item {
+            ClipEditorHeader(
+                clip = clip,
+                resettable = !edit.isIdentity(duration),
+                onReset = { edit = ClipEdit() },
+                onClose = onClose,
+            )
+        }
         item { ClipEditorPreview(clip = clip, edit = edit) }
         item { ClipCutSection(clip = clip, edit = edit, duration = duration, onEdit = { edit = it }) }
         item { ClipLookSection(edit = edit, onEdit = { edit = it }) }
@@ -402,6 +409,7 @@ private fun ClipEditor(
             ClipRenderSection(
                 phase = studio.phase,
                 canExport = edit.trimmedMs(duration) > 0,
+                atDefaults = edit.isIdentity(duration),
                 onExport = { onExport(clip, edit) },
                 onCancelExport = onCancelExport,
                 onClearResult = onClearResult,
@@ -413,6 +421,8 @@ private fun ClipEditor(
 @Composable
 private fun ClipEditorHeader(
     clip: StudioClip,
+    resettable: Boolean,
+    onReset: () -> Unit,
     onClose: () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -423,6 +433,9 @@ private fun ClipEditorHeader(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        if (resettable) {
+            TextButton(onClick = onReset) { Text(stringResource(R.string.studio_reset)) }
         }
         TextButton(onClick = onClose) { Text(stringResource(R.string.action_back)) }
     }
@@ -647,6 +660,7 @@ private fun ClipSoundSection(
 private fun ClipRenderSection(
     phase: ExportPhase,
     canExport: Boolean,
+    atDefaults: Boolean,
     onExport: () -> Unit,
     onCancelExport: () -> Unit,
     onClearResult: () -> Unit,
@@ -659,6 +673,7 @@ private fun ClipRenderSection(
                 ClipEditorIdle(
                     message = phase.errorOrNull,
                     canExport = canExport,
+                    atDefaults = atDefaults,
                     onExport = onExport,
                 )
         }
@@ -710,16 +725,29 @@ private fun ClipEditorDone(
 private fun ClipEditorIdle(
     message: String?,
     canExport: Boolean,
+    atDefaults: Boolean,
     onExport: () -> Unit,
 ) {
     message?.let {
         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    }
+    if (atDefaults) {
+        Text(
+            stringResource(R.string.studio_nothing_changed),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         CrystalButton(enabled = canExport, onClick = onExport) {
             Text(stringResource(R.string.studio_render))
         }
     }
+    Text(
+        stringResource(R.string.studio_renders_new_file),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 private const val FILMSTRIP_FRAMES = 6
