@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.glance.appwidget.updateAll
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import dev.geode.geodeContainer
 import dev.geode.playback.MediaArtwork
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,7 +70,10 @@ class WidgetPublisher(
 
     fun clear() {
         WidgetState.save(appContext, WidgetState.load(appContext).copy(playing = false))
-        scope.launch { NowPlayingWidget().updateAll(appContext) }
+        // The publisher's own scope is cancelled right below, which would cancel this redraw
+        // before it dispatches and leave the widget showing a stale "playing" state; run it on
+        // the process-scoped appScope instead so it survives the publisher's teardown.
+        appContext.geodeContainer.appScope.launch { NowPlayingWidget().updateAll(appContext) }
         scope.cancel()
     }
 
