@@ -26,6 +26,7 @@ class NativeViz(
     private val assets: AssetManager = context.assets
     private val cacheDir: String = context.cacheDir.absolutePath
     private val milkTextureDir: String = File(context.filesDir, "milk/textures").absolutePath
+
     // Written on the GL thread (surfaceCreated) and read/written from composition-time call
     // sites on the main thread (e.g. milkdropAvailable, loadMilkPreset); @Volatile keeps every
     // thread's read of a just-published handle current, and create()/destroy() are synchronised
