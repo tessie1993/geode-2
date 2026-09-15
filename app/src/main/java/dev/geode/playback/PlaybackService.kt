@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.annotation.OptIn
+import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
@@ -15,6 +16,7 @@ import androidx.media3.session.SessionError
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import dev.geode.RingLog
 import dev.geode.data.HistoryStore
 import dev.geode.data.SessionStore
 import dev.geode.widget.WidgetPublisher
@@ -66,7 +68,13 @@ class PlaybackService : MediaLibraryService() {
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
-        ): ListenableFuture<LibraryResult<MediaItem>> = Futures.immediateFuture(LibraryResult.ofItem(tree.root(), params))
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            // Coarse cache invalidation: a browser re-entering at the root (a fresh Android Auto
+            // connection, or a manual refresh) is the signal to drop the memoised track list so
+            // library edits made elsewhere in the app are picked up.
+            tree.invalidate()
+            return Futures.immediateFuture(LibraryResult.ofItem(tree.root(), params))
+        }
 
         override fun onGetChildren(
             session: MediaLibrarySession,
@@ -79,8 +87,11 @@ class PlaybackService : MediaLibraryService() {
             Futures.submit(
                 java.util.concurrent.Callable {
                     val all = tree.children(parentId)
-                    val from = (page * pageSize).coerceAtMost(all.size)
-                    val until = (from + pageSize).coerceAtMost(all.size)
+                    // page * pageSize overflows Int when Media3 passes pageSize = Integer.MAX_VALUE
+                    // (its "everything" request), which drove `from` negative and crashed subList.
+                    // Do the multiply in Long, then clamp both ends into 0..all.size.
+                    val from = (page.toLong() * pageSize.toLong()).coerceIn(0L, all.size.toLong()).toInt()
+                    val until = (from.toLong() + pageSize.toLong()).coerceIn(from.toLong(), all.size.toLong()).toInt()
                     LibraryResult.ofItemList(ImmutableList.copyOf(all.subList(from, until)), params)
                 },
                 resumptionExecutor,
@@ -210,9 +221,15 @@ class PlaybackService : MediaLibraryService() {
         }
 
         fun ensureRunning(context: Context) {
+            // startService() throws IllegalStateException on API 26+ when called while the app is
+            // backgrounded (this is invoked from onIsPlayingChanged, which can fire off-screen), and
+            // runCatching used to swallow that silently, leaving the service never started.
+            // startForegroundService() is allowed from the background, and MediaSessionService (which
+            // PlaybackService extends) promotes itself to the foreground and posts the playback
+            // notification as soon as its session's player reports isPlaying, satisfying the 5s window.
             runCatching {
-                context.startService(Intent(context, PlaybackService::class.java))
-            }
+                ContextCompat.startForegroundService(context, Intent(context, PlaybackService::class.java))
+            }.onFailure { RingLog.note("PlaybackService.ensureRunning", "startForegroundService failed", it) }
         }
 
         fun stop(context: Context) {

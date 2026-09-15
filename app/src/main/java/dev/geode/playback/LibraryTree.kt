@@ -26,7 +26,20 @@ class LibraryTree(
         val album: String,
     )
 
+    // tracks() used to re-run TrackLibrary + DeviceTrackQuery on every call, and children()/rowsFor()/
+    // queueFor() each call it independently, so a single browse of e.g. an album folder scanned the
+    // MediaStore several times over. Cache the merged row list per instance (this tree is built once in
+    // PlaybackService.onCreate) and invalidate it from onGetLibraryRoot, the one place Media3 re-enters
+    // browsing from the top.
+    @Volatile
+    private var cachedTracks: List<Row>? = null
+
     fun root(): MediaItem = folder(ROOT, context.getString(R.string.app_name), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+
+    /** Coarse cache invalidation: called when a browser re-enters at the root. */
+    fun invalidate() {
+        cachedTracks = null
+    }
 
     fun item(mediaId: String): MediaItem? =
         when {
@@ -101,8 +114,14 @@ class LibraryTree(
         mediaType: Int,
     ): List<MediaItem> = names.distinct().sortedBy { it.lowercase() }.map { folder("$kind/$it", it, mediaType) }
 
+    /** Memoised merge of device tracks and imported documents; Media3 calls its callbacks on its own executor. */
+    private fun tracks(): List<Row> =
+        cachedTracks ?: synchronized(this) {
+            cachedTracks ?: buildTracks().also { cachedTracks = it }
+        }
+
     /** Device tracks first, then imported documents the MediaStore does not index; app-side title edits win. */
-    private fun tracks(): List<Row> {
+    private fun buildTracks(): List<Row> {
         val overrides = TrackLibrary(context).list().associateBy { it.uri }
         val device = DeviceTrackQuery.query(context).map { it.row(overrides) }
         val seen = device.mapTo(HashSet()) { it.uri }
