@@ -135,9 +135,13 @@ object NativeTags {
 
     private sealed class FdResult
 
-    private data class FdOpen(val fd: Int) : FdResult()
+    private data class FdOpen(
+        val fd: Int,
+    ) : FdResult()
 
-    private data class FdFailed(val outcome: TagWriteOutcome) : FdResult()
+    private data class FdFailed(
+        val outcome: TagWriteOutcome,
+    ) : FdResult()
 
     // Scoped storage throws SecurityException (or, on API 29+, its RecoverableSecurityException
     // subclass) when the app never created the file and MediaStore.createWriteRequest consent is
