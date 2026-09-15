@@ -103,10 +103,11 @@ portability, not device checks.
 
 ## Maintainer notes
 
-- Tag writing covers files the app holds a write grant for. MediaStore tracks
-  the app did not create need the user's consent through
-  `MediaStore.createWriteRequest`, which the library screen does not launch
-  yet; the editor reports the refused write instead.
+- Tag writing covers files the app holds a write grant for. For a
+  `content://media/...` track the app did not create, on API 30+ the editor
+  now launches `MediaStore.createWriteRequest` for the user's consent and
+  retries the write once if it is granted; below API 30, for a non-MediaStore
+  URI, or if consent is denied, it reports the refused write instead.
 - `ENABLE_PLAYLIST=ON` in the root `CMakeLists.txt` is kept verbatim from the
   old prebuilt recipe and also packages `libprojectM-4-playlist.so`, which
   nothing calls. Set it OFF to drop the file.
