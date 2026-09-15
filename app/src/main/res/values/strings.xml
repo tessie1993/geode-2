@@ -536,6 +536,8 @@
     <string name="export_render_button">Render %1$dp %2$s %3$dfps</string>
     <string name="export_render_to_folder">Render to chosen folder…</string>
     <string name="export_cancel">Cancel export</string>
+    <string name="export_loudness_target">Loudness target</string>
+    <string name="export_loudness_hint">Geode measures the finished file against this target once export completes. It does not yet change the level to match — pick the platform you\'re shipping to, or Leave as-is to ship the level you mixed.</string>
 
     <!-- Settings: Look tab. -->
     <string name="look_group_theme">Theme</string>

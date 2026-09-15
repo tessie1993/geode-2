@@ -40,6 +40,7 @@ import dev.geode.export.ExportCodec
 import dev.geode.export.ExportQuality
 import dev.geode.export.ExportRange
 import dev.geode.export.ExportRatio
+import dev.geode.export.LoudnessTarget
 
 @Composable
 fun SettingsDialog(
@@ -62,6 +63,10 @@ fun SettingsDialog(
     var ratio by rememberSaveable { mutableStateOf(defaults.ratio) }
     var fps by rememberSaveable { mutableStateOf(defaults.fps) }
     var codec by rememberSaveable { mutableStateOf(defaults.codec) }
+    // LoudnessTarget is a sealed interface, not a Saveable type on its own, so the persisted
+    // choice is carried as its id and resolved back through LoudnessTarget.byId.
+    var loudnessTargetId by rememberSaveable { mutableStateOf(defaults.loudnessTargetId) }
+    val loudnessTarget = LoudnessTarget.byId(loudnessTargetId)
     var loopSafe by remember {
         mutableStateOf(
             defaults.loopSafe &&
@@ -83,7 +88,7 @@ fun SettingsDialog(
             )
         }
 
-    fun persistDefaults() = exportPrefs.save(ExportDefaults(quality, fps, ratio, loopSafe, codec))
+    fun persistDefaults() = exportPrefs.save(ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId))
     val chooserTitle = stringResource(R.string.export_upload_share_to)
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -123,6 +128,14 @@ fun SettingsDialog(
                                 },
                             ),
                         )
+                        export.loudnessAdvice?.let { advice ->
+                            Text(advice.headline, style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                advice.detail,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = {
                                 val share =
@@ -173,6 +186,23 @@ fun SettingsDialog(
                                 }
                             }
                         }
+                        Text(stringResource(R.string.export_loudness_target), style = MaterialTheme.typography.labelMedium)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            LoudnessTarget.ALL.forEach { target ->
+                                QualityChip(target.label, loudnessTarget.id == target.id) {
+                                    loudnessTargetId = target.id
+                                    persistDefaults()
+                                }
+                            }
+                        }
+                        Text(
+                            stringResource(R.string.export_loudness_hint),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         Text(stringResource(R.string.export_aspect_ratio), style = MaterialTheme.typography.labelMedium)
                         Row(
                             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -228,8 +258,8 @@ fun SettingsDialog(
                                 loopSafe = false
                                 persistDefaults()
                             }
-                            QualityChip(stringResource(R.string.export_loop_safe), loopSafe) {
-                                loopSafe = barUs != null
+                            QualityChip(stringResource(R.string.export_loop_safe), loopSafe, enabled = barUs != null) {
+                                loopSafe = true
                                 persistDefaults()
                             }
                         }
@@ -301,11 +331,13 @@ fun SettingsDialog(
 private fun QualityChip(
     label: String,
     selected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     FilterChip(
         selected = selected,
         onClick = onClick,
+        enabled = enabled,
         label = { Text(label, style = MaterialTheme.typography.labelSmall) },
     )
 }
