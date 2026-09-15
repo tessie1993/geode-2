@@ -63,6 +63,11 @@ class SessionStore(
     @Suppress("ReturnCount", "LoopWithTooManyJumpStatements")
     private fun parse(text: String): Saved? {
         val root = JSONObject(text)
+        // A file written by a newer app version may use a schema this version cannot read
+        // safely. Fail the parse so the caller's runCatching quarantines it, the same as any
+        // other corrupt session file, instead of misreading fields that may have changed shape.
+        val version = root.optInt(KEY_VERSION, 1)
+        require(version <= VERSION) { "session file from a newer app (version $version > $VERSION)" }
         val array = root.optJSONArray(KEY_TRACKS) ?: return null
         val tracks = ArrayList<SavedTrack>(array.length())
         for (i in 0 until array.length()) {

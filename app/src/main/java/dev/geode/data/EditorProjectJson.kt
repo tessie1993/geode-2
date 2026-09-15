@@ -219,16 +219,21 @@ internal object EditorProjectJson {
             name = o.optString("name", ""),
             colour = enumOr(o.optString("colour"), MarkerColour.CYAN),
             note = o.optString("note", ""),
+            // Hoisting the null check up front removes the `!!` the two non-manual branches used
+            // to rely on `origin` being non-null after the `when` had already matched on it.
             origin =
-                when (val type = origin?.optString("type", "manual") ?: "manual") {
-                    "manual" -> MarkerOrigin.Manual
-                    "tapped" -> MarkerOrigin.TappedIn(origin!!.getLong("rawAtMs"), origin.getLong("latencyMs"))
-                    "detected" ->
-                        MarkerOrigin.Detected(
-                            origin!!.optDouble("confidence", 0.0).toFloat(),
-                            origin.optDouble("strength", 0.0).toFloat(),
-                        )
-                    else -> throw IllegalArgumentException("unknown marker origin: $type")
+                run {
+                    val o = origin ?: return@run MarkerOrigin.Manual
+                    when (val type = o.optString("type", "manual")) {
+                        "manual" -> MarkerOrigin.Manual
+                        "tapped" -> MarkerOrigin.TappedIn(o.getLong("rawAtMs"), o.getLong("latencyMs"))
+                        "detected" ->
+                            MarkerOrigin.Detected(
+                                o.optDouble("confidence", 0.0).toFloat(),
+                                o.optDouble("strength", 0.0).toFloat(),
+                            )
+                        else -> throw IllegalArgumentException("unknown marker origin: $type")
+                    }
                 },
         )
     }

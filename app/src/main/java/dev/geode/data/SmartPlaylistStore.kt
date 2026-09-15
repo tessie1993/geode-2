@@ -152,10 +152,15 @@ class SmartPlaylistStore(
             name = o.getString("name"),
             matchAll = o.optBoolean("matchAll", true),
             limit = o.optInt("limit", 0),
+            // `valueOf` throws on a token from a newer/foreign build, and the caller's runCatching
+            // would then discard the whole file. Look the token up instead and drop only that one
+            // rule (firstOrNull -> null -> mapNotNull skips it) so the rest of the playlist survives.
             rules =
-                List(rules.length()) { i ->
-                    val r = rules.getJSONObject(i)
-                    SmartRule(RuleField.valueOf(r.getString("field")), RuleOp.valueOf(r.getString("op")), r.optString("value", ""))
+                (0 until rules.length()).mapNotNull { i ->
+                    val r = rules.optJSONObject(i) ?: return@mapNotNull null
+                    val field = RuleField.entries.firstOrNull { it.name == r.optString("field") } ?: return@mapNotNull null
+                    val op = RuleOp.entries.firstOrNull { it.name == r.optString("op") } ?: return@mapNotNull null
+                    SmartRule(field, op, r.optString("value", ""))
                 },
         )
     }
