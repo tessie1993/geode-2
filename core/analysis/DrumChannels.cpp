@@ -2,18 +2,26 @@
 
 namespace geode::analysis {
 
-DrumChannels::DrumChannels(int bandCount, float hopRateHz, int sampleRateHz, float minHz, float maxHz) : bandCount_(bandCount) {
+DrumChannels::DrumChannels(int bandCount, float hopRateHz, int sampleRateHz, float minHz, float maxHz)
+    : bandCount_(bandCount), sampleRateHz_(sampleRateHz), minHz_(minHz), maxHz_(maxHz) {
     for (int c = 0; c < kChannels; c++) {
         pickers_.emplace_back(hopRateHz, 1.5f, 3.0f, 0.05f);
         fluxes_.emplace_back(bandCount);
         slices_.emplace_back(static_cast<size_t>(bandCount), 0.0f);
-        from_[c] = LogBands::bandForHz(kEdges[c * 2], bandCount, sampleRateHz, minHz, maxHz);
-        to_[c] = LogBands::bandForHz(kEdges[c * 2 + 1], bandCount, sampleRateHz, minHz, maxHz);
     }
+    setSampleRateHz(sampleRateHz);
 }
 
 void DrumChannels::setSensitivity(float value) {
     for (auto& p : pickers_) p.setSensitivity(value);
+}
+
+void DrumChannels::setSampleRateHz(int sampleRateHz) {
+    sampleRateHz_ = sampleRateHz;
+    for (int c = 0; c < kChannels; c++) {
+        from_[c] = LogBands::bandForHz(kEdges[c * 2], bandCount_, sampleRateHz_, minHz_, maxHz_);
+        to_[c] = LogBands::bandForHz(kEdges[c * 2 + 1], bandCount_, sampleRateHz_, minHz_, maxHz_);
+    }
 }
 
 void DrumChannels::step(const float* bands) {
