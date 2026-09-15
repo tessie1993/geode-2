@@ -1,9 +1,7 @@
 #include "audio/player/Mixer.hpp"
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
-#include <thread>
 
 namespace geode::audio::player {
 
@@ -36,6 +34,15 @@ void gainsFor(float t, int curve, float& out, float& in) {
 
 Mixer::Mixer() : tap_(kTapSamples), scratch_(kMaxRenderFrames * kChannels, 0.0f) {}
 
+// Only frees chains setDsp() already retired (queued for us to destroy); the chain still live in dsp_,
+// if any, was never handed to us to own and is left for its caller to destroy, same as before this
+// change.
+Mixer::~Mixer() {
+    std::lock_guard<std::mutex> guard(dspRetireLock_);
+    for (const RetiredDsp& retired : retiredDsp_) geode_dsp_destroy(retired.dsp);
+    retiredDsp_.clear();
+}
+
 Deck* Mixer::takeRetired() {
     Deck* deck = nullptr;
     return retired_.pop(&deck, 1) == 1 ? deck : nullptr;
@@ -46,13 +53,37 @@ void Mixer::setCrossfade(int64_t frames, int curve) {
     curve_.store(curve, std::memory_order_relaxed);
 }
 
+// Never blocks: geode_player_set_dsp may be called from any thread (including a UI thread, where a wait
+// risks an ANR), and a fixed timeout can't guarantee the previous chain is no longer in use, which is
+// exactly the promise this call needs to keep. So the swap is only ever published here; the previous
+// chain is queued and destroyed later by reclaimDsp(), once render() can no longer be inside
+// geode_dsp_process() with it. See the PR notes for the geode_player_set_dsp doc text this implies for
+// who now owns destroying the old chain.
 void Mixer::setDsp(geode_dsp* dsp, bool streamRunning) {
-    dsp_.store(dsp, std::memory_order_release);
-    if (!streamRunning) return;
-    const uint64_t before = callbacks_.load(std::memory_order_acquire);
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
-    while (callbacks_.load(std::memory_order_acquire) == before && std::chrono::steady_clock::now() < deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    geode_dsp* old = dsp_.exchange(dsp, std::memory_order_acq_rel);
+    if (!old) return;
+    // callbacks_ read right after the swap becomes visible: once it has advanced past this value, every
+    // render() call that could still have read the old pointer (started before the swap, still holding
+    // it locally) has finished and incremented callbacks_, so the old chain is safe to destroy. If the
+    // stream wasn't running at swap time, no callback could have touched it at all.
+    const RetiredDsp retired{old, streamRunning, callbacks_.load(std::memory_order_acquire)};
+    std::lock_guard<std::mutex> guard(dspRetireLock_);
+    retiredDsp_.push_back(retired);
+}
+
+void Mixer::reclaimDsp(bool streamRunning) {
+    std::lock_guard<std::mutex> guard(dspRetireLock_);
+    if (retiredDsp_.empty()) return;
+    const uint64_t callbacks = callbacks_.load(std::memory_order_acquire);
+    while (!retiredDsp_.empty()) {
+        const RetiredDsp& front = retiredDsp_.front();
+        // Ready once a callback has run since the swap, or (streamRunning here reflects "now", not swap
+        // time) the stream isn't running any more: Oboe guarantees no callback keeps running past a
+        // confirmed pause/stop, so anything in flight at swap time must have finished by then too.
+        const bool ready = !front.waitForCallback || !streamRunning || callbacks != front.readyAt;
+        if (!ready) break;
+        geode_dsp_destroy(front.dsp);
+        retiredDsp_.pop_front();
     }
 }
 
