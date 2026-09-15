@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace geode::viz {
 
@@ -17,6 +18,10 @@ public:
 
 private:
     static bool isIncludeName(const std::string& name);
+    // Recurses into an included lib's own //#include lines; `visited` guards
+    // against a cycle between lib_* files.
+    std::optional<std::string> resolveIncludes(const std::string& source, std::string* error,
+                                                std::vector<std::string>& visited) const;
 
     AAssetManager* assets_;
 };

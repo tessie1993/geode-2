@@ -36,6 +36,10 @@ float Renderer::beginFrame(double timeSeconds) {
         std::lock_guard<std::mutex> lock(stateLock_);
         pending.swap(pendingShaders_);
         frameFeatures_ = features_;
+        frameLayerMix_ = layerMix_;
+        frameLayerBlend_ = layerBlend_;
+        frameTransitionId_ = transitionId_;
+        frameTransitionDurationMs_ = transitionDurationMs_;
     }
     for (const auto& [id, src] : pending) {
         if (Scene* scene = builtScene(id)) scene->setFragmentSource(src);
@@ -54,7 +58,7 @@ Scene* Renderer::resolveActiveScene() {
     sceneJustSwitched_ = false;
     if (requested && requested != activeScene_) {
         lastTimeS_ = frameNowS_;
-        const bool cuts = TransitionCatalog::builtIn(transitionId_) == TransitionStyle::Cut;
+        const bool cuts = TransitionCatalog::builtIn(frameTransitionId_) == TransitionStyle::Cut;
         if (!cuts && activeScene_) {
             outgoingScene_ = activeScene_;
             outgoingParams_ = lastFinalParams_;
@@ -91,8 +95,9 @@ SceneParams Renderer::resolveParams(float dt) {
     // clamp so nothing it adds can exceed the flash and motion limits.
     feedFormDrive();
     formDrive_.step(frameFeatures_, dt);
-    p = formDrive_.apply(p, reducedMotion_);
-    p = safety::apply(p, reducedMotion_);
+    const bool reducedMotion = reducedMotion_.load(std::memory_order_relaxed);
+    p = formDrive_.apply(p, reducedMotion);
+    p = safety::apply(p, reducedMotion);
     if (!thermalTierInfo(thermal_.tier()).optionalPasses) {
         p.flowEnabled = false;
         p.rippleOverlayEnabled = false;
@@ -143,8 +148,17 @@ bool Renderer::ensureTargets() {
 }
 
 void Renderer::deliverPcm(Scene& scene) {
-    std::lock_guard<std::mutex> lock(stateLock_);
-    if (pcmCount_ > 0) scene.acceptPcm(pcm_.data(), pcmCount_);
+    // Copy out under the lock, then hand the scene its own scratch buffer
+    // once unlocked: acceptPcm() (a copy of up to 4096 samples plus
+    // fillPcmRow) must never run while stateLock_ is held, or pushPcm() on
+    // the PCM producer thread blocks behind a scene upload.
+    int count = 0;
+    {
+        std::lock_guard<std::mutex> lock(stateLock_);
+        count = pcmCount_;
+        if (count > 0) std::copy(pcm_.begin(), pcm_.begin() + count, pcmDeliverScratch_.begin());
+    }
+    if (count > 0) scene.acceptPcm(pcmDeliverScratch_.data(), count);
 }
 
 void Renderer::bindSecondaryTarget() {
@@ -164,7 +178,7 @@ float Renderer::drawSecondaryTargets(const SceneParams& p, float dt) {
         layerScene_->draw(timeSeconds_);
     }
     if (outgoingScene_) {
-        progress = std::clamp(static_cast<float>((frameNowS_ - transitionStartS_) * 1000.0 / transitionDurationMs_), 0.0f, 1.0f);
+        progress = std::clamp(static_cast<float>((frameNowS_ - transitionStartS_) * 1000.0 / frameTransitionDurationMs_), 0.0f, 1.0f);
         if (progress >= 1.0f) {
             outgoingScene_ = nullptr;
             outgoingParams_.reset();
@@ -226,12 +240,12 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.rippleStrength = rippleOn ? std::clamp(rippleStrength, 0.0f, 1.0f) : 0.0f;
     in.rippleSpecular = rippleOn ? std::clamp(p.rippleOverlaySpecular, 0.0f, 1.0f) : 0.0f;
     in.progress = progress;
-    in.layerMix = safety::layerMix(layerMix_, blendModeFromOrdinal(layerBlend_));
-    in.blendOrdinal = layerBlend_;
+    in.layerMix = safety::layerMix(frameLayerMix_, blendModeFromOrdinal(frameLayerBlend_));
+    in.blendOrdinal = frameLayerBlend_;
     in.hasLayer = layerScene_ != nullptr;
     in.hasOutgoing = outgoingScene_ != nullptr;
-    in.transitionId = transitionId_;
-    in.transitionStyle = safety::transitionStyle(TransitionCatalog::builtIn(transitionId_).value_or(TransitionStyle::Fade));
+    in.transitionId = frameTransitionId_;
+    in.transitionStyle = safety::transitionStyle(TransitionCatalog::builtIn(frameTransitionId_).value_or(TransitionStyle::Fade));
     in.ratio = static_cast<float>(renderWidth_) / static_cast<float>(renderHeight_);
     in.timeSeconds = timeSeconds_;
     const float hit = live::hit(frameFeatures_);

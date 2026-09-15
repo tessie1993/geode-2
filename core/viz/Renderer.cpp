@@ -26,7 +26,8 @@ Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
                           [this](const std::string& path) { notePresetLoaded(path); }}),
       compositePass_(assets_, &programCache_),
       pcm_(kPcmCapacity, 0.0f),
-      pcmScratch_(kPcmCapacity, 0.0f) {
+      pcmScratch_(kPcmCapacity, 0.0f),
+      pcmDeliverScratch_(kPcmCapacity, 0.0f) {
     programCache_.install(cacheDir_);
 }
 
@@ -57,7 +58,10 @@ void Renderer::setLayer(const std::string& sceneId, float mix, int blendOrdinal)
 void Renderer::setTransition(const std::string& id, int64_t durationMs) {
     std::lock_guard<std::mutex> lock(stateLock_);
     transitionId_ = safety::transitionId(id);
-    transitionDurationMs_ = durationMs;
+    // A 0ms (or negative) duration turns the progress fraction in
+    // drawSecondaryTargets into 0.0/0 == NaN, and NaN never satisfies
+    // `progress >= 1.0f`, so the outgoing scene would never be released.
+    transitionDurationMs_ = std::max<int64_t>(durationMs, 1);
 }
 
 void Renderer::beginParamMorph(float seconds) {
@@ -182,8 +186,18 @@ void Renderer::setAdsrConfigs(const std::array<AdsrConfig, AdsrEngine::kCount>& 
 }
 
 void Renderer::fail(const std::string& message) {
-    lastError_ = message;
+    {
+        std::lock_guard<std::mutex> lock(stateLock_);
+        lastError_ = message;
+    }
     if (!message.empty()) GEODE_LOGW(kTag, "%s", message.c_str());
+}
+
+// Any thread: returns a copy taken under stateLock_ rather than a reference,
+// since fail() (GL thread) mutates lastError_ concurrently with callers here.
+std::string Renderer::lastError() const {
+    std::lock_guard<std::mutex> lock(stateLock_);
+    return lastError_;
 }
 
 void Renderer::rememberCustomShader(const std::string& sceneId, const std::string& source) {
@@ -214,6 +228,10 @@ void Renderer::onSurfaceCreated() {
     if (paletteLutTex_ != 0) {
         glDeleteTextures(1, &paletteLutTex_);
         paletteLutTex_ = 0;
+    }
+    if (quadVao_ != 0) {
+        glDeleteVertexArrays(1, &quadVao_);
+        quadVao_ = 0;
     }
     touchField_.reset();
     fboA_.release();
@@ -322,29 +340,31 @@ Scene* Renderer::sceneFor(const std::string& id) {
 std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     auto scene = registry_.create(id, quadVert_);
     if (!scene) return nullptr;
-    if (paletteLutTex_ != 0) scene->setPaletteLut(paletteLutTex_);
-    scene->setTouchField(&touchField_);
-    scene->init();
-    scene->setParams(requestedParams_);
-    scene->resize(renderWidth_, renderHeight_);
-    const std::string custom = customShaderFor(id);
-    if (!custom.empty()) scene->setFragmentSource(custom);
+    // Snapshot every cross-thread field this function needs in one lock, then
+    // do all the (non-locked) scene setup below so no scene call happens
+    // while stateLock_ is held.
+    SceneParams initialParams;
     std::string force;
     std::string dye;
-    {
-        std::lock_guard<std::mutex> lock(stateLock_);
-        force = fluidForceSrc_;
-        dye = fluidDyeSrc_;
-    }
-    if (!force.empty() || !dye.empty()) scene->setInjectionShaders(force, dye);
-    scene->setWindowSize(width_, height_);
     std::string preset;
     std::string textureDir;
     {
         std::lock_guard<std::mutex> lock(stateLock_);
+        initialParams = requestedParams_;
+        force = fluidForceSrc_;
+        dye = fluidDyeSrc_;
         preset = lastMilkPreset_;
         textureDir = milkTextureDir_;
     }
+    if (paletteLutTex_ != 0) scene->setPaletteLut(paletteLutTex_);
+    scene->setTouchField(&touchField_);
+    scene->init();
+    scene->setParams(initialParams);
+    scene->resize(renderWidth_, renderHeight_);
+    const std::string custom = customShaderFor(id);
+    if (!custom.empty()) scene->setFragmentSource(custom);
+    if (!force.empty() || !dye.empty()) scene->setInjectionShaders(force, dye);
+    scene->setWindowSize(width_, height_);
     if (!textureDir.empty()) scene->setMilkTextureDir(textureDir);
     if (!preset.empty()) scene->queueMilkPreset(preset);
     return scene;

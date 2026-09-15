@@ -3,6 +3,7 @@
 #include <android/asset_manager.h>
 
 #include <array>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -42,7 +43,7 @@ public:
     void setParams(const SceneParams& params);
     bool setParam(const std::string& key, float value);
     void setFeatures(const GeodeFeatureFrame& features);
-    void setReducedMotion(bool on) { reducedMotion_ = on; }
+    void setReducedMotion(bool on) { reducedMotion_.store(on, std::memory_order_relaxed); }
     void setLayer(const std::string& sceneId, float mix, int blendOrdinal);
     void setTransition(const std::string& id, int64_t durationMs);
     void beginParamMorph(float seconds);
@@ -61,7 +62,8 @@ public:
     void setLfoConfigs(const std::array<LfoConfig, LfoEngine::kSlots>& configs);
     void setAdsrConfigs(const std::array<AdsrConfig, AdsrEngine::kCount>& configs);
     ThermalGovernor& thermal() { return thermal_; }
-    const std::string& lastError() const { return lastError_; }
+    // Any thread: returns a copy (see Renderer.cpp) since fail() mutates lastError_ concurrently.
+    std::string lastError() const;
     bool knows(const std::string& sceneId) const { return registry_.knows(sceneId); }
     std::vector<std::string> availableSceneIds() const { return registry_.availableIds(); }
 
@@ -140,7 +142,7 @@ private:
     int layerBlend_ = static_cast<int>(BlendMode::Screen);
     std::string transitionId_ = "fade";
     int64_t transitionDurationMs_ = 1200;
-    bool reducedMotion_ = false;
+    std::atomic<bool> reducedMotion_{false};
     float morphFadeSec_ = 0.0f;
     float morphRemainSec_ = 0.0f;
     std::vector<float> pcm_;
@@ -151,6 +153,7 @@ private:
     unsigned int pcmSerial_ = 0;
     unsigned int pcmSerialSeen_ = 0;
     std::vector<float> pcmScratch_;
+    std::vector<float> pcmDeliverScratch_;
     std::vector<std::pair<std::string, std::string>> pendingShaders_;
     std::vector<std::pair<std::string, std::string>> customShaders_;
     std::string fluidForceSrc_;
@@ -187,6 +190,14 @@ private:
     double frameNowS_ = 0.0;
     float timeSeconds_ = 0.0f;
     GeodeFeatureFrame frameFeatures_{};
+    // Latched once per frame in beginFrame alongside frameFeatures_, so the
+    // rest of the frame (composite(), drawSecondaryTargets(), ...) reads a
+    // stable snapshot instead of racing setLayer()/setTransition() on
+    // stateLock_.
+    float frameLayerMix_ = 0.5f;
+    int frameLayerBlend_ = static_cast<int>(BlendMode::Screen);
+    std::string frameTransitionId_ = "fade";
+    int64_t frameTransitionDurationMs_ = 1200;
     std::string lastError_;
 };
 
