@@ -83,9 +83,17 @@ class FramePacer(
      * Choreographer thread — and read back on the next vsync, which is where the divide is
      * recomputed. It does not touch the surface: call [applyTo] afterwards to push the new
      * preference to the display as well.
+     *
+     * Also re-publishes [ThermalGovernor.pacedFps] while this pacer is running, so a cap change
+     * reaches the native governor immediately instead of waiting for the next [start]. A no-op
+     * publish when another, more recently started pacer is the one currently active.
      */
     @Volatile
     var policy: FrameRatePolicy = initialPolicy
+        set(value) {
+            field = value
+            if (running) publishActiveCap()
+        }
 
     /**
      * Seconds between the last two drawn frames, clamped to [MIN_DT_SECONDS]..[MAX_DT_SECONDS].
@@ -136,6 +144,13 @@ class FramePacer(
         lastVsyncNanos = 0L
         vsyncsSinceDrawn = 0
         resetStats()
+        // A pacer that starts twice without stopping (start() is idempotent, so this only runs
+        // once per start) must not end up twice in the stack ahead of itself.
+        synchronized(runningStack) {
+            runningStack.remove(this)
+            runningStack.add(this)
+        }
+        publishActiveCap()
         instance.postFrameCallback(callback)
     }
 
@@ -149,6 +164,29 @@ class FramePacer(
         running = false
         choreographer?.removeFrameCallback(callback)
         choreographer = null
+        // Drop out of the running stack before republishing: if another pacer (the view's and the
+        // wallpaper's can both be live at once) is still running, its cap — not 0 — is what
+        // ThermalGovernor should read next.
+        synchronized(runningStack) { runningStack.remove(this) }
+        publishActiveCap()
+    }
+
+    /** [FrameRatePolicy.Capped] publishes its rate; anything else (free-running) publishes 0. */
+    private fun requestedFps(): Float =
+        when (val current = policy) {
+            FrameRatePolicy.Native -> 0f
+            is FrameRatePolicy.Capped -> current.fps
+        }
+
+    /**
+     * Publishes [ThermalGovernor.pacedFps] from the most recently started pacer that is still
+     * running — the view and the wallpaper can each own a running pacer at once, so the last one
+     * to start wins, and a pacer that stops without being the most recent starter must not
+     * clobber the cap the other one is still asking for. 0 when nothing is running.
+     */
+    private fun publishActiveCap() {
+        val active = synchronized(runningStack) { runningStack.lastOrNull() }
+        ThermalGovernor.pacedFps = active?.requestedFps() ?: 0f
     }
 
     /**
@@ -302,6 +340,14 @@ class FramePacer(
     }
 
     companion object {
+        /**
+         * Every currently running pacer, in start order — the view's and the wallpaper's can both
+         * be live at once. [publishActiveCap] reads the last entry, so the most recently started
+         * pacer's cap is always what [ThermalGovernor.pacedFps] reflects, and a pacer that stops
+         * without being that entry leaves the value alone.
+         */
+        private val runningStack = mutableListOf<FramePacer>()
+
         /**
          * The rate the scenes are authored and tuned at. Above it the fragment cost of a
          * full-screen visualizer scales linearly for motion that is already smooth, and the
