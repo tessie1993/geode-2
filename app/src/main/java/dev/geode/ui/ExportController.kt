@@ -2,7 +2,9 @@ package dev.geode.ui
 
 import android.app.Application
 import android.net.Uri
+import androidx.core.net.toUri
 import dev.geode.analysis.FeatureTimeline
+import dev.geode.data.BackgroundPrefsStore
 import dev.geode.data.ExportPrefsStore
 import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.PerformanceTake
@@ -25,6 +27,7 @@ import dev.geode.export.TimeOfDayDrift
 import dev.geode.export.VideoExporter
 import dev.geode.render.SceneFactory
 import dev.geode.render.scene.SceneParams
+import dev.geode.viz.BackgroundExportSpec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -255,6 +258,7 @@ internal class ExportController(
                             destination = destination,
                             codec = codec,
                             loudnessTarget = defaultLoudnessTarget(),
+                            background = defaultBackground(),
                             onProgress = { p ->
                                 val overall = 0.2f + p * 0.8f
                                 _exportState.update { it.copy(phase = ExportPhase.Running(overall)) }
@@ -510,6 +514,14 @@ internal class ExportController(
             ExportPrefsStore(GeodePrefsFiles(application).general).load().loudnessTargetId,
         )
 
+    // Same "no per-render option wired through startExport's callers" situation as
+    // defaultLoudnessTarget() above: the background image rides along as the persisted default.
+    private fun defaultBackground(): BackgroundExportSpec? {
+        val p = BackgroundPrefsStore(GeodePrefsFiles(application).background).load()
+        val uri = p.uri ?: return null
+        return BackgroundExportSpec(uri.toUri(), p.blend, p.amount, p.blurRadius, p.dim)
+    }
+
     fun cancelStudioExport() {
         ExportRun.requestCancel()
         // studioExporter.cancel() suspends until the Transformer has actually stopped and the
@@ -681,7 +693,7 @@ internal class ExportController(
             is OutOfMemoryError ->
                 application.getString(dev.geode.R.string.export_error_out_of_memory)
             else ->
-                application.getString(dev.geode.R.string.export_error_generic, t.javaClass.simpleName)
+                application.getString(dev.geode.R.string.export_error_generic_detail, t.javaClass.simpleName)
         }
     }
 
