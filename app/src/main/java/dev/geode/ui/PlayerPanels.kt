@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -154,6 +156,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.seekFillBrush(width
     )
 
 /** The lyrics overlay as a [GlassSheet]: glass rows, the active line tinted mint. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LyricsPanel(
     lyrics: Lyrics?,
@@ -249,6 +252,7 @@ private fun rememberFollowsPlayback(listState: LazyListState): MutableState<Bool
 }
 
 /** The queue overlay as a [GlassSheet]: glass rows with artwork, reorder/remove, save-as-playlist. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QueuePanel(
     queue: QueueUiState,
