@@ -570,6 +570,11 @@
     <string name="export_loop_rendering">Rendering… %1$d%%</string>
     <string name="export_loudness_target">Loudness target</string>
     <string name="export_loudness_hint">Geode measures the finished file against this target once export completes. It does not yet change the level to match — pick the platform you\'re shipping to, or Leave as-is to ship the level you mixed.</string>
+    <string name="export_error_codec">This device\'s video encoder could not keep up with that render — try a lower quality, a smaller size, or a different codec in the Export tab.</string>
+    <string name="export_error_io">The export could not read or write a file it needed. Check that the source clip is still there and that storage is not full.</string>
+    <string name="export_error_invalid_project">That could not be turned into a video — check that its clips still point at files Geode can read.</string>
+    <string name="export_error_out_of_memory">The device ran out of memory during the render. Try a shorter clip, a lower quality, or freeing up memory first.</string>
+    <string name="export_error_generic_detail">The export failed (%1$s).</string>
     <string name="export_fps_24">24 fps</string>
     <string name="export_fps_25">25 fps</string>
     <string name="export_fps_50">50 fps</string>
