@@ -13,7 +13,13 @@ import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
 import dev.geode.export.ExportRun
 import dev.geode.export.ExportService
+import dev.geode.export.LongFormAudio
+import dev.geode.export.LoopExtend
+import dev.geode.export.LoopRender
+import dev.geode.export.LoopSpec
+import dev.geode.export.MixClip
 import dev.geode.export.ProjectComposition
+import dev.geode.export.TimeOfDayDrift
 import dev.geode.export.VideoExporter
 import dev.geode.render.SceneFactory
 import dev.geode.render.scene.SceneParams
@@ -34,6 +40,11 @@ data class StudioUiState(
 
 data class ExportUiState(
     val customDestination: Boolean = false,
+    val phase: ExportPhase = ExportPhase.Idle,
+)
+
+/** Progress and result of a loop render + long-form extend, mirroring [ExportUiState]. */
+data class LoopUiState(
     val phase: ExportPhase = ExportPhase.Idle,
 )
 
@@ -343,5 +354,149 @@ internal class ExportController(
 
     fun clearStudioResult() {
         _studio.update { it.copy(phase = ExportPhase.Idle) }
+    }
+
+    private val loopRenderer = LoopRender(application)
+    private val loopExtender = LoopExtend(application)
+
+    private val _loopState = MutableStateFlow(LoopUiState())
+    val loopState: StateFlow<LoopUiState> = _loopState
+
+    @Volatile
+    private var loopCancelled = false
+
+    private var loopJob: Job? = null
+
+    /**
+     * Renders a seamless loop from the current track's analysis, then repeats it into a
+     * long-form video with [audioClips] (or, if empty, the current track) as its soundtrack.
+     *
+     * Runs on [ExportRun.scope] and shares [ExportRun]'s single-render guard and foreground
+     * notification with [startExport]: a long-form render is exactly the case that must survive
+     * the Activity going away, and the two are heavy enough that they should not overlap.
+     */
+    fun startLoopRender(
+        aspect: ExportAspect,
+        codec: ExportCodec,
+        fps: Int,
+        sceneFactory: SceneFactory,
+        loopMs: Long,
+        crossfadeMs: Long,
+        drift: TimeOfDayDrift,
+        audioClips: List<Uri>,
+        destination: Uri? = null,
+    ) {
+        val uri = host.exportUri ?: return
+        if (_loopState.value.phase.isBusy || ExportRun.running) return
+        loopCancelled = false
+        _loopState.value = LoopUiState(phase = ExportPhase.Running(0f))
+        ExportRun.begin(uri.lastPathSegment.orEmpty().substringAfterLast('/'))
+        ExportService.start(application)
+        loopJob =
+            ExportRun.scope.launch(Dispatchers.Default) {
+                try {
+                    val analysed =
+                        host.cachedTimeline ?: host
+                            .analyze(uri) { p ->
+                                publishLoopProgress(p * ANALYSIS_SPAN)
+                            }.also { if (host.exportUri == uri) host.cachedTimeline = it }
+                    val gui = host.guiPrefs
+                    val spec = LoopSpec.of(loopMs, crossfadeMs, fps = fps, bpm = analysed.bpm)
+                    val renderResult =
+                        loopRenderer.render(
+                            timeline = analysed,
+                            sceneFactory = sceneFactory,
+                            aspect = aspect,
+                            spec = spec,
+                            sceneParams = host.sceneParams,
+                            drift = drift,
+                            lfoConfigs = host.lfoConfigs(),
+                            adsrConfigs = host.adsrConfigs(),
+                            reducedMotion = gui.reducedMotion,
+                            codec = codec,
+                            onProgress = { p -> publishLoopProgress(ANALYSIS_SPAN + p * RENDER_SPAN) },
+                            isCancelled = { loopCancelled || ExportRun.cancelRequested },
+                        )
+                    _loopState.value = LoopUiState(phase = finishLoopRender(renderResult, uri, audioClips, destination))
+                } catch (t: Throwable) {
+                    if (t is kotlinx.coroutines.CancellationException) {
+                        _loopState.value = LoopUiState()
+                        throw t
+                    } else if (loopCancelled) {
+                        _loopState.value = LoopUiState()
+                    } else {
+                        val detail = "${t.javaClass.simpleName}: ${t.message ?: "no message"}"
+                        _loopState.value = LoopUiState(phase = ExportPhase.Failed(detail))
+                    }
+                } finally {
+                    ExportRun.finish()
+                }
+            }
+    }
+
+    /** Extends a rendered reel into the long-form file, or passes through a render failure. */
+    private suspend fun finishLoopRender(
+        renderResult: LoopRender.Result,
+        trackUri: Uri,
+        audioClips: List<Uri>,
+        destination: Uri?,
+    ): ExportPhase =
+        when (renderResult) {
+            is LoopRender.Result.Failed -> ExportPhase.Failed(renderResult.message)
+            LoopRender.Result.Cancelled -> ExportPhase.Idle
+            is LoopRender.Result.Rendered -> {
+                val reel = renderResult.reel
+                try {
+                    val audio =
+                        if (audioClips.isEmpty()) {
+                            LongFormAudio.SingleTrack(MixClip(trackUri, trackUri.lastPathSegment.orEmpty().substringAfterLast('/')))
+                        } else {
+                            LongFormAudio.Mix(
+                                audioClips.map { clip ->
+                                    MixClip(clip, clip.lastPathSegment.orEmpty().substringAfterLast('/'))
+                                },
+                            )
+                        }
+                    val name = "geode_loop_${System.currentTimeMillis()}.mp4"
+                    val extended =
+                        loopExtender.extend(
+                            reel = reel,
+                            audio = audio,
+                            fileName = name,
+                            destination = destination,
+                            onProgress = { p -> publishLoopProgress(ANALYSIS_SPAN + RENDER_SPAN + p * EXTEND_SPAN) },
+                            isCancelled = { loopCancelled || ExportRun.cancelRequested },
+                        )
+                    when (extended) {
+                        is LoopExtend.Result.Saved -> ExportPhase.Done(extended.uri)
+                        is LoopExtend.Result.Failed -> ExportPhase.Failed(extended.message)
+                        LoopExtend.Result.Cancelled -> ExportPhase.Idle
+                    }
+                } finally {
+                    reel.delete()
+                }
+            }
+        }
+
+    private fun publishLoopProgress(overall: Float) {
+        val clamped = overall.coerceIn(0f, 1f)
+        _loopState.update { it.copy(phase = ExportPhase.Running(clamped)) }
+        ExportRun.publish(clamped)
+    }
+
+    fun cancelLoopRender() {
+        loopCancelled = true
+    }
+
+    fun clearLoopResult() {
+        if (!_loopState.value.phase.isBusy) _loopState.value = LoopUiState()
+    }
+
+    private companion object {
+        // Analysing the track is quick against the render itself; extending mostly copies
+        // already-encoded samples, so it gets less of the bar than the GPU render does.
+        const val ANALYSIS_SPAN = 0.1f
+        const val RENDER_SPAN = 0.6f
+        const val EXTEND_SPAN = 1f - ANALYSIS_SPAN - RENDER_SPAN
     }
 }

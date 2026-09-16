@@ -1127,6 +1127,24 @@ class PlayerSession internal constructor(
 
     fun clearStudioResult() = exportController.clearStudioResult()
 
+    val loopState: StateFlow<LoopUiState> get() = exportController.loopState
+
+    fun startLoopRender(
+        aspect: ExportAspect,
+        codec: ExportCodec,
+        fps: Int,
+        sceneFactory: SceneFactory,
+        loopMs: Long,
+        crossfadeMs: Long,
+        drift: dev.geode.export.TimeOfDayDrift,
+        audioClips: List<Uri>,
+        destination: Uri? = null,
+    ) = exportController.startLoopRender(aspect, codec, fps, sceneFactory, loopMs, crossfadeMs, drift, audioClips, destination)
+
+    fun cancelLoopRender() = exportController.cancelLoopRender()
+
+    fun clearLoopResult() = exportController.clearLoopResult()
+
     /**
      * Tears the session down. Called only by [dev.geode.di.PlayerSessionProvider], on behalf of the
      * one ViewModel that owns the session — never from a screen.

@@ -536,6 +536,23 @@
     <string name="export_render_button">Render %1$dp %2$s %3$dfps</string>
     <string name="export_render_to_folder">Render to chosen folder…</string>
     <string name="export_cancel">Cancel export</string>
+    <string name="export_loop_menu_title">Export</string>
+    <string name="export_loop_menu_subtitle">A regular video export, or a seamless loop repeated into a long-form video?</string>
+    <string name="export_loop_menu_standard">Video export…</string>
+    <string name="export_loop_menu_loop">Loop / long-form…</string>
+    <string name="export_loop_title">Loop / long-form export</string>
+    <string name="export_loop_source_hint">Loops the current track\'s visuals and repeats them into one long file. The soundtrack is the current track unless you add clips below.</string>
+    <string name="export_loop_length">Loop length: %1$d s</string>
+    <string name="export_loop_crossfade">Seam crossfade: %1$.1f s</string>
+    <string name="export_loop_drift_toggle">Drift the palette over time</string>
+    <string name="export_loop_drift_hue">Hue drift: %1$d°</string>
+    <string name="export_loop_drift_stops">Palette steps: %1$d</string>
+    <string name="export_loop_soundtrack_title">Soundtrack</string>
+    <string name="export_loop_soundtrack_empty">Uses the current track.</string>
+    <string name="export_loop_soundtrack_count">%1$s added, played back to back.</string>
+    <string name="export_loop_soundtrack_add">Add soundtrack clips…</string>
+    <string name="export_loop_start">Render loop</string>
+    <string name="export_loop_rendering">Rendering… %1$d%%</string>
 
     <!-- Settings: Look tab. -->
     <string name="look_group_theme">Theme</string>
