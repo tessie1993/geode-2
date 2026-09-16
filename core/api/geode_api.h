@@ -62,7 +62,9 @@ typedef struct GeodeFeatureFrame {
 
 GEODE_API const char* geode_version(void);
 
-/* hop_rate_hz sets every tempo-domain filter; the hop in samples for push/pull is sample_rate / hop_rate_hz. */
+/* hop_rate_hz sets every tempo-domain filter; the hop in samples for push/pull is sample_rate / hop_rate_hz,
+ * clamped to fft_size. fft_size must be a power of two >= GEODE_WAVEFORM_POINTS (so the waveform decimation
+ * step is never zero); NULL on any other value. */
 GEODE_API geode_analysis* geode_analysis_create(int sample_rate, int fft_size, float hop_rate_hz);
 GEODE_API void            geode_analysis_destroy(geode_analysis*);
 GEODE_API void            geode_analysis_set_sample_rate(geode_analysis*, int sample_rate);
@@ -84,6 +86,8 @@ GEODE_API void geode_pulse_replay(const float* flux, size_t count, const float* 
 GEODE_API geode_drums* geode_drums_create(int band_count, float hop_rate_hz, int sample_rate);
 GEODE_API void         geode_drums_destroy(geode_drums*);
 GEODE_API void         geode_drums_step(geode_drums*, const float* bands, float* kick_snare_hat);
+/* band_count this handle was created with, so a caller can size/validate `bands` before calling step; 0 if null. */
+GEODE_API int          geode_drums_band_count(geode_drums*);
 
 /* Native visualizer: one renderer per GL surface. Setters may be called from any thread and are latched
  * for the next frame; the calls under "GL thread" need the surface's context current. */

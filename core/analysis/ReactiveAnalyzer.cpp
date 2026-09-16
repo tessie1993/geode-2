@@ -34,9 +34,7 @@ void ReactiveAnalyzer::setSampleRateHz(int value) {
     if (value != sampleRateHz_) {
         sampleRateHz_ = value;
         logBands_.setSampleRateHz(value);
-        const float sensitivity = picker_.sensitivity();
-        drums_ = std::make_unique<DrumChannels>(bandCount_, hopRateHz_, value);
-        drums_->setSensitivity(sensitivity);
+        drums_->setSampleRateHz(value);
     }
 }
 
@@ -126,6 +124,9 @@ void ReactiveAnalyzer::reset() {
     std::fill(bands_.begin(), bands_.end(), 0.0f);
     levelPeak_ = 0.0f;
     silentSeconds_ = 0.0f;
+    // Matches the member's default initializer: spectrumInto() branches on this before the first analyze()
+    // call after a reset, and a fresh session has produced no spectrum yet, so treat it as silent.
+    lastFrameSilent_ = true;
     rms_ = 0.0f;
     bass_ = 0.0f;
     mid_ = 0.0f;

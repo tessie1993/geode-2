@@ -26,7 +26,8 @@ const char* geode_version(void) {
 }
 
 geode_analysis* geode_analysis_create(int sample_rate, int fft_size, float hop_rate_hz) {
-    if (sample_rate <= 0 || fft_size < 2 || (fft_size & (fft_size - 1)) != 0 || hop_rate_hz <= 0.0f) return nullptr;
+    if (sample_rate <= 0 || fft_size < GEODE_WAVEFORM_POINTS || (fft_size & (fft_size - 1)) != 0 || hop_rate_hz <= 0.0f)
+        return nullptr;
     return std::make_unique<geode_analysis>(geode_analysis{geode::analysis::AnalysisSession(sample_rate, fft_size, hop_rate_hz)}).release();
 }
 
@@ -91,6 +92,10 @@ void geode_drums_step(geode_drums* d, const float* bands, float* kick_snare_hat)
     kick_snare_hat[0] = d->channels.kick();
     kick_snare_hat[1] = d->channels.snare();
     kick_snare_hat[2] = d->channels.hat();
+}
+
+int geode_drums_band_count(geode_drums* d) {
+    return d ? d->channels.bandCount() : 0;
 }
 
 }

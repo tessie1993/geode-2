@@ -8,8 +8,17 @@
 namespace geode::analysis {
 
 namespace {
-int hopFor(int sampleRateHz, float hopRateHz) {
-    return std::max(static_cast<int>(sampleRateHz / hopRateHz), 1);
+// push()'s buffer_/sideBuffer_ are capped at this many FFT windows so a producer that pushes without ever
+// pulling cannot grow them without bound.
+constexpr size_t kMaxBufferedWindows = 8;
+
+// Clamped to fftSize so pull() always has at least one full window buffered before it advances past the
+// window it just analyzed; without this, a hop rate too low for the sample rate (e.g. 60 Hz at 192 kHz with
+// a 2048 FFT) would produce hopSamples_ > fftSize_ and underflow `buffered_ - hop` in pull(). The clamp keeps
+// analysis running with a degraded (too-frequent) hop instead of crashing.
+int hopFor(int sampleRateHz, float hopRateHz, int fftSize) {
+    const int hop = std::max(static_cast<int>(sampleRateHz / hopRateHz), 1);
+    return std::min(hop, fftSize);
 }
 }  // namespace
 
@@ -17,7 +26,7 @@ AnalysisSession::AnalysisSession(int sampleRateHz, int fftSize, float hopRateHz)
     : sampleRateHz_(sampleRateHz),
       fftSize_(fftSize),
       hopRateHz_(hopRateHz),
-      hopSamples_(hopFor(sampleRateHz, hopRateHz)),
+      hopSamples_(hopFor(sampleRateHz, hopRateHz, fftSize)),
       analyzer_(GEODE_BAND_COUNT, fftSize, sampleRateHz, hopRateHz),
       chroma_(hopRateHz),
       spectrum_(static_cast<size_t>(fftSize / 2)),
@@ -27,7 +36,7 @@ AnalysisSession::AnalysisSession(int sampleRateHz, int fftSize, float hopRateHz)
 void AnalysisSession::setSampleRateHz(int value) {
     if (value <= 0 || value == sampleRateHz_) return;
     sampleRateHz_ = value;
-    hopSamples_ = hopFor(value, hopRateHz_);
+    hopSamples_ = hopFor(value, hopRateHz_, fftSize_);
     analyzer_.setSampleRateHz(value);
 }
 
@@ -55,10 +64,28 @@ void AnalysisSession::analyze(const float* mid, const float* side, size_t frames
 
 void AnalysisSession::push(const float* interleaved, size_t frames, int channels) {
     if (channels <= 0 || frames == 0) return;
-    if (buffered_ + frames > buffer_.size()) {
-        const size_t grown = std::max(buffered_ + frames, buffer_.size() * 2);
+    // Bound how far this can grow: a producer that pushes without ever pulling must not grow the buffer
+    // without bound. Cap at a few FFT windows and drop the oldest samples once at the cap, mirroring
+    // Renderer::pushPcm's fixed-capacity ring (core/viz/Renderer.cpp).
+    const size_t cap = static_cast<size_t>(fftSize_) * kMaxBufferedWindows;
+    if (buffer_.size() < cap && buffered_ + frames > buffer_.size()) {
+        const size_t grown = std::min(std::max(buffered_ + frames, buffer_.size() * 2), cap);
         buffer_.resize(grown);
         sideBuffer_.resize(grown);
+    }
+    // A single push larger than the cap: keep only its most recent samples.
+    if (frames > buffer_.size()) {
+        const size_t skip = frames - buffer_.size();
+        interleaved += skip * static_cast<size_t>(channels);
+        frames = buffer_.size();
+    }
+    // Still no room (buffer already at the cap): drop the oldest buffered samples.
+    if (buffered_ + frames > buffer_.size()) {
+        const size_t keep = buffer_.size() - frames;
+        const size_t drop = buffered_ - keep;
+        std::memmove(buffer_.data(), buffer_.data() + drop, keep * sizeof(float));
+        std::memmove(sideBuffer_.data(), sideBuffer_.data() + drop, keep * sizeof(float));
+        buffered_ = keep;
     }
     size_t s = 0;
     for (size_t f = 0; f < frames; f++) {
@@ -82,7 +109,9 @@ bool AnalysisSession::pull(GeodeFeatureFrame& out) {
     fill(mid, side, out);
     decimatedWaveform(mid, out.waveform);
 
-    const size_t hop = static_cast<size_t>(hopSamples_);
+    // hopSamples_ is clamped to fftSize_ at construction/setSampleRateHz, and buffered_ >= fftSize_ here
+    // (the guard above), so hop <= buffered_ always; the extra clamp is defense in depth.
+    const size_t hop = std::min(static_cast<size_t>(hopSamples_), buffered_);
     const size_t remaining = buffered_ - hop;
     std::memmove(buffer_.data(), buffer_.data() + hop, remaining * sizeof(float));
     std::memmove(sideBuffer_.data(), sideBuffer_.data() + hop, remaining * sizeof(float));
@@ -131,7 +160,7 @@ void AnalysisSession::fill(const float* mid, const float* side, GeodeFeatureFram
 }
 
 void AnalysisSession::averagedWaveform(const float* mid, float* out) const {
-    const int step = fftSize_ / GEODE_WAVEFORM_POINTS;
+    const int step = std::max(fftSize_ / GEODE_WAVEFORM_POINTS, 1);
     for (int i = 0; i < GEODE_WAVEFORM_POINTS; i++) {
         float acc = 0.0f;
         const int base = i * step;
@@ -141,7 +170,7 @@ void AnalysisSession::averagedWaveform(const float* mid, float* out) const {
 }
 
 void AnalysisSession::decimatedWaveform(const float* mid, float* out) const {
-    const int step = fftSize_ / GEODE_WAVEFORM_POINTS;
+    const int step = std::max(fftSize_ / GEODE_WAVEFORM_POINTS, 1);
     for (int i = 0; i < GEODE_WAVEFORM_POINTS; i++) out[i] = mid[i * step];
 }
 
