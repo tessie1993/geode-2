@@ -89,8 +89,7 @@ class PlayerViewModel
 
         internal val watermarkOptions: StateFlow<WatermarkOptions> get() = session.watermarkOptions
 
-        internal fun setWatermarkOptions(transform: (WatermarkOptions) -> WatermarkOptions) =
-            session.setWatermarkOptions(transform)
+        internal fun setWatermarkOptions(transform: (WatermarkOptions) -> WatermarkOptions) = session.setWatermarkOptions(transform)
 
         internal fun pickWatermarkImage(uri: Uri) = session.pickWatermarkImage(uri)
 
