@@ -450,7 +450,11 @@ internal class ExportController(
                     val outcome = built.getOrNull()
                     when {
                         outcome == null -> {
-                            val message = describeExportFailure(built.exceptionOrNull() ?: IllegalStateException())
+                            val message =
+                                describeExportFailure(
+                                    built.exceptionOrNull()
+                                        ?: IllegalStateException("ProjectComposition.build returned no outcome and no exception"),
+                                )
                             _studio.update { it.copy(phase = ExportPhase.Failed(message)) }
                             runResult = ExportRun.Result.Failed(message)
                         }
