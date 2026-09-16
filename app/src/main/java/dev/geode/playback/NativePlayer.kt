@@ -15,9 +15,11 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dev.geode.RingLog
 import dev.geode.engine.bridge.GeodeNative
+import dev.geode.util.bestEffort
 import java.io.FileNotFoundException
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * The native engine behind the Media3 [Player] API, so the session, service and UI stay unchanged.
@@ -149,7 +151,10 @@ class NativePlayer(
     override fun handleRelease(): ListenableFuture<*> {
         released = true
         main.removeCallbacksAndMessages(null)
-        worker.shutdown()
+        // Cancel any in-flight open/queue task instead of letting it run to completion against a
+        // handle we're about to destroy; the worker bodies also bail out early once released.
+        worker.shutdownNow()
+        bestEffort(TAG, "await worker shutdown") { worker.awaitTermination(500, TimeUnit.MILLISECONDS) }
         tap.stop()
         dsp.release()
         GeodeNative.playerDestroy(handle)
@@ -216,8 +221,13 @@ class NativePlayer(
         mediaItems: List<MediaItem>,
     ): ListenableFuture<*> {
         val at = index.coerceIn(0, entries.size)
+        // Only shift currentIndex to keep tracking the already-selected entry; if the list was
+        // empty there was nothing selected yet, so index 0 should stay pointing at the new head
+        // (the old `loadedId >= 0` guard instead skipped the shift whenever nothing was loaded
+        // yet, even with a real pending selection, so handlePrepare() could open the wrong item).
+        val hadCurrentEntry = entries.isNotEmpty()
         entries.addAll(at, mediaItems.map { Entry(it, nextUid++) })
-        if (at <= currentIndex && loadedId >= 0) currentIndex += mediaItems.size
+        if (hadCurrentEntry && at <= currentIndex) currentIndex += mediaItems.size
         reshuffle()
         if (prepared && loadedId < 0) return openCurrent(0L)
         queueNext()
@@ -292,6 +302,9 @@ class NativePlayer(
         val play = playWhenReady
         return Futures.submit(
             Callable {
+                // A shutdownNow() from handleRelease() can still let a queued task start; don't
+                // touch the (possibly already destroyed) native handle once released.
+                if (released) return@Callable
                 val fd = openFd(entry.item)
                 if (fd == null) {
                     main.post {
@@ -327,6 +340,8 @@ class NativePlayer(
         queuedId = id
         queuedIndex = index
         worker.execute {
+            // Same race as openCurrent(): don't call into the native handle once released.
+            if (released) return@execute
             val fd = openFd(entry.item) ?: return@execute
             GeodeNative.playerSetNext(handle, fd.first, 0L, fd.second, id)
         }
