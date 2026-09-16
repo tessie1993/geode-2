@@ -6,6 +6,8 @@ import android.net.Uri
 import dev.geode.data.MusicPlaylist
 import dev.geode.data.MusicPlaylistStore
 import dev.geode.data.NativeTags
+import dev.geode.data.PlaylistFormats
+import dev.geode.data.PlaylistParse
 import dev.geode.data.SmartPlaylist
 import dev.geode.data.SmartPlaylistStore
 import dev.geode.data.TrackTagEdit
@@ -30,6 +32,21 @@ data class DeviceTrack(
     val durationMs: Long,
     val addedSec: Long = 0L,
 )
+
+/** Outcome of [MusicLibraryController.importPlaylistFile], shown to the user as a single result. */
+sealed interface PlaylistImportResult {
+    data class Imported(
+        val name: String,
+        val addedCount: Int,
+        val unresolvedCount: Int,
+        val ambiguousCount: Int,
+    ) : PlaylistImportResult
+
+    /** [why] is a diagnostic for logs, not shown to the user; the screen always shows one generic message. */
+    data class Failed(
+        val why: String,
+    ) : PlaylistImportResult
+}
 
 data class LibraryState(
     val tracks: List<LibraryTrack> = emptyList(),
@@ -419,6 +436,53 @@ internal class MusicLibraryController(
     fun deleteSmartPlaylist(name: String) {
         smartPlaylists.delete(name)
         _library.update { it.copy(smartPlaylists = smartPlaylists.list()) }
+    }
+
+    /**
+     * Reads an M3U/PLS/XSPF file the user picked, resolves its entries against the imported
+     * library by file name, and creates a new playlist from whatever matched. Entries that name a
+     * file nothing in the library has stay unresolved and are only reported, never guessed at.
+     */
+    suspend fun importPlaylistFile(uri: Uri): PlaylistImportResult =
+        withContext(Dispatchers.IO) {
+            val fileName = openableInfoFor(uri).first.ifBlank { uri.lastPathSegment.orEmpty() }
+            val text =
+                runCatching {
+                    application.contentResolver.openInputStream(uri)?.use { stream ->
+                        stream.readBytes().toString(Charsets.UTF_8)
+                    }
+                }.getOrNull()
+            if (text == null) {
+                return@withContext PlaylistImportResult.Failed("could not open the picked file")
+            }
+            when (val parsed = PlaylistFormats.parse(fileName, text)) {
+                is PlaylistParse.Unreadable -> PlaylistImportResult.Failed(parsed.why)
+                is PlaylistParse.Parsed -> {
+                    val urisByFileName =
+                        _library.value.tracks
+                            .filter { it.fileName.isNotBlank() }
+                            .groupBy({ it.fileName.lowercase() }, { it.uri })
+                    val resolution = PlaylistFormats.resolve(parsed.entries, urisByFileName)
+                    val name = uniquePlaylistName(parsed.name.ifBlank { fileName.ifBlank { "Playlist" } })
+                    musicPlaylists.save(MusicPlaylist(name, resolution.uris))
+                    withContext(Dispatchers.Main) { _library.update { it.copy(playlists = musicPlaylists.list()) } }
+                    PlaylistImportResult.Imported(
+                        name = name,
+                        addedCount = resolution.uris.size,
+                        unresolvedCount = resolution.missing.size,
+                        ambiguousCount = resolution.ambiguous.size,
+                    )
+                }
+            }
+        }
+
+    /** Never overwrites an existing playlist quietly — appends "(2)", "(3)", ... until the name is free. */
+    private fun uniquePlaylistName(base: String): String {
+        val taken = musicPlaylists.list().map { it.name }.toSet()
+        if (base !in taken) return base
+        var suffix = 2
+        while ("$base ($suffix)" in taken) suffix++
+        return "$base ($suffix)"
     }
 }
 

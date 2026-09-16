@@ -708,6 +708,8 @@ class PlayerSession internal constructor(
 
     fun createMusicPlaylist(name: String) = musicLibrary.createMusicPlaylist(name)
 
+    suspend fun importPlaylistFile(uri: Uri): PlaylistImportResult = musicLibrary.importPlaylistFile(uri)
+
     fun renameMusicPlaylist(
         oldName: String,
         newName: String,

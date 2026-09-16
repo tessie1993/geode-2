@@ -146,6 +146,8 @@ class LibraryViewModel
 
         fun createMusicPlaylist(name: String) = session.createMusicPlaylist(name)
 
+        suspend fun importPlaylistFile(uri: Uri): PlaylistImportResult = session.importPlaylistFile(uri)
+
         fun renameMusicPlaylist(
             oldName: String,
             newName: String,
