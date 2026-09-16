@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -496,6 +497,7 @@ fun TimelineEditor(
 }
 
 /** Which sidecar the user wants for the marker lane, before the system's own save-as sheet opens. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChapterFormatDialog(
     onPick: (ChapterFormat) -> Unit,

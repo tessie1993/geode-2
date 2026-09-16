@@ -67,10 +67,6 @@ class VisualizerRenderer(
     @Volatile
     var onShaderError: (String?) -> Unit = {}
 
-    /** Fired on the GL thread from [onSurfaceChanged], so a UI-layer overlay composer knows the target size. */
-    @Volatile
-    var onSurfaceSizeChanged: (Int, Int) -> Unit = { _, _ -> }
-
     // Assigned from Main (EnginePlumbing.kt) and read on the GL thread in onDrawFrame.
     @Volatile
     var onMilkPresetLoaded: (String) -> Unit = {}
