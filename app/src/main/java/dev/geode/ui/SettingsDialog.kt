@@ -6,16 +6,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -27,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.data.EXPORT_FPS_OPTIONS
@@ -42,6 +39,12 @@ import dev.geode.export.ExportQuality
 import dev.geode.export.ExportRange
 import dev.geode.export.ExportRatio
 import dev.geode.export.LoudnessTarget
+import dev.geode.ui.glass.GlassButton
+import dev.geode.ui.glass.GlassLinearProgress
+import dev.geode.ui.glass.GlassPalette
+import dev.geode.ui.glass.GlassSegmented
+import dev.geode.ui.glass.GlassShapes
+import dev.geode.ui.glass.glassSurface
 
 @Composable
 fun SettingsDialog(
@@ -91,11 +94,29 @@ fun SettingsDialog(
 
     fun persistDefaults() = exportPrefs.save(ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId))
     val chooserTitle = stringResource(R.string.export_upload_share_to)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.export_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+    // A glass card dialog: `GlassDialog` (ui/glass/GlassDialog.kt) only carries a fixed
+    // title/text/actions layout, and this dialog's body is a long, phase-dependent form, so it is
+    // built here from the same primitive (`glassSurface` on a `GlassShapes.tile`) inside a plain
+    // [Dialog] instead.
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .widthIn(min = 280.dp, max = 420.dp)
+                .glassSurface(shape = GlassShapes.tile)
+                .padding(24.dp),
+        ) {
+            Text(
+                stringResource(R.string.export_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = GlassPalette.textPrimary,
+            )
+            Column(
+                Modifier
+                    .padding(top = 16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 when (val phase = export.phase) {
                     is ExportPhase.Running -> {
                         val run by dev.geode.export.ExportRun.state
@@ -109,10 +130,7 @@ fun SettingsDialog(
                                 },
                             ).joinToString(" · "),
                         )
-                        LinearProgressIndicator(
-                            progress = { phase.progress },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        GlassLinearProgress(progress = phase.progress, modifier = Modifier.fillMaxWidth())
                         Text(
                             stringResource(R.string.export_leave_hint),
                             style = MaterialTheme.typography.bodySmall,
@@ -141,11 +159,12 @@ fun SettingsDialog(
                             // No track title reaches this dialog, so the rendered file's own
                             // name (e.g. "geode_1234567890.mp4") stands in for EXTRA_TITLE/SUBJECT.
                             val resultName = phase.resultUri.lastPathSegment?.substringAfterLast('/')
-                            Button(onClick = {
-                                context.shareVideo(phase.resultUri, chooserTitle, title = resultName, subject = resultName)
-                            }) {
-                                Text(stringResource(R.string.export_upload_drive))
-                            }
+                            GlassButton(
+                                text = stringResource(R.string.export_upload_drive),
+                                onClick = {
+                                    context.shareVideo(phase.resultUri, chooserTitle, title = resultName, subject = resultName)
+                                },
+                            )
                         }
                     }
                     is ExportPhase.Failed -> {
@@ -157,7 +176,7 @@ fun SettingsDialog(
                             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            CrystalSegmented(
+                            GlassSegmented(
                                 options = ExportPresets.ALL.map { it.name },
                                 selected = ExportPresets.indexMatching(quality, ratio, fps, loopSafe),
                                 onSelect = {
@@ -324,32 +343,33 @@ fun SettingsDialog(
                                 style = MaterialTheme.typography.labelSmall,
                             )
                         }
-                        Button(
+                        GlassButton(
+                            text = stringResource(R.string.export_render_button, quality.shortSide, ratio.label, fps),
                             onClick = { onStart(ExportAspect.of(quality, ratio), fps, loopSafe, range, codec) },
                             enabled = hasMedia,
                             modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(stringResource(R.string.export_render_button, quality.shortSide, ratio.label, fps))
-                        }
-                        OutlinedButton(
+                        )
+                        GlassButton(
+                            text = stringResource(R.string.export_render_to_folder),
                             onClick = { onStartToDestination(ExportAspect.of(quality, ratio), fps, loopSafe, range, codec) },
                             enabled = hasMedia,
                             modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(stringResource(R.string.export_render_to_folder))
-                        }
+                        )
                     }
                 }
             }
-        },
-        confirmButton = {
-            if (export.phase.isRunning) {
-                TextButton(onClick = onCancel) { Text(stringResource(R.string.export_cancel)) }
-            } else {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
+            Row(
+                Modifier.padding(top = 20.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                if (export.phase.isRunning) {
+                    GlassButton(text = stringResource(R.string.export_cancel), onClick = onCancel)
+                } else {
+                    GlassButton(text = stringResource(R.string.action_close), onClick = onDismiss)
+                }
             }
-        },
-    )
+        }
+    }
 }
 
 @Composable
@@ -359,10 +379,5 @@ private fun QualityChip(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        enabled = enabled,
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-    )
+    GlassButton(text = label, onClick = onClick, selected = selected, enabled = enabled)
 }
