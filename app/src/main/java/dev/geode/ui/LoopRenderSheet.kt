@@ -34,24 +34,9 @@ import dev.geode.R
 import dev.geode.data.ExportPrefsStore
 import dev.geode.data.GeodePrefsFiles
 import dev.geode.export.ExportAspect
-import dev.geode.export.ExportCodec
 import dev.geode.export.LoopSpec
 import dev.geode.export.TimeOfDayDrift
 import kotlin.math.roundToInt
-
-/**
- * Everything [LoopRenderSheet] hands the controller: the render's quality (taken from the same
- * export defaults the standard export uses) and the loop-specific controls the sheet owns.
- */
-data class LoopRenderRequest(
-    val aspect: ExportAspect,
-    val codec: ExportCodec,
-    val fps: Int,
-    val loopMs: Long,
-    val crossfadeMs: Long,
-    val drift: TimeOfDayDrift,
-    val audioClips: List<Uri>,
-)
 
 /**
  * Picks the loop's length, seam and palette drift, then starts [ExportController.startLoopRender]
