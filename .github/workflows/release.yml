@@ -41,10 +41,11 @@ jobs:
       - name: Set up Gradle (with caching)
         uses: gradle/actions/setup-gradle@v6
 
-      # The platform matches compileSdk; NDK and CMake match ndkVersion and
-      # externalNativeBuild.cmake.version in app/build.gradle.kts, and
-      # bundleRelease compiles the MilkDrop JNI bridge from app/src/main/cpp
-      # with them.
+      # The platform is one major version behind compileSdk (37) - see the
+      # README maintainer note for why that gap is left as is. NDK and CMake
+      # match ndkVersion and externalNativeBuild.cmake.version in
+      # app/build.gradle.kts, and bundleRelease compiles the MilkDrop JNI
+      # bridge from app/src/main/cpp with them.
       - name: Install Android SDK 36, NDK and CMake
         run: |
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:?Android SDK location not set on runner}}"
