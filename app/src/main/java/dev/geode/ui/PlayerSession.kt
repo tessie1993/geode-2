@@ -66,6 +66,7 @@ import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneParams
 import dev.geode.viz.ArtTitleOptions
 import dev.geode.viz.LyricOptions
+import dev.geode.viz.WatermarkOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -706,6 +707,14 @@ class PlayerSession internal constructor(
         width: Int,
         height: Int,
     ) = overlay.onSurfaceSizeChanged(width, height)
+
+    internal val watermarkOptions: StateFlow<WatermarkOptions> get() = overlay.watermarkOptions
+
+    internal fun setWatermarkOptions(transform: (WatermarkOptions) -> WatermarkOptions) = overlay.setWatermarkOptions(transform)
+
+    internal fun pickWatermarkImage(uri: Uri) = overlay.pickWatermarkImage(uri)
+
+    internal fun clearWatermarkImage() = overlay.clearWatermarkImage()
 
     /** For [ExportController]: a per-position overlay provider at the export's own frame size. */
     internal fun overlayProviderForExport(

@@ -126,9 +126,9 @@ internal class ExportController(
         )
 
         /**
-         * The cover-art/title/lyric overlay for an export at its own frame size: a function from
-         * a track position (ms) to that frame's ARGB pixels, or null when nothing is enabled.
-         * Callers may call it once for a fixed overlay or once per rendered frame for a
+         * The cover-art/title/lyric/watermark overlay for an export at its own frame size: a
+         * function from a track position (ms) to that frame's ARGB pixels, or null when nothing is
+         * enabled. Callers may call it once for a fixed overlay or once per rendered frame for a
          * position-driven one (lyrics) - see [dev.geode.render.offscreen.OffscreenRenderSpec.overlay].
          */
         fun overlayPixelsFor(

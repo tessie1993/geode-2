@@ -46,6 +46,7 @@ fun VisualizerEngineBindings(
 
     LaunchedEffect(Unit) {
         visualizerView.visualizerRenderer.onShaderError = viewModel::reportShaderError
+        visualizerView.visualizerRenderer.onSurfaceSizeChanged = viewModel::setOverlaySurfaceSize
         visualizerView.visualizerRenderer.pcmProvider = { viewModel.latestPcm() }
         // One surface-size callback feeds both consumers: the overlay composer takes the size
         // directly, and the background image is re-decoded to the surface's current pixel size

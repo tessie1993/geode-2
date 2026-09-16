@@ -96,7 +96,7 @@ class OffscreenSceneRenderer(
         if (spec.lfoConfigs.isNotEmpty()) viz.setLfoConfigs(spec.lfoConfigs)
         if (spec.adsrConfigs.isNotEmpty()) viz.setAdsrConfigs(spec.adsrConfigs)
         // The overlay itself is latched per-frame in renderFrame(), since spec.overlay may vary
-        // with position (a lyric line); this only builds the renderer.
+        // with position (a lyric line, or a watermark once enabled); this only builds the renderer.
         spec.underlay?.let { viz.setUnderlay(it.pixels, it.width, it.height, it.blend, it.amount) }
         native = viz
     }

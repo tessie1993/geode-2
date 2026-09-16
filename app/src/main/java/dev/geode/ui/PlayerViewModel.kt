@@ -23,6 +23,7 @@ import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneParams
 import dev.geode.viz.ArtTitleOptions
 import dev.geode.viz.LyricOptions
+import dev.geode.viz.WatermarkOptions
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -90,6 +91,14 @@ class PlayerViewModel
             width: Int,
             height: Int,
         ) = session.setOverlaySurfaceSize(width, height)
+
+        internal val watermarkOptions: StateFlow<WatermarkOptions> get() = session.watermarkOptions
+
+        internal fun setWatermarkOptions(transform: (WatermarkOptions) -> WatermarkOptions) = session.setWatermarkOptions(transform)
+
+        internal fun pickWatermarkImage(uri: Uri) = session.pickWatermarkImage(uri)
+
+        internal fun clearWatermarkImage() = session.clearWatermarkImage()
 
         fun setMicEnabled(enabled: Boolean): MicCapture.Failure? = session.setMicEnabled(enabled)
 
