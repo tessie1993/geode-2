@@ -47,19 +47,27 @@ internal class PlaybackFades(
             then()
             return
         }
-        fadeJob =
+        lateinit var self: Job
+        self =
             scope.launch {
                 val steps = (durationMs / FADE_STEP_MS).coerceAtLeast(1)
-                for (i in 0..steps) {
+                // Set the start volume once, then step from 1..steps so the fade takes
+                // exactly `steps` intervals (durationMs) instead of steps + 1.
+                fadeVolume = from
+                applyVolume()
+                for (i in 1..steps) {
+                    delay(FADE_STEP_MS)
                     fadeVolume = from + (to - from) * (i.toFloat() / steps)
                     applyVolume()
-                    delay(FADE_STEP_MS)
                 }
                 fadeVolume = to
                 applyVolume()
                 then()
-                fadeJob = null
+                // `then()` (e.g. skipFaded's nested fade-in) may have started a new fadeJob;
+                // only clear the field if it still points at this coroutine.
+                if (fadeJob === self) fadeJob = null
             }
+        fadeJob = self
     }
 
     fun togglePlayPauseFaded() {
