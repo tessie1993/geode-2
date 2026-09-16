@@ -29,12 +29,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.isActive
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
-import kotlinx.coroutines.isActive
 
 private data class Bubble(
     val baseX: Float,
@@ -242,8 +242,10 @@ private fun generateBubbles(density: Float): List<Bubble> {
             radiusDp = if (i % 3 == 0) random.nextFloat() * 10f + 14f else random.nextFloat() * 6f + 5f,
             phase = random.nextFloat() * TWO_PI,
             periodMs =
-                (GlassMotion.BUBBLE_DRIFT_PERIOD_MIN_MS + random.nextFloat() *
-                    (GlassMotion.BUBBLE_DRIFT_PERIOD_MAX_MS - GlassMotion.BUBBLE_DRIFT_PERIOD_MIN_MS)),
+                (
+                    GlassMotion.BUBBLE_DRIFT_PERIOD_MIN_MS + random.nextFloat() *
+                        (GlassMotion.BUBBLE_DRIFT_PERIOD_MAX_MS - GlassMotion.BUBBLE_DRIFT_PERIOD_MIN_MS)
+                ),
             clear = i % 4 == 0,
         )
     }
