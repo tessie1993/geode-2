@@ -124,6 +124,12 @@ internal class ExportController(
             uri: Uri,
             timeline: FeatureTimeline,
         )
+
+        /** The cover-art/title overlay composed at an export's own frame size, or null when off. */
+        fun overlayPixelsFor(
+            width: Int,
+            height: Int,
+        ): IntArray?
     }
 
     private val exporter = VideoExporter(application)
@@ -285,6 +291,7 @@ internal class ExportController(
                             destination = destination,
                             codec = codec,
                             loudnessTarget = defaultLoudnessTarget(),
+                            overlay = host.overlayPixelsFor(aspect.width, aspect.height),
                             background = defaultBackground(),
                             onProgress = { p ->
                                 val overall = 0.2f + p * 0.8f
