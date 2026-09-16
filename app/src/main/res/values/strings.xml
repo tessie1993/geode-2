@@ -626,6 +626,34 @@
     <string name="look_clear_visuals_hint">Text-only Visuals menu over the live visuals, so adjustments are visible as you make them.</string>
     <string name="look_boot_animation">Boot animation</string>
 
+    <!-- Liquid-glass design system (ui/glass/). Only strings the gallery/preview itself renders;
+         screen units add their own copy as they rewrite onto these primitives. -->
+    <string name="glass_profile">Profile</string>
+    <string name="glass_gallery_title">Liquid glass gallery</string>
+    <string name="glass_gallery_section_buttons">Buttons</string>
+    <string name="glass_gallery_section_slider">Slider</string>
+    <string name="glass_gallery_section_toggle">Toggle</string>
+    <string name="glass_gallery_section_knob">Knob</string>
+    <string name="glass_gallery_section_progress">Progress</string>
+    <string name="glass_gallery_section_list_row">List row</string>
+    <string name="glass_gallery_section_top_bar">Top bar</string>
+    <string name="glass_gallery_section_transport_bar">Transport bar</string>
+    <string name="glass_gallery_section_tabs">Tabs</string>
+    <string name="glass_gallery_section_segmented">Segmented</string>
+    <string name="glass_gallery_section_nav_bar">Nav bar</string>
+    <string name="glass_gallery_section_text_field">Text field</string>
+    <string name="glass_gallery_section_dialog">Dialog</string>
+    <string name="glass_gallery_button_label">Glass button</string>
+    <string name="glass_gallery_list_row_title">Track title</string>
+    <string name="glass_gallery_list_row_subtitle">Artist name</string>
+    <string name="glass_gallery_text_field_placeholder">Search</string>
+    <string name="glass_gallery_dialog_open">Open dialog</string>
+    <string name="glass_gallery_dialog_title">Glass dialog</string>
+    <string name="glass_gallery_dialog_message">This is a glass dialog card, drawn over `Dialog` with the same frosted surface as every other primitive.</string>
+    <string name="glass_gallery_segment_one">One</string>
+    <string name="glass_gallery_segment_two">Two</string>
+    <string name="glass_gallery_segment_three">Three</string>
+
     <!-- Font colour swatches. Mineral names; the argb value is what persists. -->
     <string name="font_color_auto">Auto</string>
     <string name="font_color_white">White</string>
