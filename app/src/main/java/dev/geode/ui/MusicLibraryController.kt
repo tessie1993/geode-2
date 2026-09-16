@@ -10,6 +10,7 @@ import dev.geode.data.PlaylistFormats
 import dev.geode.data.PlaylistParse
 import dev.geode.data.SmartPlaylist
 import dev.geode.data.SmartPlaylistStore
+import dev.geode.data.TagWriteOutcome
 import dev.geode.data.TrackTagEdit
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.CoroutineScope
@@ -243,7 +244,7 @@ internal class MusicLibraryController(
         }
     }
 
-    /** Writes the edit into the audio file itself, keeping its album artist; false when it is not writable. */
+    /** Writes the edit into the audio file itself, keeping its album artist; see [TagWriteOutcome] for the result. */
     suspend fun writeTrackInfo(
         uri: String,
         title: String,
@@ -253,7 +254,7 @@ internal class MusicLibraryController(
         year: Int,
         trackNo: Int,
         comment: String,
-    ): Boolean =
+    ): TagWriteOutcome =
         withContext(Dispatchers.IO) {
             val target = Uri.parse(uri)
             val resolver = application.contentResolver

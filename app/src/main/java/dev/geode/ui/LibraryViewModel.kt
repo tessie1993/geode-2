@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.geode.data.MusicPlaylist
 import dev.geode.data.SmartPlaylist
+import dev.geode.data.TagWriteOutcome
 import dev.geode.di.PlayerSessionProvider
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -142,7 +143,7 @@ class LibraryViewModel
             year: Int,
             trackNo: Int,
             comment: String,
-        ): Boolean = session.writeTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
+        ): TagWriteOutcome = session.writeTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
 
         fun createMusicPlaylist(name: String) = session.createMusicPlaylist(name)
 

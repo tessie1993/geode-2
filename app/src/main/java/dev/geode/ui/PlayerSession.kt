@@ -36,6 +36,7 @@ import dev.geode.data.SharedPrefsFavouritesRepository
 import dev.geode.data.SharedPrefsPlayerPrefsRepository
 import dev.geode.data.SmartPlaylist
 import dev.geode.data.SmartPlaylistMatcher
+import dev.geode.data.TagWriteOutcome
 import dev.geode.data.TakeStore
 import dev.geode.data.TemplateId
 import dev.geode.data.TemplateImport
@@ -698,7 +699,7 @@ class PlayerSession internal constructor(
         year: Int,
         trackNo: Int,
         comment: String,
-    ): Boolean = musicLibrary.writeTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
+    ): TagWriteOutcome = musicLibrary.writeTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
 
     fun importFolder(treeUri: Uri) = musicLibrary.importFolder(treeUri)
 
