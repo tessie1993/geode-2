@@ -18,6 +18,8 @@ import dev.geode.export.LoopExtend
 import dev.geode.export.LoopRender
 import dev.geode.export.LoopSpec
 import dev.geode.export.MixClip
+import dev.geode.export.LoudnessAdvice
+import dev.geode.export.LoudnessTarget
 import dev.geode.export.ProjectComposition
 import dev.geode.export.TimeOfDayDrift
 import dev.geode.export.VideoExporter
@@ -41,6 +43,12 @@ data class StudioUiState(
 data class ExportUiState(
     val customDestination: Boolean = false,
     val phase: ExportPhase = ExportPhase.Idle,
+    /**
+     * How the last completed render's loudness compared to the persisted loudness-target default,
+     * or null before a render finishes (or if it could not be measured). Geode does not yet apply
+     * the resulting gain, so this is a readout, not a correction — see [ExportController.startExport].
+     */
+    val loudnessAdvice: LoudnessAdvice? = null,
 )
 
 /** Progress and result of a loop render + long-form extend, mirroring [ExportUiState]. */
@@ -206,6 +214,7 @@ internal class ExportController(
                             range = range,
                             destination = destination,
                             codec = codec,
+                            loudnessTarget = defaultLoudnessTarget(),
                             onProgress = { p ->
                                 val overall = 0.2f + p * 0.8f
                                 _exportState.update { it.copy(phase = ExportPhase.Running(overall)) }
@@ -214,7 +223,11 @@ internal class ExportController(
                             isCancelled = { exportCancelled || ExportRun.cancelRequested },
                         )
                     _exportState.value =
-                        ExportUiState(customDestination = destination != null, phase = result.toPhase())
+                        ExportUiState(
+                            customDestination = destination != null,
+                            phase = result.toPhase(),
+                            loudnessAdvice = (result as? VideoExporter.Result.Saved)?.loudnessAdvice,
+                        )
                 } catch (t: Throwable) {
                     // Cancellation is tested before the user's own cancel flag: when the two
                     // coincide the flag branch used to win and swallow the CancellationException,
@@ -344,6 +357,15 @@ internal class ExportController(
     }
 
     private fun defaultCodec(): ExportCodec = ExportPrefsStore(GeodePrefsFiles(application).general).load().codec
+
+    // The main export's UI (SettingsDialog) has no path to this controller's public API for
+    // per-render options that aren't already threaded through startExport's callers, so the
+    // loudness target rides along as a persisted default instead, the same way defaultCodec()
+    // above does for studio exports.
+    private fun defaultLoudnessTarget(): LoudnessTarget =
+        LoudnessTarget.byId(
+            ExportPrefsStore(GeodePrefsFiles(application).general).load().loudnessTargetId,
+        )
 
     fun cancelStudioExport() {
         studioExporter.cancel()

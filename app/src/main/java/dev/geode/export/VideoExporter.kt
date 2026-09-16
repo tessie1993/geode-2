@@ -103,6 +103,12 @@ class VideoExporter(
     sealed interface Result {
         data class Saved(
             val uri: Uri,
+            /**
+             * How the finished file's loudness compares to [loudnessTarget], or null when it could
+             * not be measured (e.g. no audio track). Geode cannot yet apply the resulting gain — see
+             * [measureLoudness] — so this is read-only telemetry for now, not an applied correction.
+             */
+            val loudnessAdvice: LoudnessAdvice? = null,
         ) : Result
 
         data class Failed(
@@ -128,6 +134,7 @@ class VideoExporter(
         loopSafe: Boolean = false,
         destination: Uri? = null,
         codec: ExportCodec = ExportCodec.H264,
+        loudnessTarget: LoudnessTarget = LoudnessTarget.LeaveAsIs,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
     ): Result =
@@ -148,6 +155,7 @@ class VideoExporter(
                     loopSafe,
                     range,
                     codec,
+                    loudnessTarget,
                     onProgress,
                     isCancelled,
                 )
@@ -202,7 +210,7 @@ class VideoExporter(
                         val done = ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }
                         resolver.update(outUri, done, null, null)
                     }
-                    Result.Saved(outUri)
+                    Result.Saved(outUri, measureLoudness(outUri, loudnessTarget))
                 }
             } catch (e: Exception) {
                 bestEffort(TAG, "resolver.delete(outUri, null, null)") { resolver.delete(outUri, null, null) }
@@ -225,6 +233,7 @@ class VideoExporter(
         loopSafe: Boolean,
         range: ExportRange?,
         codec: ExportCodec,
+        loudnessTarget: LoudnessTarget,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
     ): Result {
@@ -263,12 +272,47 @@ class VideoExporter(
                 ) { DocumentsContract.deleteDocument(resolver, destination) }
                 Result.Cancelled
             } else {
-                Result.Saved(destination)
+                Result.Saved(destination, measureLoudness(destination, loudnessTarget))
             }
         } catch (e: Exception) {
             bestEffort(TAG, "DocumentsContract.deleteDocument(resolver, de...") { DocumentsContract.deleteDocument(resolver, destination) }
             throw e
         }
+    }
+
+    /**
+     * Measures the audio Geode just muxed into [uri] and, if it decoded, turns that measurement
+     * into advice for [target].
+     *
+     * This deliberately re-decodes the finished file rather than the source: [LoudnessMeter] is
+     * built to measure "the thing that will actually be uploaded", and by the time [encodeInto]
+     * has run, the AAC track already lives inside a container [LoudnessMeter] can open directly —
+     * unlike [AudioTranscoder]'s intermediate `.bin`, which is a raw elementary stream with no
+     * container framing for [android.media.MediaExtractor] to parse. Geode does not yet have
+     * anywhere upstream to apply the resulting gain: [AudioTranscoder] owns the only PCM Geode
+     * ever holds for this file, and turning [LoudnessAdvice.gainDb] into an actual correction
+     * means scaling samples inside its decode loop, which this unit does not touch. So today this
+     * only reports what a platform would do to the file as exported.
+     *
+     * A file the encoder just finished writing successfully is not allowed to be reported as a
+     * failed export over a problem in this purely-informational re-read, so any exception here is
+     * swallowed to "no advice" rather than left to propagate into the caller's `catch`, which would
+     * delete the file that was just saved.
+     */
+    private suspend fun measureLoudness(
+        uri: Uri,
+        target: LoudnessTarget,
+    ): LoudnessAdvice? {
+        val result =
+            try {
+                LoudnessMeter(context).measure(uri)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "Post-export loudness measurement failed", e)
+                return null
+            }
+        return (result as? LoudnessResult.Measured)?.let { LoudnessTargets.advise(it.report, target) }
     }
 
     private fun encodeInto(
