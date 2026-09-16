@@ -135,6 +135,8 @@ class VideoExporter(
         destination: Uri? = null,
         codec: ExportCodec = ExportCodec.H264,
         loudnessTarget: LoudnessTarget = LoudnessTarget.LeaveAsIs,
+        /** Full-frame ARGB overlay (cover art/title) sized to [aspect], from `Bitmap.getPixels`; null draws none. */
+        overlay: IntArray? = null,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
     ): Result =
@@ -156,6 +158,7 @@ class VideoExporter(
                     range,
                     codec,
                     loudnessTarget,
+                    overlay,
                     onProgress,
                     isCancelled,
                 )
@@ -198,6 +201,7 @@ class VideoExporter(
                         loopSafe,
                         range,
                         codec,
+                        overlay,
                         onProgress,
                         isCancelled,
                     )
@@ -234,6 +238,7 @@ class VideoExporter(
         range: ExportRange?,
         codec: ExportCodec,
         loudnessTarget: LoudnessTarget,
+        overlay: IntArray?,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
     ): Result {
@@ -261,6 +266,7 @@ class VideoExporter(
                     loopSafe,
                     range,
                     codec,
+                    overlay,
                     onProgress,
                     isCancelled,
                 )
@@ -330,6 +336,7 @@ class VideoExporter(
         loopSafe: Boolean,
         range: ExportRange?,
         codec: ExportCodec,
+        overlay: IntArray?,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
     ) {
@@ -396,6 +403,7 @@ class VideoExporter(
                             adsrConfigs = adsrConfigs,
                             reducedMotion = reducedMotion,
                             paramsAt = paramsAt,
+                            overlay = overlay,
                         ),
                 ).also { rendererRef = it }
             renderer.prepare()

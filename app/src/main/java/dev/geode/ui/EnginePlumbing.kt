@@ -38,9 +38,11 @@ fun VisualizerEngineBindings(
     val playerPrefs by settingsViewModel.playerPrefs.collectAsStateWithLifecycle()
     val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
     val layers by LayersBus.state.collectAsStateWithLifecycle()
+    val overlay by viewModel.overlayPixels.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         visualizerView.visualizerRenderer.onShaderError = viewModel::reportShaderError
+        visualizerView.visualizerRenderer.onSurfaceSizeChanged = viewModel::setOverlaySurfaceSize
         visualizerView.visualizerRenderer.pcmProvider = { viewModel.latestPcm() }
         LayersBus.availableScenes.value = visualizerView.visualizerRenderer.availableSceneIds()
         viewModel.features.collect {
@@ -60,6 +62,12 @@ fun VisualizerEngineBindings(
     }
     LaunchedEffect(viz.params) {
         visualizerView.visualizerRenderer.sceneParams = viz.params
+    }
+    LaunchedEffect(overlay) {
+        val pixels = overlay
+        visualizerView.queueEvent {
+            visualizerView.visualizerRenderer.setOverlay(pixels.pixels, pixels.width, pixels.height)
+        }
     }
     LaunchedEffect(playerPrefs.keepScreenOn) {
         visualizerView.keepScreenOn = playerPrefs.keepScreenOn

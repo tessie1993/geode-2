@@ -28,6 +28,8 @@ data class OffscreenRenderSpec(
     val adsrConfigs: List<AdsrConfig> = emptyList(),
     val reducedMotion: Boolean = false,
     val paramsAt: ((Long) -> SceneParams)? = null,
+    /** Full-frame ARGB overlay pixels (from `Bitmap.getPixels`, sized [width]x[height]) latched for every exported frame; null draws none. */
+    val overlay: IntArray? = null,
 )
 
 /**
@@ -60,6 +62,7 @@ class OffscreenSceneRenderer(
         viz.setReducedMotion(spec.reducedMotion)
         if (spec.lfoConfigs.isNotEmpty()) viz.setLfoConfigs(spec.lfoConfigs)
         if (spec.adsrConfigs.isNotEmpty()) viz.setAdsrConfigs(spec.adsrConfigs)
+        if (spec.overlay != null) viz.setOverlay(spec.overlay, spec.width, spec.height)
         native = viz
     }
 
