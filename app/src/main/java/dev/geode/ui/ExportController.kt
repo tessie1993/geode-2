@@ -373,6 +373,7 @@ internal class ExportController(
     fun startStudioExport(
         clip: dev.geode.export.StudioClip,
         edit: dev.geode.export.ClipEdit,
+        destination: Uri? = null,
     ) {
         if (_studio.value.phase.isBusy || ExportRun.running) return
         _studio.update { it.copy(phase = ExportPhase.Running(0f)) }
@@ -390,6 +391,7 @@ internal class ExportController(
                             edit = edit,
                             displayName = name,
                             codec = defaultCodec(),
+                            destination = destination,
                         ) { p -> publishStudioProgress(p) }
                     val phase = result.toPhase()
                     _studio.update { it.copy(phase = phase) }
@@ -429,7 +431,10 @@ internal class ExportController(
         ExportRun.publish(clamped)
     }
 
-    fun startProjectExport(project: dev.geode.editor.EditorProject) {
+    fun startProjectExport(
+        project: dev.geode.editor.EditorProject,
+        destination: Uri? = null,
+    ) {
         if (_studio.value.phase.isBusy || ExportRun.running) return
         _studio.update { it.copy(phase = ExportPhase.Running(0f)) }
         val name = "geode_cut_${System.currentTimeMillis()}.mp4"
@@ -470,6 +475,7 @@ internal class ExportController(
                                     outcome.durationMs,
                                     name,
                                     defaultCodec(),
+                                    destination,
                                 ) { p -> publishStudioProgress(p) }
                             val phase = result.toPhase()
                             _studio.update { it.copy(phase = phase) }
