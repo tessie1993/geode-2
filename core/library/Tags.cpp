@@ -79,28 +79,37 @@ bool readTags(int fd, TrackTags& out) {
     return true;
 }
 
-bool writeTags(int fd, const TrackTagEdit& edit) {
+bool writeTags(int fd, const TrackTagEdit& edit, TagsWriteError* error) {
+    auto fail = [&](TagsWriteError e) {
+        if (error) *error = e;
+        return false;
+    };
     TagLib::FileStream stream(fd, false);
-    if (!opened(stream, fd) || stream.readOnly()) return false;
+    if (!opened(stream, fd)) return fail(TagsWriteError::kOpenFailed);
+    if (stream.readOnly()) return fail(TagsWriteError::kReadOnly);
     TagLib::FileRef ref(&stream, false, TagLib::AudioProperties::Fast);
-    if (ref.isNull()) return false;
+    if (ref.isNull()) return fail(TagsWriteError::kUnsupported);
     TagLib::Tag* tag = ref.tag();
-    if (!tag) return false;
-    tag->setTitle(fromUtf8(edit.title));
-    tag->setArtist(fromUtf8(edit.artist));
-    tag->setAlbum(fromUtf8(edit.album));
-    tag->setGenre(fromUtf8(edit.genre));
-    tag->setComment(fromUtf8(edit.comment));
+    if (!tag) return fail(TagsWriteError::kUnsupported);
+    if (edit.title) tag->setTitle(fromUtf8(*edit.title));
+    if (edit.artist) tag->setArtist(fromUtf8(*edit.artist));
+    if (edit.album) tag->setAlbum(fromUtf8(*edit.album));
+    if (edit.genre) tag->setGenre(fromUtf8(*edit.genre));
+    if (edit.comment) tag->setComment(fromUtf8(*edit.comment));
     tag->setYear(static_cast<unsigned int>(edit.year < 0 ? 0 : edit.year));
     tag->setTrack(static_cast<unsigned int>(edit.track < 0 ? 0 : edit.track));
-    TagLib::PropertyMap map = ref.properties();
-    if (edit.albumArtist.empty()) {
-        map.erase("ALBUMARTIST");
-    } else {
-        map.replace("ALBUMARTIST", TagLib::StringList(fromUtf8(edit.albumArtist)));
+    if (edit.albumArtist) {
+        TagLib::PropertyMap map = ref.properties();
+        if (edit.albumArtist->empty()) {
+            map.erase("ALBUMARTIST");
+        } else {
+            map.replace("ALBUMARTIST", TagLib::StringList(fromUtf8(*edit.albumArtist)));
+        }
+        ref.setProperties(map);
     }
-    ref.setProperties(map);
-    return ref.save();
+    if (!ref.save()) return fail(TagsWriteError::kSaveFailed);
+    if (error) *error = TagsWriteError::kNone;
+    return true;
 }
 
 }  // namespace geode::library
