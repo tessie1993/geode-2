@@ -119,6 +119,8 @@ class PlayerSession internal constructor(
                 override fun setMicReactivePref(on: Boolean) {
                     setGuiPrefs(guiPrefs.value.copy(micReactive = on))
                 }
+
+                override val micReactivePref: Boolean get() = guiPrefs.value.micReactive
             },
         )
 
