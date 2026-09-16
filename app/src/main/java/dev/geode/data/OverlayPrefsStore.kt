@@ -7,7 +7,7 @@ import dev.geode.viz.OverlaySize
 import dev.geode.viz.WatermarkCorner
 import dev.geode.viz.WatermarkOptions
 
-class OverlayPrefsStore(
+internal class OverlayPrefsStore(
     private val prefs: SharedPreferences,
 ) {
     fun load(): ArtTitleOptions {
