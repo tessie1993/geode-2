@@ -65,6 +65,11 @@ internal fun EqualizerCard(
             )
             return@SettingsGroup
         }
+        Text(
+            stringResource(R.string.audio_dsp_visuals_notice),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         val controlsOn = fx.enabled
         if (!fx.available) {
             Text(
