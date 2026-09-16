@@ -7,13 +7,19 @@
 #include <chrono>
 #include <thread>
 
+#include "util/Log.hpp"
+
 namespace geode::audio::player {
 
 namespace {
 
+constexpr const char* kTag = "Player";
 constexpr int64_t kRingSeconds = 2;
 constexpr size_t kDecodeChunk = 1024;
 constexpr int64_t kPrerollFrames = 4096;
+// Bounds Player::postCommand's spin against a full 64-slot mixer command ring so a stuck audio thread
+// can never keep the engine thread (and ~Player's join of it) waiting forever.
+constexpr int kMaxPostAttempts = 2000;
 
 int64_t usToFrames(int64_t us, int rate) { return us * rate / 1'000'000; }
 
@@ -105,10 +111,13 @@ void Player::run() {
             batch.swap(queue_);
         }
         reconcile();
+        // Checked before the batch runs: a disconnected stream is dead (Oboe forbids closing it from its
+        // own error callback, so stream_ stays non-null with disconnected_ set), and an Open/SetNext in this
+        // same batch must not be handled against it. reopenOutput() replaces the stream first.
+        if (output_.disconnected()) reopenOutput();
         for (const Command& command : batch) handle(command);
         batch.clear();
         reconcile();
-        if (output_.disconnected()) reopenOutput();
         pump();
         updateState();
     }
@@ -252,6 +261,7 @@ void Player::reconcile() {
         decks_.erase(std::remove_if(decks_.begin(), decks_.end(), [&](const auto& d) { return d.get() == retired; }),
                      decks_.end());
     }
+    mixer_.reclaimDsp(output_.running());
     Deck* playing = mixer_.currentDeck();
     if (next_ && playing == next_->deck) {
         current_ = std::move(next_);
@@ -318,8 +328,19 @@ Deck* Player::newDeck(Track& track, int64_t startFrame) {
 }
 
 void Player::postCommand(DeckCommand command) {
+    int attempts = 0;
     while (!mixer_.post(command)) {
         if (output_.running()) {
+            // Normally drains in well under a millisecond, once per audio callback; kMaxPostAttempts
+            // gives up only if the ring stays full for ~2 seconds straight, which means the audio
+            // thread has stalled for good. Spinning forever here would hang doStop()/fail(), and with
+            // them ~Player's join of the engine thread.
+            if (++attempts >= kMaxPostAttempts) {
+                GEODE_LOGW(kTag, "mixer command ring stayed full; dropping deck command %d",
+                           static_cast<int>(command.op));
+                noteError("internal error: audio command queue stalled");
+                return;
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         } else {
             mixer_.drainCommands();

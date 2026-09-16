@@ -215,8 +215,10 @@ GEODE_API void          geode_player_pause(geode_player*);
 GEODE_API void          geode_player_stop(geode_player*);
 GEODE_API void          geode_player_seek(geode_player*, int64_t position_us);
 GEODE_API void          geode_player_set_crossfade(geode_player*, int duration_ms, int curve);   /* 0 ms = gapless join */
-/* A chain built for geode_player_output_sample_rate and 2 channels; NULL bypasses. Returns only once the audio
- * thread has let go of the previous chain, so that one may be destroyed afterwards. */
+/* A chain built for geode_player_output_sample_rate and 2 channels; NULL bypasses. Ownership of the chain
+ * passes to the player: it retires the previous chain and calls geode_dsp_destroy on it itself once the
+ * audio thread has moved past it (or at player destruction). The caller must not destroy a chain it has
+ * installed here; a chain that was never installed remains the caller's to destroy. Never blocks. */
 GEODE_API void          geode_player_set_dsp(geode_player*, geode_dsp*);
 GEODE_API void          geode_player_set_volume(geode_player*, float volume);
 GEODE_API int           geode_player_state(geode_player*);
