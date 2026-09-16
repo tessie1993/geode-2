@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generated": "2026-08-15",
   "slice": "V2-A-02b",
-  "note": "Every effect or concept named in MASTER_PLAN.md §8.1, with the V2 family that owns it and its disposition. Source of truth for REFERENCE_COVERAGE.md, which is generated from this file by ReferenceCoverage and checked by ReferenceCoverageTest.",
+  "note": "Every effect or concept the Visualizer 2.0 engine draws on, with the family that owns it and its disposition. Maintained by hand; nothing in the tree generates or checks it.",
   "families": {
     "morphic-vector": "Morphic Vector Cathedral (§7.1)",
     "cymatic-matter": "Cymatic and Acoustic Matter (§7.2)",
