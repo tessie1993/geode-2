@@ -355,7 +355,9 @@ class PresetStore(
                         mirror = o.optBoolean("mirror", false),
                         warp = o.optDouble("warp", 0.0).toFloat(),
                         ripple = o.optDouble("ripple", 0.0).toFloat(),
-                        symmetry = o.optInt("symmetry", 0),
+                        // Fallback must match SceneParams' own default, not an arbitrary literal,
+                        // so an old file missing this key round-trips to the same rendered scene.
+                        symmetry = o.optInt("symmetry", SceneParams.DEFAULT.symmetry),
                         kaleidoscope = o.optBoolean("kaleidoscope", false),
                         morph = o.optDouble("morph", 0.0).toFloat(),
                         pixelate = o.optDouble("pixelate", 0.0).toFloat(),
@@ -439,10 +441,13 @@ class PresetStore(
                         fluidSpawnPath = o.optInt("fluidSpawnPath", 1),
                         fluidSpawnPoints = o.optInt("fluidSpawnPoints", 3),
                         fluidSpawnProgress = o.optDouble("fluidSpawnProgress", 1.0).toFloat(),
-                        fluidCatchPoints = o.optInt("fluidCatchPoints", 0),
+                        // Fallback must match SceneParams' own default (see symmetry above).
+                        fluidCatchPoints = o.optInt("fluidCatchPoints", SceneParams.DEFAULT.fluidCatchPoints),
                         fluidCatchPull = o.optDouble("fluidCatchPull", 1.0).toFloat(),
                         fluidCatchRadius = o.optDouble("fluidCatchRadius", 0.12).toFloat(),
-                        fluidParticleLife = o.optDouble("fluidParticleLife", 12.0).toFloat(),
+                        // Fallback must match SceneParams' own default (see symmetry above).
+                        fluidParticleLife =
+                            o.optDouble("fluidParticleLife", SceneParams.DEFAULT.fluidParticleLife.toDouble()).toFloat(),
                         flowEnabled = o.optBoolean("flowEnabled", false),
                         flowStrength = o.optDouble("flowStrength", 0.35).toFloat(),
                         flowForce = o.optDouble("flowForce", 1.0).toFloat(),

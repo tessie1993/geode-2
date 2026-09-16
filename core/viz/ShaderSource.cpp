@@ -1,5 +1,6 @@
 #include "viz/ShaderSource.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstring>
@@ -64,6 +65,12 @@ std::optional<std::string> ShaderSource::readAsset(const std::string& path) cons
 }
 
 std::optional<std::string> ShaderSource::resolveIncludes(const std::string& source, std::string* error) const {
+    std::vector<std::string> visited;
+    return resolveIncludes(source, error, visited);
+}
+
+std::optional<std::string> ShaderSource::resolveIncludes(const std::string& source, std::string* error,
+                                                           std::vector<std::string>& visited) const {
     std::string out;
     out.reserve(source.size());
     size_t pos = 0;
@@ -77,12 +84,22 @@ std::optional<std::string> ShaderSource::resolveIncludes(const std::string& sour
                 if (error) *error = "unknown shader include '" + *name + "'";
                 return std::nullopt;
             }
+            if (std::find(visited.begin(), visited.end(), *name) != visited.end()) {
+                if (error) *error = "circular shader include '" + *name + "'";
+                return std::nullopt;
+            }
             const auto included = readAsset("shaders/" + *name + ".glsl");
             if (!included) {
                 if (error) *error = "missing shader include '" + *name + "'";
                 return std::nullopt;
             }
-            out += *included;
+            // Recurse so a nested //#include inside a lib_* file is resolved
+            // too, instead of surviving verbatim as a dead comment line.
+            visited.push_back(*name);
+            const auto resolved = resolveIncludes(*included, error, visited);
+            visited.pop_back();
+            if (!resolved) return std::nullopt;
+            out += *resolved;
         } else {
             out += line;
         }

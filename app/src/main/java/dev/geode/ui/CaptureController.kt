@@ -8,11 +8,13 @@ import dev.geode.audio.PlaybackCapture
 import dev.geode.audio.PlaybackCaptureService
 import dev.geode.audio.playbackCaptureSupported
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class MicState(
     val active: Boolean = false,
@@ -45,6 +47,9 @@ internal class CaptureController(
         fun setAnalysisRate(rateHz: Int)
 
         fun setMicReactivePref(on: Boolean)
+
+        /** The persisted "mic was on" preference, read once on [start] to restore capture. */
+        val micReactivePref: Boolean
     }
 
     private val micCapture = MicCapture(application, capture)
@@ -83,6 +88,13 @@ internal class CaptureController(
      * constructed instead.
      */
     fun start() {
+        // Restore a mic-reactive session across process death. The pref was written on every
+        // mic toggle but never read back, so a restart silently dropped it. Never request the
+        // permission here: if it has since been revoked, leave the pref as-is and stay silent —
+        // the person can re-enable it from the mic control, which will prompt as usual.
+        if (host.micReactivePref && !micCapture.active && hasMicPermission()) {
+            setMicEnabled(true)
+        }
         scope.launch {
             dev.geode.audio.MediaProjectionHolder.projection
                 .collect { projection ->
@@ -189,19 +201,41 @@ internal class CaptureController(
 
     fun notificationAccessIntent(): android.content.Intent = nowPlayingBridge.settingsIntent()
 
+    @Volatile
+    private var externalAudioRefreshInFlight = false
+
+    /**
+     * Polled every 500 ms from Main. [NowPlayingBridge.hasAccess] and [NowPlayingBridge.current]
+     * are synchronous binder calls (a `Settings.Secure` read and a
+     * `MediaSessionManager`/`PackageManager` round trip), so they run on IO instead of blocking
+     * Main. Skipped only once there is truly nothing left to learn: no capture is active or
+     * pending, and notification-listener access is already known to be granted — [hasSessionAccess]
+     * still needs polling while it is false, since [ExternalAudioSettings] shows its "allow
+     * reading" prompt from that flag alone and expects it to flip once access is granted in
+     * system settings, with no capture running.
+     */
     fun refreshExternalAudio() {
         val state = _externalAudio.value
-        val access = nowPlayingBridge.hasAccess()
-        val now = if (access) nowPlayingBridge.current() else null
-        val refused = playbackCapture.active && playbackCapture.blockedLikely && (now?.playing ?: false)
-        val next =
-            state.copy(
-                active = playbackCapture.active,
-                nowPlaying = now,
-                hasSessionAccess = access,
-                refusedByApp = refused,
-            )
-        if (next != state) _externalAudio.value = next
+        if (!state.active && !state.awaitingConsent && state.hasSessionAccess) return
+        if (externalAudioRefreshInFlight) return
+        externalAudioRefreshInFlight = true
+        scope.launch {
+            val (access, now) =
+                withContext(Dispatchers.IO) {
+                    val access = nowPlayingBridge.hasAccess()
+                    access to (if (access) nowPlayingBridge.current() else null)
+                }
+            val refused = playbackCapture.active && playbackCapture.blockedLikely && (now?.playing ?: false)
+            _externalAudio.update {
+                it.copy(
+                    active = playbackCapture.active,
+                    nowPlaying = now,
+                    hasSessionAccess = access,
+                    refusedByApp = refused,
+                )
+            }
+            externalAudioRefreshInFlight = false
+        }
     }
 
     fun refreshMicState() {

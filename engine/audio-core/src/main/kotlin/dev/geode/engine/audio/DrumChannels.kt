@@ -3,7 +3,7 @@ package dev.geode.engine.audio
 import dev.geode.engine.bridge.GeodeNative
 
 class DrumChannels(
-    bandCount: Int,
+    private val bandCount: Int,
     hopRateHz: Float,
     sampleRateHz: Int,
 ) : AutoCloseable {
@@ -20,6 +20,11 @@ class DrumChannels(
         private set
 
     fun step(bands: FloatArray) {
+        // The native side reads bands[0..bandCount); require the array this handle was created for so a
+        // mismatched caller fails loudly here instead of reading out of range in DrumChannels::step.
+        require(bands.size >= bandCount) {
+            "DrumChannels.step expects at least $bandCount bands, got ${bands.size}"
+        }
         GeodeNative.drumsStep(handle, bands, impulses)
         kick = impulses[0]
         snare = impulses[1]

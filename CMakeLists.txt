@@ -59,7 +59,7 @@ endif()
 # Same values .github/workflows/native-libs.yml passed when the engine was a prebuilt blob.
 set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
-set(ENABLE_PLAYLIST ON CACHE BOOL "" FORCE)
+set(ENABLE_PLAYLIST OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/projectm)
 
 # kissfft refuses BUILD_SHARED_LIBS together with KISSFFT_STATIC; the normal variable shadows the forced cache entry projectM needed.

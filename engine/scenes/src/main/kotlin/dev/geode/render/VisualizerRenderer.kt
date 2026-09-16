@@ -67,11 +67,15 @@ class VisualizerRenderer(
     @Volatile
     var onShaderError: (String?) -> Unit = {}
 
+    // Assigned from Main (EnginePlumbing.kt) and read on the GL thread in onDrawFrame.
+    @Volatile
     var onMilkPresetLoaded: (String) -> Unit = {}
 
     @Volatile
     var pcmProvider: () -> PcmChunk? = { null }
 
+    // Config holders only: native ticks its own LfoEngine/AdsrEngine against the configs
+    // syncNativeState forwards below (core/viz/RendererFrame.cpp).
     val lfoEngine = LfoEngine()
 
     val adsrEngine = AdsrEngine()

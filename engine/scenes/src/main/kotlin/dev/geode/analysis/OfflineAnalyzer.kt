@@ -65,81 +65,86 @@ class OfflineAnalyzer(
         val extractor = MediaExtractor()
         var codecRef: MediaCodec? = null
         val pipeline = StreamingPipeline(beatSensitivity, beatMinIntervalMs)
-        val info = MediaCodec.BufferInfo()
-        var inputDone = false
-        var outputDone = false
-        var lastProgress = 0f
-        try {
-            extractor.setDataSource(context, uri, null)
-            val trackIndex =
-                (0 until extractor.trackCount).firstOrNull {
-                    extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
-                } ?: throw IllegalArgumentException("No audio track in file")
-            val format = extractor.getTrackFormat(trackIndex)
-            extractor.selectTrack(trackIndex)
-            val durationUs =
-                if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
-            val mime = requireNotNull(format.getString(MediaFormat.KEY_MIME))
-            val codec = MediaCodec.createDecoderByType(mime).also { codecRef = it }
-            codec.configure(format, null, null, 0)
-            codec.start()
-            while (!outputDone) {
-                if (!stillWanted()) throw CancellationException("analysis cancelled")
-                if (!inputDone) {
-                    val inIndex = codec.dequeueInputBuffer(10_000)
-                    if (inIndex >= 0) {
-                        val buf = checkNotNull(codec.getInputBuffer(inIndex)) { "decoder input buffer null (codec error state)" }
-                        val size = extractor.readSampleData(buf, 0)
-                        if (size < 0) {
-                            codec.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                            inputDone = true
-                        } else {
-                            codec.queueInputBuffer(inIndex, 0, size, extractor.sampleTime, 0)
-                            if (durationUs > 0) {
-                                val p = (extractor.sampleTime / durationUs.toFloat()).coerceIn(0f, 1f)
-                                if (p - lastProgress > 0.01f) {
-                                    lastProgress = p
-                                    onProgress(p)
-                                }
-                            }
-                            extractor.advance()
-                        }
-                    }
-                }
-                val outIndex = codec.dequeueOutputBuffer(info, 10_000)
-                if (outIndex >= 0) {
-                    if (info.size > 0) {
-                        val outFormat = codec.outputFormat
-                        val sampleRate = outFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                        val channels = outFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-                        val buf = checkNotNull(codec.getOutputBuffer(outIndex)) { "decoder output buffer null (codec error state)" }
-                        buf.position(info.offset)
-                        buf.limit(info.offset + info.size)
-                        val pcmEncoding =
-                            if (outFormat.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-                                outFormat.getInteger(MediaFormat.KEY_PCM_ENCODING)
+        // pipeline.use ensures the native analysis handle is released on every exit path
+        // (normal completion, "No audio track in file", a codec error, or cancellation),
+        // not only on the success path.
+        return pipeline.use { streaming ->
+            val info = MediaCodec.BufferInfo()
+            var inputDone = false
+            var outputDone = false
+            var lastProgress = 0f
+            try {
+                extractor.setDataSource(context, uri, null)
+                val trackIndex =
+                    (0 until extractor.trackCount).firstOrNull { idx ->
+                        extractor.getTrackFormat(idx).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
+                    } ?: throw IllegalArgumentException("No audio track in file")
+                val format = extractor.getTrackFormat(trackIndex)
+                extractor.selectTrack(trackIndex)
+                val durationUs =
+                    if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
+                val mime = requireNotNull(format.getString(MediaFormat.KEY_MIME))
+                val codec = MediaCodec.createDecoderByType(mime).also { codecRef = it }
+                codec.configure(format, null, null, 0)
+                codec.start()
+                while (!outputDone) {
+                    if (!stillWanted()) throw CancellationException("analysis cancelled")
+                    if (!inputDone) {
+                        val inIndex = codec.dequeueInputBuffer(10_000)
+                        if (inIndex >= 0) {
+                            val buf = checkNotNull(codec.getInputBuffer(inIndex)) { "decoder input buffer null (codec error state)" }
+                            val size = extractor.readSampleData(buf, 0)
+                            if (size < 0) {
+                                codec.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                                inputDone = true
                             } else {
-                                android.media.AudioFormat.ENCODING_PCM_16BIT
+                                codec.queueInputBuffer(inIndex, 0, size, extractor.sampleTime, 0)
+                                if (durationUs > 0) {
+                                    val p = (extractor.sampleTime / durationUs.toFloat()).coerceIn(0f, 1f)
+                                    if (p - lastProgress > 0.01f) {
+                                        lastProgress = p
+                                        onProgress(p)
+                                    }
+                                }
+                                extractor.advance()
                             }
-                        if (pcmEncoding == android.media.AudioFormat.ENCODING_PCM_FLOAT) {
-                            pipeline.feedFloat(buf.order(ByteOrder.nativeOrder()).asFloatBuffer(), channels, sampleRate)
-                        } else {
-                            pipeline.feed(buf.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer(), channels, sampleRate)
                         }
                     }
-                    codec.releaseOutputBuffer(outIndex, false)
-                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
+                    val outIndex = codec.dequeueOutputBuffer(info, 10_000)
+                    if (outIndex >= 0) {
+                        if (info.size > 0) {
+                            val outFormat = codec.outputFormat
+                            val sampleRate = outFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                            val channels = outFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                            val buf = checkNotNull(codec.getOutputBuffer(outIndex)) { "decoder output buffer null (codec error state)" }
+                            buf.position(info.offset)
+                            buf.limit(info.offset + info.size)
+                            val pcmEncoding =
+                                if (outFormat.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                                    outFormat.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                                } else {
+                                    android.media.AudioFormat.ENCODING_PCM_16BIT
+                                }
+                            if (pcmEncoding == android.media.AudioFormat.ENCODING_PCM_FLOAT) {
+                                pipeline.feedFloat(buf.order(ByteOrder.nativeOrder()).asFloatBuffer(), channels, sampleRate)
+                            } else {
+                                pipeline.feed(buf.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer(), channels, sampleRate)
+                            }
+                        }
+                        codec.releaseOutputBuffer(outIndex, false)
+                        if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
+                    }
                 }
+            } finally {
+                codecRef?.let {
+                    bestEffort(TAG, "it.stop()") { it.stop() }
+                    it.release()
+                }
+                extractor.release()
             }
-        } finally {
-            codecRef?.let {
-                bestEffort(TAG, "it.stop()") { it.stop() }
-                it.release()
-            }
-            extractor.release()
+            onProgress(1f)
+            streaming.finish()
         }
-        onProgress(1f)
-        return pipeline.use { it.finish() }
     }
 
     internal class StreamingPipeline(

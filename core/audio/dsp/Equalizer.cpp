@@ -25,6 +25,11 @@ void Equalizer::setBassBoost(int permille) {
     dirty_.store(true, std::memory_order_release);
 }
 
+void Equalizer::setSampleRate(float sampleRate) {
+    sampleRate_ = sampleRate;
+    recompute();
+}
+
 void Equalizer::reset() {
     for (auto& channel : filters_) {
         for (auto& f : channel) f.reset();

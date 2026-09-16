@@ -77,4 +77,12 @@ void geode_dsp_process(geode_dsp* d, float* interleaved, size_t frames) {
     if (d && interleaved && frames > 0) d->chain.process(interleaved, frames);
 }
 
+void geode_dsp_set_sample_rate(geode_dsp* d, int sample_rate) {
+    if (d) d->chain.setSampleRate(sample_rate);
+}
+
+int geode_dsp_sample_rate(geode_dsp* d) {
+    return d ? d->chain.sampleRate() : 0;
+}
+
 }

@@ -22,7 +22,10 @@ class AudioTranscoder(
     ) {
         val durationUs: Long =
             sampleInfos.lastOrNull()?.let { last ->
-                last.presentationTimeUs + 24_000L
+                // An AAC-LC frame is 1024 samples; its duration depends on the encoder's actual
+                // output sample rate (23.2ms at 44.1kHz, 21.3ms at 48kHz), not a fixed 24ms.
+                val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                last.presentationTimeUs + 1_024_000_000L / sampleRate
             } ?: 0L
 
         fun release() {

@@ -19,9 +19,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-
-internal val SETTINGS_TAB_TITLES = listOf("Look", "Audio", "Export", "Folders", "Behavior", "Help", "About")
+import dev.geode.R
 
 @Composable
 internal fun AppSettingsTab(
@@ -32,8 +32,19 @@ internal fun AppSettingsTab(
 ) {
     val settingsViewModel: SettingsViewModel = geodeViewModel()
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    // Order matches the `when` below.
+    val tabTitles =
+        listOf(
+            stringResource(R.string.settings_tab_look),
+            stringResource(R.string.settings_tab_audio),
+            stringResource(R.string.settings_tab_export),
+            stringResource(R.string.settings_tab_folders),
+            stringResource(R.string.settings_tab_behavior),
+            stringResource(R.string.settings_tab_help),
+            stringResource(R.string.settings_tab_about),
+        )
     Column(Modifier.fillMaxSize()) {
-        CrystalTabs(titles = SETTINGS_TAB_TITLES, selected = tab, onSelect = { tab = it })
+        CrystalTabs(titles = tabTitles, selected = tab, onSelect = { tab = it })
         when (tab) {
             0 -> LookSettingsTab(settingsViewModel)
             1 -> AudioSettingsTab(viewModel)

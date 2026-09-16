@@ -22,7 +22,10 @@ public:
     void close();
     bool start();
     bool pause();
-    bool isOpen() const { return stream_ != nullptr; }
+    // A stream that has disconnected (onErrorAfterClose) is not usable even though the Oboe object is
+    // still alive: Oboe forbids closing the stream from within its own error callback, so the callback
+    // only flags disconnected_ and leaves stream_ set. Callers must go through reopenOutput() to recover.
+    bool isOpen() const { return stream_ != nullptr && !disconnected_.load(std::memory_order_acquire); }
     bool running() const { return running_.load(std::memory_order_acquire); }
     bool disconnected() const { return disconnected_.load(std::memory_order_acquire); }
     int sampleRate() const { return sampleRate_; }

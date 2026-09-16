@@ -201,6 +201,7 @@ internal class AutoVisualsController(
         ) {
             host.analyzeCurrentTrack()
         }
+        persistAutoVisuals()
     }
 
     fun advanceRandomMode() {

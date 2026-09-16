@@ -11,11 +11,14 @@ class Limiter {
 public:
     Limiter(float sampleRate, int channels);
 
+    // Not RT-safe: reallocates the lookahead buffers for a new rate. Only call this on a chain not yet installed.
+    void setSampleRate(float sampleRate);
+
     void setEnabled(bool enabled) { enabled_.store(enabled, std::memory_order_relaxed); }
     bool enabled() const { return enabled_.load(std::memory_order_relaxed); }
     void reset();
 
-    // RT-safe: the delay line was sized at construction.
+    // RT-safe: the delay line and the running-max deque were sized at construction (or by setSampleRate).
     void process(float* interleaved, size_t frames);
 
 private:
@@ -23,10 +26,18 @@ private:
     static constexpr float kReleaseSeconds = 0.05f;
     static constexpr float kCeiling = 0.98f;
 
+    void configure(float sampleRate);
+
     int channels_;
     size_t lookahead_;
     std::vector<float> delay_;
-    std::vector<float> peaks_;
+    // Sliding-window maximum over the lookahead, kept as a monotonic decreasing deque stored in a fixed-size
+    // ring (capacity lookahead_, since at most one entry per window position survives). Front is the current
+    // window peak; avoids rescanning the whole window on every sample.
+    std::vector<float> dequeValue_;
+    std::vector<size_t> dequeIndex_;
+    size_t dequeHead_ = 0;
+    size_t dequeCount_ = 0;
     size_t write_ = 0;
     float gain_ = 1.0f;
     float releaseCoefficient_;

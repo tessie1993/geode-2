@@ -15,13 +15,16 @@ bool CompositePass::create(const std::string& fadeVert, std::string* error) {
 void CompositePass::release() {
     transitions_.release();
     releaseStaleTextures();
-    if (zeroTex_ != 0) glDeleteTextures(1, &zeroTex_);
-    zeroTex_ = 0;
 }
 
 void CompositePass::releaseStaleTextures() {
     if (noiseTex_ != 0) glDeleteTextures(1, &noiseTex_);
     noiseTex_ = 0;
+    // zeroTex_ is only ever (re)created in create(), which callers invoke
+    // again right after releaseStaleTextures() on surface recreation; delete
+    // it here too so it doesn't leak the old context's texture name.
+    if (zeroTex_ != 0) glDeleteTextures(1, &zeroTex_);
+    zeroTex_ = 0;
 }
 
 GLuint CompositePass::createZeroTexture() {

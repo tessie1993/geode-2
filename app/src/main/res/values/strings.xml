@@ -76,8 +76,16 @@
     <string name="tutorial_settings_title">Everything else is in Settings</string>
     <string name="tutorial_settings_body">Themes, audio, playback, folders and safety. Help lives here too — you can replay this walkthrough any time.</string>
 
-    <!-- Settings > Help -->
+    <!-- Settings tab bar. In the same order the tabs are shown. -->
+    <string name="settings_tab_look">Look</string>
+    <string name="settings_tab_audio">Audio</string>
+    <string name="settings_tab_export">Export</string>
+    <string name="settings_tab_folders">Folders</string>
+    <string name="settings_tab_behavior">Behavior</string>
     <string name="settings_tab_help">Help</string>
+    <string name="settings_tab_about">About</string>
+
+    <!-- Settings > Help -->
     <string name="help_tutorial_group">Walkthrough</string>
     <string name="help_tutorial_body">A short tour of the Player, Library, Visuals and Studio. It navigates the app as it goes, so you see the real thing.</string>
     <string name="help_tutorial_start">Start the walkthrough</string>
@@ -284,9 +292,6 @@
     <string name="library_sort_album">Album</string>
     <string name="library_sort_duration">Length</string>
     <string name="library_sort_added">Added</string>
-    <string name="action_visualise">Visualise</string>
-    <string name="action_export_now">Export now</string>
-    <string name="action_add_to_studio">Add to Studio</string>
 
     <string name="action_more">More</string>
     <string name="action_play_next">Play next</string>
@@ -311,6 +316,11 @@
     <string name="playlist_name_taken">There is already a playlist called \"%1$s\".</string>
     <string name="playlist_none_yet">No playlists yet. Start one with \"New playlist\" above, save the current queue from the queue panel in Now Playing, or use \"Add to playlist\" in any track\'s ⋮ menu.</string>
     <string name="playlist_untitled_track">Track %1$d</string>
+    <string name="playlist_import_action">Import playlist…</string>
+    <string name="playlist_import_done_title">Playlist imported</string>
+    <string name="playlist_import_summary">\"%1$s\" — %2$d track(s) added, %3$d not found, %4$d matched more than one file (first used).</string>
+    <string name="playlist_import_failed_title">Couldn\'t import playlist</string>
+    <string name="playlist_import_failed_body">That file isn\'t a playlist Geode can read (M3U, PLS or XSPF).</string>
     <string name="action_remove_from_playlist">Remove from playlist</string>
 
     <string name="folders_library">Library folders</string>
@@ -458,6 +468,9 @@
     <!-- Settings › Audio: analysis, key colour, live input. -->
     <string name="audio_group_playback">Playback</string>
     <string name="audio_group_analysis">Analysis</string>
+    <!-- Shown once per audio-DSP screen (playback/EQ), so nobody files "the visuals didn't
+         change" as a bug per feature. See docs/AUDIO_CHAIN.md, "DSP does not move the visuals". -->
+    <string name="audio_dsp_visuals_notice">Nothing on this screen touches the visuals. The picture is drawn from the raw audio before the equalizer, ReplayGain or any other effect here runs, so turning a knob changes what you hear and never what you see.</string>
     <string name="audio_beat_sensitivity">"Beat sensitivity  %1$sσ — drag right for LESS sensitive (fewer beat flashes)"</string>
     <string name="audio_beat_min_gap">"Minimum gap between beats  %1$d ms — never flash faster than %2$d BPM"</string>
     <string name="audio_slow_track">Slow track</string>
@@ -536,6 +549,25 @@
     <string name="export_render_button">Render %1$dp %2$s %3$dfps</string>
     <string name="export_render_to_folder">Render to chosen folder…</string>
     <string name="export_cancel">Cancel export</string>
+    <string name="export_loop_menu_title">Export</string>
+    <string name="export_loop_menu_subtitle">A regular video export, or a seamless loop repeated into a long-form video?</string>
+    <string name="export_loop_menu_standard">Video export…</string>
+    <string name="export_loop_menu_loop">Loop / long-form…</string>
+    <string name="export_loop_title">Loop / long-form export</string>
+    <string name="export_loop_source_hint">Loops the current track\'s visuals and repeats them into one long file. The soundtrack is the current track unless you add clips below.</string>
+    <string name="export_loop_length">Loop length: %1$d s</string>
+    <string name="export_loop_crossfade">Seam crossfade: %1$.1f s</string>
+    <string name="export_loop_drift_toggle">Drift the palette over time</string>
+    <string name="export_loop_drift_hue">Hue drift: %1$d°</string>
+    <string name="export_loop_drift_stops">Palette steps: %1$d</string>
+    <string name="export_loop_soundtrack_title">Soundtrack</string>
+    <string name="export_loop_soundtrack_empty">Uses the current track.</string>
+    <string name="export_loop_soundtrack_count">%1$s added, played back to back.</string>
+    <string name="export_loop_soundtrack_add">Add soundtrack clips…</string>
+    <string name="export_loop_start">Render loop</string>
+    <string name="export_loop_rendering">Rendering… %1$d%%</string>
+    <string name="export_loudness_target">Loudness target</string>
+    <string name="export_loudness_hint">Geode measures the finished file against this target once export completes. It does not yet change the level to match — pick the platform you\'re shipping to, or Leave as-is to ship the level you mixed.</string>
 
     <!-- Settings: Look tab. -->
     <string name="look_group_theme">Theme</string>
@@ -724,6 +756,22 @@
     <string name="action_dismiss">Dismiss</string>
     <string name="preset_link_imported">Preset \"%1$s\" imported — it is in Visuals › Presets.</string>
     <string name="preset_link_unreadable">That preset link could not be read. It may have been cut short in transit.</string>
+    <string name="template_link_imported">Template \"%1$s\" imported — open Video templates to use it.</string>
+    <string name="template_link_unreadable">That template link could not be read. It may have been cut short in transit.</string>
+    <string name="template_entry_point">Video templates</string>
+    <string name="template_sheet_title">Video templates</string>
+    <string name="template_paste_link">Paste a shared template</string>
+    <string name="template_clipboard_empty">The clipboard is empty.</string>
+    <string name="template_open_file">Open a template file</string>
+    <string name="template_save_placeholder">Save current look as…</string>
+    <string name="template_library_heading">Your templates</string>
+    <string name="template_starters_heading">Starter templates</string>
+    <string name="template_apply">Apply</string>
+    <string name="template_share">Share this template</string>
+    <string name="template_delete">Remove</string>
+    <string name="template_delete_title">Delete \"%1$s\"?</string>
+    <string name="template_delete_body">Removes this template and its file for good — there is no undo. Share it first if you might want it back.</string>
+    <string name="template_adopt">Use</string>
     <string name="palette_base_hue">Base hue %1$s</string>
     <string name="palette_hue_span">Hue span %1$s</string>
     <string name="palette_apply_gradient">Apply gradient</string>

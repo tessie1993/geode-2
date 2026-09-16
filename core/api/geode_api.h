@@ -62,7 +62,9 @@ typedef struct GeodeFeatureFrame {
 
 GEODE_API const char* geode_version(void);
 
-/* hop_rate_hz sets every tempo-domain filter; the hop in samples for push/pull is sample_rate / hop_rate_hz. */
+/* hop_rate_hz sets every tempo-domain filter; the hop in samples for push/pull is sample_rate / hop_rate_hz,
+ * clamped to fft_size. fft_size must be a power of two >= GEODE_WAVEFORM_POINTS (so the waveform decimation
+ * step is never zero); NULL on any other value. */
 GEODE_API geode_analysis* geode_analysis_create(int sample_rate, int fft_size, float hop_rate_hz);
 GEODE_API void            geode_analysis_destroy(geode_analysis*);
 GEODE_API void            geode_analysis_set_sample_rate(geode_analysis*, int sample_rate);
@@ -84,6 +86,8 @@ GEODE_API void geode_pulse_replay(const float* flux, size_t count, const float* 
 GEODE_API geode_drums* geode_drums_create(int band_count, float hop_rate_hz, int sample_rate);
 GEODE_API void         geode_drums_destroy(geode_drums*);
 GEODE_API void         geode_drums_step(geode_drums*, const float* bands, float* kick_snare_hat);
+/* band_count this handle was created with, so a caller can size/validate `bands` before calling step; 0 if null. */
+GEODE_API int          geode_drums_band_count(geode_drums*);
 
 /* Native visualizer: one renderer per GL surface. Setters may be called from any thread and are latched
  * for the next frame; the calls under "GL thread" need the surface's context current. */
@@ -158,6 +162,12 @@ GEODE_API void       geode_dsp_set_crossfeed(geode_dsp*, int enabled);
 GEODE_API void       geode_dsp_set_limiter(geode_dsp*, int enabled);
 GEODE_API void       geode_dsp_reset(geode_dsp*);                              /* clears filter state after a seek or flush */
 GEODE_API void       geode_dsp_process(geode_dsp*, float* interleaved, size_t frames);   /* in place, RT-safe */
+/* Rebuilds the chain's filters and lookahead buffers for a new rate; allocates, so it is not RT-safe and
+ * must only be called on a chain not yet installed via geode_player_set_dsp. The owner otherwise detects a
+ * rate mismatch (e.g. against geode_player_output_sample_rate) with geode_dsp_sample_rate and hands over a
+ * freshly built geode_dsp instead of mutating one already in use. */
+GEODE_API void       geode_dsp_set_sample_rate(geode_dsp*, int sample_rate);
+GEODE_API int        geode_dsp_sample_rate(geode_dsp*);   /* 0 for a null chain */
 
 /* Tag I/O through TagLib. Both calls take a file descriptor they own: it is closed before they return, so
  * the caller detaches it first. Text crosses as UTF-8. */
@@ -185,8 +195,20 @@ GEODE_API size_t      geode_tags_art_bytes(const geode_tags*);   /* every embedd
 /* Fills the four ReplayGain values and returns the GEODE_TAG_*_GAIN/PEAK mask of the ones the file carries. */
 GEODE_API int         geode_tags_replaygain(const geode_tags*, float* track_gain_db, float* track_peak,
                                             float* album_gain_db, float* album_peak);
-/* texts holds GEODE_TAG_TEXT_COUNT UTF-8 strings in GeodeTagText order (NULL clears a field). 1 = saved. */
+/* texts holds GEODE_TAG_TEXT_COUNT UTF-8 strings in GeodeTagText order (NULL, or a short array's missing
+ * slot, leaves that field unchanged; "" clears it). 1 = saved, 0 = failed (see geode_tags_last_error). */
 GEODE_API int         geode_tags_write(int fd, const char* const* texts, int year, int track);
+
+typedef enum GeodeTagsError {
+    GEODE_TAGS_OK = 0,
+    GEODE_TAGS_ERR_OPEN,
+    GEODE_TAGS_ERR_READ_ONLY,
+    GEODE_TAGS_ERR_UNSUPPORTED,
+    GEODE_TAGS_ERR_SAVE
+} GeodeTagsError;
+/* Why the most recent geode_tags_write on this thread returned 0; GEODE_TAGS_OK otherwise (the tags API is
+ * called from one thread at a time, so this is tracked per-thread rather than per-call). */
+GEODE_API int         geode_tags_last_error(void);
 
 /* Native player: AMediaCodec decode -> resampler -> mixer (gapless join, crossfade) -> Oboe. Every call is
  * asynchronous and may come from any thread; a file descriptor belongs to the player from the call on.
@@ -211,8 +233,10 @@ GEODE_API void          geode_player_pause(geode_player*);
 GEODE_API void          geode_player_stop(geode_player*);
 GEODE_API void          geode_player_seek(geode_player*, int64_t position_us);
 GEODE_API void          geode_player_set_crossfade(geode_player*, int duration_ms, int curve);   /* 0 ms = gapless join */
-/* A chain built for geode_player_output_sample_rate and 2 channels; NULL bypasses. Returns only once the audio
- * thread has let go of the previous chain, so that one may be destroyed afterwards. */
+/* A chain built for geode_player_output_sample_rate and 2 channels; NULL bypasses. Ownership of the chain
+ * passes to the player: it retires the previous chain and calls geode_dsp_destroy on it itself once the
+ * audio thread has moved past it (or at player destruction). The caller must not destroy a chain it has
+ * installed here; a chain that was never installed remains the caller's to destroy. Never blocks. */
 GEODE_API void          geode_player_set_dsp(geode_player*, geode_dsp*);
 GEODE_API void          geode_player_set_volume(geode_player*, float volume);
 GEODE_API int           geode_player_state(geode_player*);

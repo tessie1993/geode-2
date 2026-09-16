@@ -56,7 +56,19 @@ size_t Resampler::pull(float* stereo, size_t maxFrames) {
 void Resampler::compact() {
     const auto index = static_cast<size_t>(phase_);
     if (index <= 1) return;
-    const size_t drop = index - 1;
+    size_t drop = index - 1;
+    // Invariant: head_ must never exceed pending_.size() / kChannels (the number of
+    // frames actually buffered). pull()'s loop only guarantees index + 2 < available
+    // for the last frame it *processes*; after processing that frame it still adds
+    // step_ to phase_ before checking again, so when step_ > 3 (input rate more than
+    // ~4x the output rate) phase_ - and hence `index` here - can land up to just under
+    // `step_` frames past the end of what is queued. Clamp the drop to what is really
+    // there so head_ can't run past pending_'s frame count (which would make the next
+    // pull()'s `available` computation, an unsigned subtraction, underflow) and shrink
+    // phase_ by the same clamped amount so phase_ - head_ still reflects the true
+    // remaining backlog.
+    const size_t total = pending_.size() / kChannels;
+    if (drop > total - head_) drop = total - head_;
     head_ += drop;
     phase_ -= static_cast<double>(drop);
     if (head_ * kChannels > pending_.size() / 2) {

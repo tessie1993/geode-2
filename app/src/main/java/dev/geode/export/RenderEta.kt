@@ -6,7 +6,6 @@ class RenderEta(
 ) {
     private var firstSampleMs = 0L
     private var firstSampleProgress = 0f
-    private var latestMs = 0L
     private var latestProgress = 0f
     private var started = false
 
@@ -20,7 +19,6 @@ class RenderEta(
             started = true
             firstSampleMs = atMs
             firstSampleProgress = clamped
-            latestMs = atMs
             latestProgress = clamped
             return null
         }
@@ -28,7 +26,6 @@ class RenderEta(
             firstSampleMs = atMs
             firstSampleProgress = clamped
         }
-        latestMs = atMs
         latestProgress = clamped
 
         val windowMs = (windowSeconds * 1000).toLong()
@@ -51,7 +48,6 @@ class RenderEta(
         started = false
         firstSampleMs = 0
         firstSampleProgress = 0f
-        latestMs = 0
         latestProgress = 0f
     }
 

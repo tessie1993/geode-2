@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportQuality
 import dev.geode.export.ExportRatio
+import dev.geode.export.LoudnessTarget
 
 data class ExportDefaults(
     val quality: ExportQuality = ExportQuality.FHD1080,
@@ -11,6 +12,7 @@ data class ExportDefaults(
     val ratio: ExportRatio = ExportRatio.R16_9,
     val loopSafe: Boolean = false,
     val codec: ExportCodec = ExportCodec.H264,
+    val loudnessTargetId: String = LoudnessTarget.LeaveAsIs.id,
 )
 
 internal fun exportCodecLabel(codec: ExportCodec): String =
@@ -43,6 +45,7 @@ class ExportPrefsStore(
             codec =
                 runCatching { ExportCodec.valueOf(prefs.getString(KEY_CODEC, null) ?: d.codec.name) }
                     .getOrDefault(d.codec),
+            loudnessTargetId = prefs.getString(KEY_LOUDNESS, null) ?: d.loudnessTargetId,
         )
     }
 
@@ -54,6 +57,7 @@ class ExportPrefsStore(
             .putString(KEY_RATIO, d.ratio.name)
             .putBoolean(KEY_LOOP, d.loopSafe)
             .putString(KEY_CODEC, d.codec.name)
+            .putString(KEY_LOUDNESS, d.loudnessTargetId)
             .apply()
     }
 
@@ -63,5 +67,6 @@ class ExportPrefsStore(
         const val KEY_RATIO = "export_ratio"
         const val KEY_LOOP = "export_loop"
         const val KEY_CODEC = "export_codec"
+        const val KEY_LOUDNESS = "export_loudness_target"
     }
 }

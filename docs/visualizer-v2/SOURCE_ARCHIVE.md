@@ -149,10 +149,10 @@ battle-tested.
   applied by the root `CMakeLists.txt`); the build recipe is `tools/build-projectm.md`.
   The scene that links against it is `core/viz/scenes/MilkdropScene.cpp`, inside `libgeode.so`.
 
-**Known gap:** `checkThirdPartyNotices` is registered in `app/build.gradle.kts` and wired
-into `:app:check`. It is `:app`-scoped. Anything adapted into a new engine package is
-covered only while the engine lives inside `:app`. the V2 master plan §4.1
-extracts six engine modules at V2-1-02, so this gap stops being hypothetical then: **the
-notice task must move into the convention plugin in that same commit, or Apache-2.0
-attribution silently stops being enforced.** §3.3 says the same about
-`checkEngineProvenance` — it scans every module, not only `:app`.
+There is no `checkThirdPartyNotices` task in the tree. Notice checking is done by
+`checkEngineProvenance`, registered in `build-logic/src/main/kotlin/geode.provenance.gradle.kts`
+and wired to every module's `check` task through `geode.kotlin-common.gradle.kts` (which applies
+the `geode.provenance` plugin). It scans each applying module's own `src/main` tree against
+`docs/visualizer-v2/provenance.json` and `THIRD_PARTY_NOTICES`, so it already covers engine code
+outside `:app`, not just `:app`-scoped sources. `app/build.gradle.kts` registers a separate task,
+`checkNativePageAlignment`, which is unrelated to third-party notices.

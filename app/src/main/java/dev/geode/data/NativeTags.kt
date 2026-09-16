@@ -34,6 +34,24 @@ data class TrackTagEdit(
     val track: Int,
 )
 
+/** Result of [NativeTags.write], distinguishing a deniable consent gap from a hard failure. */
+sealed class TagWriteOutcome {
+    /** The tag was written to the file. */
+    data object Written : TagWriteOutcome()
+
+    /**
+     * The descriptor open was refused by scoped storage; a [android.provider.MediaStore.createWriteRequest]
+     * may unblock it.
+     */
+    data object NeedsConsent : TagWriteOutcome()
+
+    /** The descriptor could not be opened for a reason consent will not fix (missing file, read-only mount, ...). */
+    data object Refused : TagWriteOutcome()
+
+    /** The descriptor opened but the native writer rejected the format or found nothing to change. */
+    data object Unsupported : TagWriteOutcome()
+}
+
 /** TagLib behind [GeodeNative.tagsRead] and [GeodeNative.tagsWrite], fed by content URIs. */
 object NativeTags {
     private const val TAG = "NativeTags"
@@ -82,13 +100,21 @@ object NativeTags {
         resolver: ContentResolver,
         uri: Uri,
         edit: TrackTagEdit,
-    ): Boolean {
-        val fd = detachedFd(resolver, uri, "rw") ?: return false
+    ): TagWriteOutcome {
+        val fd =
+            when (val opened = writableFd(resolver, uri)) {
+                is FdOpen -> opened.fd
+                is FdFailed -> return opened.outcome
+            }
         val texts =
             arrayOf(edit.title, edit.artist, edit.album, edit.albumArtist, edit.genre, edit.comment)
                 .map { it.toByteArray(Charsets.UTF_8) }
                 .toTypedArray()
-        return GeodeNative.tagsWrite(fd, texts, edit.year, edit.track)
+        return if (GeodeNative.tagsWrite(fd, texts, edit.year, edit.track)) {
+            TagWriteOutcome.Written
+        } else {
+            TagWriteOutcome.Unsupported
+        }
     }
 
     // TagLib wraps the descriptor in a FILE* and closes it, so the ParcelFileDescriptor must let go of it first.
@@ -105,5 +131,38 @@ object NativeTags {
         } catch (e: SecurityException) {
             RingLog.note(TAG, "openFileDescriptor($mode) refused", e)
             null
+        }
+
+    private sealed class FdResult
+
+    private data class FdOpen(
+        val fd: Int,
+    ) : FdResult()
+
+    private data class FdFailed(
+        val outcome: TagWriteOutcome,
+    ) : FdResult()
+
+    // Scoped storage throws SecurityException (or, on API 29+, its RecoverableSecurityException
+    // subclass) when the app never created the file and MediaStore.createWriteRequest consent is
+    // required; any other failure to open is not something consent can fix.
+    private fun writableFd(
+        resolver: ContentResolver,
+        uri: Uri,
+    ): FdResult =
+        try {
+            val fd = resolver.openFileDescriptor(uri, "rw")?.detachFd()
+            if (fd == null) {
+                RingLog.note(TAG, "openFileDescriptor(rw) returned null")
+                FdFailed(TagWriteOutcome.Refused)
+            } else {
+                FdOpen(fd)
+            }
+        } catch (e: SecurityException) {
+            RingLog.note(TAG, "openFileDescriptor(rw) needs consent", e)
+            FdFailed(TagWriteOutcome.NeedsConsent)
+        } catch (e: FileNotFoundException) {
+            RingLog.note(TAG, "openFileDescriptor(rw) failed", e)
+            FdFailed(TagWriteOutcome.Refused)
         }
 }

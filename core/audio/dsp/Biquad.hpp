@@ -46,15 +46,22 @@ public:
     void set(const Coefficients& c) { c_ = c; }
     void reset() { z1_ = z2_ = 0.0f; }
 
+    // On silence the transposed-DF2 state decays exponentially toward zero and can linger in denormal range,
+    // which stalls on cores without hardware flush-to-zero. Flushing the state below a floor that is still a
+    // normal float (well above FLT_MIN) is a portable stand-in for setting FPCR/MXCSR FTZ on the audio thread,
+    // which this code has no reliable way to reach (it may run on any thread that calls process()).
     float process(float x) {
         const float y = c_.b0 * x + z1_;
         z1_ = c_.b1 * x - c_.a1 * y + z2_;
         z2_ = c_.b2 * x - c_.a2 * y;
+        if (std::fabs(z1_) < kDenormalFloor) z1_ = 0.0f;
+        if (std::fabs(z2_) < kDenormalFloor) z2_ = 0.0f;
         return y;
     }
 
 private:
     static constexpr float kPi = 3.14159265f;
+    static constexpr float kDenormalFloor = 1e-30f;
 
     Coefficients c_;
     float z1_ = 0.0f;

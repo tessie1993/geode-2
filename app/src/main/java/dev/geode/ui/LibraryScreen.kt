@@ -44,6 +44,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,6 +65,7 @@ import dev.geode.R
 import dev.geode.data.MusicPlaylist
 import dev.geode.ui.theme.StoneIcon
 import dev.geode.ui.theme.StoneIconArt
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /** Playlists sit last and behave differently: hand-ordered, so search and sort do not apply. */
@@ -384,14 +386,30 @@ private fun GroupList(
 @Composable
 private fun PlaylistsTab(viewModel: LibraryViewModel) {
     val library by viewModel.library.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf<String?>(null) }
     var renaming by remember { mutableStateOf<String?>(null) }
     var renameText by remember { mutableStateOf("") }
     var creating by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<String?>(null) }
+    var importResult by remember { mutableStateOf<PlaylistImportResult?>(null) }
+    val importPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                scope.launch { importResult = viewModel.importPlaylistFile(uri) }
+            }
+        }
     Column {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             CrystalButton(compact = true, filled = false, onClick = { creating = true }) { Text(stringResource(R.string.playlist_new)) }
+            CrystalButton(
+                compact = true,
+                filled = false,
+                onClick = { importPicker.launch(arrayOf("*/*")) },
+            ) { Text(stringResource(R.string.playlist_import_action)) }
         }
         LazyColumn(Modifier.fillMaxSize()) {
             item { SmartPlaylistsSection(viewModel) }
@@ -498,6 +516,40 @@ private fun PlaylistsTab(viewModel: LibraryViewModel) {
                 }) { Text(stringResource(R.string.action_rename)) }
             },
             dismissButton = { TextButton(onClick = { renaming = null }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+    importResult?.let { result ->
+        AlertDialog(
+            onDismissRequest = { importResult = null },
+            title = {
+                Text(
+                    stringResource(
+                        if (result is PlaylistImportResult.Imported) {
+                            R.string.playlist_import_done_title
+                        } else {
+                            R.string.playlist_import_failed_title
+                        },
+                    ),
+                )
+            },
+            text = {
+                Text(
+                    when (result) {
+                        is PlaylistImportResult.Imported ->
+                            stringResource(
+                                R.string.playlist_import_summary,
+                                result.name,
+                                result.addedCount,
+                                result.unresolvedCount,
+                                result.ambiguousCount,
+                            )
+                        // result.why is a diagnostic detail, not user-facing text; the dialog always
+                        // shows one generic, localized failure message instead.
+                        is PlaylistImportResult.Failed -> stringResource(R.string.playlist_import_failed_body)
+                    },
+                )
+            },
+            confirmButton = { TextButton(onClick = { importResult = null }) { Text(stringResource(R.string.action_ok)) } },
         )
     }
 }

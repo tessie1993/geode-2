@@ -265,6 +265,18 @@ class PlayerViewModel
             codec: ExportCodec = ExportCodec.H264,
         ) = session.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, sceneFactoryFor, codec)
 
+        fun startLoopRender(
+            aspect: ExportAspect,
+            codec: ExportCodec,
+            fps: Int,
+            sceneFactory: SceneFactory,
+            loopMs: Long,
+            crossfadeMs: Long,
+            drift: dev.geode.export.TimeOfDayDrift,
+            audioClips: List<Uri>,
+            destination: Uri? = null,
+        ) = session.startLoopRender(aspect, codec, fps, sceneFactory, loopMs, crossfadeMs, drift, audioClips, destination)
+
         /**
          * This ViewModel owns the session's teardown. `AppRoot` creates it unconditionally and
          * every Geode ViewModel shares the Activity's store, so this runs exactly once, when the

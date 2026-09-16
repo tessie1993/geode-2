@@ -11,7 +11,13 @@ import java.security.MessageDigest
 object AnalysisCache {
     private const val MAGIC = 0x4D564143
 
-    private const val VERSION = 2
+    // v3 adds the musical-structure and stereo/chroma fields of AudioFeatures that v2
+    // silently zero-filled on load (tempoStability, barPhase, beatInBar, downbeat,
+    // downbeatConfidence, novelty, sectionBoundary, buildup, drop, arrival, harmonicity,
+    // warmup, beatStrength, beatPhase, transient, pulseConfidence, macroEnergy, kick,
+    // snare, hat, stereoWidth, stereoCorrelation, stereoPan, chroma, chromaConfidence).
+    // A v2 file fails the version check below and is treated as a cache miss.
+    private const val VERSION = 3
     private const val MAX_ENTRIES = 15
 
     private fun dir(context: Context): File = File(context.filesDir, "analysis").apply { mkdirs() }
@@ -84,9 +90,11 @@ object AnalysisCache {
                     val frameCount = d.readInt()
                     val bandCount = d.readInt()
                     val waveSize = d.readInt()
+                    val chromaSize = d.readInt()
                     if (frameCount < 0 || frameCount > 1_000_000) return@runCatching null
                     if (bandCount < 0 || bandCount > 4_096) return@runCatching null
                     if (waveSize < 0 || waveSize > 65_536) return@runCatching null
+                    if (chromaSize < 0 || chromaSize > 4_096) return@runCatching null
                     val frames = ArrayList<TimelineFrame>(frameCount)
                     repeat(frameCount) {
                         val timeMs = d.readLong()
@@ -101,6 +109,32 @@ object AnalysisCache {
                         val centroid = d.readFloat()
                         val beat = d.readByte().toInt() != 0
                         val flux = d.readFloat()
+                        val beatStrength = d.readFloat()
+                        val beatPhase = d.readFloat()
+                        val transient = d.readFloat()
+                        val pulseConfidence = d.readFloat()
+                        val macroEnergy = d.readFloat()
+                        val kick = d.readFloat()
+                        val snare = d.readFloat()
+                        val hat = d.readFloat()
+                        val stereoWidth = d.readFloat()
+                        val stereoCorrelation = d.readFloat()
+                        val stereoPan = d.readFloat()
+                        val chroma = FloatArray(chromaSize) { d.readShort() / 8192f }
+                        val chromaConfidence = d.readFloat()
+                        val tempoStability = d.readFloat()
+                        val barPhase = d.readFloat()
+                        // readByte() sign-extends; mask to undo the unsigned 0..255 range written below.
+                        val beatInBar = d.readByte().toInt() and 0xFF
+                        val downbeat = d.readByte().toInt() != 0
+                        val downbeatConfidence = d.readFloat()
+                        val novelty = d.readFloat()
+                        val sectionBoundary = d.readByte().toInt() != 0
+                        val buildup = d.readFloat()
+                        val drop = d.readByte().toInt() != 0
+                        val arrival = d.readByte().toInt() != 0
+                        val harmonicity = d.readFloat()
+                        val warmup = d.readFloat()
                         frames +=
                             TimelineFrame(
                                 timeMs,
@@ -116,6 +150,31 @@ object AnalysisCache {
                                     bpm = bpm,
                                     centroid = centroid,
                                     flux = flux,
+                                    beatStrength = beatStrength,
+                                    beatPhase = beatPhase,
+                                    transient = transient,
+                                    pulseConfidence = pulseConfidence,
+                                    macroEnergy = macroEnergy,
+                                    kick = kick,
+                                    snare = snare,
+                                    hat = hat,
+                                    stereoWidth = stereoWidth,
+                                    stereoCorrelation = stereoCorrelation,
+                                    stereoPan = stereoPan,
+                                    chroma = chroma,
+                                    chromaConfidence = chromaConfidence,
+                                    tempoStability = tempoStability,
+                                    barPhase = barPhase,
+                                    beatInBar = beatInBar,
+                                    downbeat = downbeat,
+                                    downbeatConfidence = downbeatConfidence,
+                                    novelty = novelty,
+                                    sectionBoundary = sectionBoundary,
+                                    buildup = buildup,
+                                    drop = drop,
+                                    arrival = arrival,
+                                    harmonicity = harmonicity,
+                                    warmup = warmup,
                                 ),
                             )
                     }
@@ -153,8 +212,12 @@ object AnalysisCache {
                 val waveSize =
                     t.frames[0]
                         .features.waveform.size
+                val chromaSize =
+                    t.frames[0]
+                        .features.chroma.size
                 d.writeInt(bandCount)
                 d.writeInt(waveSize)
+                d.writeInt(chromaSize)
                 for (fr in t.frames) {
                     d.writeLong(fr.timeMs)
                     val fe = fr.features
@@ -173,6 +236,33 @@ object AnalysisCache {
                     d.writeFloat(fe.centroid)
                     d.writeByte(if (fe.beat) 1 else 0)
                     d.writeFloat(fe.flux)
+                    d.writeFloat(fe.beatStrength)
+                    d.writeFloat(fe.beatPhase)
+                    d.writeFloat(fe.transient)
+                    d.writeFloat(fe.pulseConfidence)
+                    d.writeFloat(fe.macroEnergy)
+                    d.writeFloat(fe.kick)
+                    d.writeFloat(fe.snare)
+                    d.writeFloat(fe.hat)
+                    d.writeFloat(fe.stereoWidth)
+                    d.writeFloat(fe.stereoCorrelation)
+                    d.writeFloat(fe.stereoPan)
+                    for (i in 0 until chromaSize) {
+                        d.writeShort(((fe.chroma.getOrElse(i) { 0f }) * 8192f).toInt().coerceIn(-32768, 32767))
+                    }
+                    d.writeFloat(fe.chromaConfidence)
+                    d.writeFloat(fe.tempoStability)
+                    d.writeFloat(fe.barPhase)
+                    d.writeByte(fe.beatInBar.coerceIn(0, 255))
+                    d.writeByte(if (fe.downbeat) 1 else 0)
+                    d.writeFloat(fe.downbeatConfidence)
+                    d.writeFloat(fe.novelty)
+                    d.writeByte(if (fe.sectionBoundary) 1 else 0)
+                    d.writeFloat(fe.buildup)
+                    d.writeByte(if (fe.drop) 1 else 0)
+                    d.writeByte(if (fe.arrival) 1 else 0)
+                    d.writeFloat(fe.harmonicity)
+                    d.writeFloat(fe.warmup)
                 }
             }
             evict(context)

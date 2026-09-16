@@ -195,11 +195,25 @@ Java_dev_geode_engine_bridge_GeodeNative_dspProcess(JNIEnv* env, jobject, jlong 
 }
 
 JNIEXPORT void JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_dspSetSampleRate(JNIEnv*, jobject, jlong handle, jint sampleRate) {
+    geode_dsp_set_sample_rate(dspOf(handle), sampleRate);
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_dspSampleRate(JNIEnv*, jobject, jlong handle) {
+    return geode_dsp_sample_rate(dspOf(handle));
+}
+
+JNIEXPORT void JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_drumsStep(JNIEnv* env, jobject, jlong handle, jfloatArray bands, jfloatArray out) {
+    geode_drums* drums = drumsOf(handle);
     FloatElements data(env, bands);
-    if (!data.get() || !out || env->GetArrayLength(out) < 3) return;
+    if (!drums || !data.get() || !out || env->GetArrayLength(out) < 3) return;
+    // DrumChannels::step reads bands[0..bandCount); the C API has no length for `bands`, so clamp against
+    // the count this handle was created with, the same way analysisPush clamps against `interleaved`.
+    if (data.length() < geode_drums_band_count(drums)) return;
     std::array<float, 3> impulses{};
-    geode_drums_step(drumsOf(handle), data.get(), impulses.data());
+    geode_drums_step(drums, data.get(), impulses.data());
     env->SetFloatArrayRegion(out, 0, 3, impulses.data());
 }
 

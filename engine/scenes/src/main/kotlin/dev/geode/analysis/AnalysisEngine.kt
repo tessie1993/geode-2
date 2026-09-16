@@ -6,6 +6,7 @@ import dev.geode.engine.audio.SampleRing
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -170,38 +171,64 @@ class AnalysisEngine(
         }
     }
 
+    // job is mutated from AudioBus.onInterestChanged, which can fire on whatever thread calls
+    // AudioBus.addConsumer()/removeConsumer() - not necessarily the analysis scope's thread -
+    // so every read/write of it is synchronised on jobLock.
+    private val jobLock = Any()
     private var job: Job? = null
 
+    // Set before close() cancels the loop's job, and checked by the loop before it re-enters
+    // pass.tick() (which makes native analyzer.analyze calls): close() is not required to wait
+    // for job.cancel() to take effect, so this flag closes most of the window in which the loop
+    // could still be inside a native call - or about to start one - after analyzer.close() has
+    // destroyed the native handle. It does not close that window entirely; closeAndJoin() does.
+    @Volatile
+    private var closed = false
+
     fun start(scope: CoroutineScope) {
-        if (job?.isActive == true) return
-        job =
-            scope.launch(Dispatchers.Default) {
-                val pass = Pass()
-                var deadlineNs = System.nanoTime()
-                while (true) {
-                    if (resetPending) {
-                        resetPending = false
-                        pass.reset()
+        synchronized(jobLock) {
+            if (job?.isActive == true) return
+            job =
+                scope.launch(Dispatchers.Default) {
+                    val pass = Pass()
+                    var deadlineNs = System.nanoTime()
+                    while (!closed) {
+                        if (resetPending) {
+                            resetPending = false
+                            pass.reset()
+                        }
+                        pass.tick()
+                        deadlineNs += TICK_NS
+                        val now = System.nanoTime()
+                        if (deadlineNs < now) deadlineNs = now
+                        // Never delay(0): it returns without suspending, so a tick that
+                        // overruns the budget would leave this loop with no suspension
+                        // point at all - uncancellable, and spinning a core flat out.
+                        delay(maxOf(1L, (deadlineNs - now) / 1_000_000))
                     }
-                    pass.tick()
-                    deadlineNs += TICK_NS
-                    val now = System.nanoTime()
-                    if (deadlineNs < now) deadlineNs = now
-                    // Never delay(0): it returns without suspending, so a tick that
-                    // overruns the budget would leave this loop with no suspension
-                    // point at all - uncancellable, and spinning a core flat out.
-                    delay(maxOf(1L, (deadlineNs - now) / 1_000_000))
                 }
-            }
+        }
     }
 
     fun stop() {
-        job?.cancel()
-        job = null
+        synchronized(jobLock) {
+            job?.cancel()
+            job = null
+        }
     }
 
+    /** Best-effort teardown: the loop may still observe [closed] one tick late. Prefer [closeAndJoin] where a suspend context is available. */
     fun close() {
+        closed = true
         stop()
+        analyzer.close()
+    }
+
+    /** Cancels the loop and waits for it to actually stop before destroying the native handle, so no in-flight native call can race the destroy. */
+    suspend fun closeAndJoin() {
+        closed = true
+        val current = synchronized(jobLock) { job.also { job = null } }
+        current?.cancelAndJoin()
         analyzer.close()
     }
 

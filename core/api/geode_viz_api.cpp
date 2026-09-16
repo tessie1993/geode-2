@@ -226,8 +226,18 @@ size_t geode_viz_scene_ids(geode_viz* v, char* out, size_t capacity) {
     return joined.size();
 }
 
+// Any thread (above the GL-thread divider). Renderer::lastError() copies the
+// string out under its own lock, so this never reads a Renderer-owned buffer
+// that Renderer::fail() (GL thread) could be mutating concurrently. The
+// cache is thread_local (not per-`v`) so two threads calling this
+// concurrently, even on the same `v`, never race each other's returned
+// pointer: the returned pointer stays valid until the *calling thread's*
+// next call to geode_viz_last_error (on any instance).
 const char* geode_viz_last_error(geode_viz* v) {
-    return v ? v->renderer.lastError().c_str() : "";
+    thread_local std::string cache;
+    if (!v) return "";
+    cache = v->renderer.lastError();
+    return cache.c_str();
 }
 
 void geode_viz_surface_created(geode_viz* v) {

@@ -35,11 +35,14 @@ class PlaybackCaptureService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
-        bestEffort(TAG, "startForegroundNotification()") { startForegroundNotification() }
+        // Stop requests come from the notification's own action button, so the service is
+        // already in the foreground; posting a fresh notification first only to tear the
+        // service down immediately after is wasted binder IO on the main thread.
         if (intent?.action == ACTION_STOP) {
             stopSelf()
             return START_NOT_STICKY
         }
+        bestEffort(TAG, "startForegroundNotification()") { startForegroundNotification() }
         val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
         val data = intent?.let { IntentCompat.projectionData(it) }
         if (resultCode == 0 || data == null) {

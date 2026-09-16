@@ -17,8 +17,7 @@ availability, never by a wall-clock timer.
 
 Today's engine does the opposite: the live analyzer runs a **62.5 Hz wall-clock loop** taking
 "newest window", while the offline path is 60 Hz sample-locked. Different hop *and* different
-alignment, and under load the live one silently drops or repeats audio — the first of the four
-divergences [`ENGINE_V2_PLAN.md`](ENGINE_V2_PLAN.md) §2 catalogues.
+alignment, and under load the live one silently drops or repeats audio.
 
 ### 1.1 Reading the ring
 
@@ -60,8 +59,12 @@ never the reverse.
 ### 1.3 Channels
 
 Stereo is preserved to the analysis boundary; downmixing happens per-feature, not at capture.
-The current offline analyzer downmixes to mono and never constructs `StereoField`, which is why
-`stereoWidth` is 0 in every exported video today.
+`OfflineAnalyzer` reads the decoder's real channel count and forwards it into
+`ReactiveAnalyzer.push`, which reaches `AnalysisSession::push` (`core/analysis/AnalysisSession.cpp`);
+that method always derives both a mid and a side buffer from the interleaved input (for true mono
+input, left equals right and the side buffer comes out silent). `AnalysisSession::pull` always
+passes that side buffer into `stereo::of()` — the pointer is never null — so a stereo source does
+get a non-zero `stereoWidth` today; only genuinely mono sources report the `stereo::kMono` reading.
 
 Two existing semantics are preserved deliberately (§1.3): mono input reports
 `stereoCorrelation = 1f`, and an empty chroma array means "no pitch information", not twelve
