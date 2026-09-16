@@ -74,6 +74,8 @@ class VisualizerRenderer(
     @Volatile
     var pcmProvider: () -> PcmChunk? = { null }
 
+    // Config holders only: native ticks its own LfoEngine/AdsrEngine against the configs
+    // syncNativeState forwards below (core/viz/RendererFrame.cpp).
     val lfoEngine = LfoEngine()
 
     val adsrEngine = AdsrEngine()
