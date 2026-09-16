@@ -54,6 +54,9 @@ fun TemplatesSheet(
     val viz by viewModel.vizState.collectAsStateWithLifecycle()
     val library by visualsViewModel.templates.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // Resolved here rather than inside the click lambda: lint (LocalContextGetResourceValueCall)
+    // rejects Context.getString through LocalContext because it is not configuration-aware.
+    val clipboardEmptyNote = stringResource(R.string.template_clipboard_empty)
     var note by remember { mutableStateOf<String?>(null) }
     var saveName by remember { mutableStateOf("") }
     var deleting by remember { mutableStateOf<VideoTemplate?>(null) }
@@ -78,7 +81,7 @@ fun TemplatesSheet(
                     CrystalButton(compact = true, filled = false, onClick = {
                         val pasted = clipboardText(context)
                         if (pasted.isNullOrBlank()) {
-                            note = context.getString(R.string.template_clipboard_empty)
+                            note = clipboardEmptyNote
                         } else {
                             visualsViewModel.importTemplateText(pasted) { outcome -> note = messageFor(outcome) }
                         }
