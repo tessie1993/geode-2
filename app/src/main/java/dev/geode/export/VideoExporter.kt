@@ -110,9 +110,10 @@ class VideoExporter(
         data class Saved(
             val uri: Uri,
             /**
-             * How the finished file's loudness compares to [loudnessTarget], or null when it could
-             * not be measured (e.g. no audio track). Geode cannot yet apply the resulting gain — see
-             * [measureLoudness] — so this is read-only telemetry for now, not an applied correction.
+             * How the finished file's loudness compares to [loudnessTarget] *after* export — the
+             * gain toward that target was already applied while transcoding (see
+             * [AudioTranscoder.sourceGain]), so for a [LoudnessTarget.Normalising] target this is
+             * confirmation the file landed where it should, not a pending correction.
              */
             val loudnessAdvice: LoudnessAdvice? = null,
         ) : Result
@@ -153,8 +154,12 @@ class VideoExporter(
         destination: Uri? = null,
         codec: ExportCodec = ExportCodec.H264,
         loudnessTarget: LoudnessTarget = LoudnessTarget.LeaveAsIs,
-        /** Full-frame ARGB overlay (cover art/title) sized to [aspect], from `Bitmap.getPixels`; null draws none. */
-        overlay: IntArray? = null,
+        /**
+         * Full-frame ARGB overlay (cover art/title/lyrics/watermark) sized to [aspect], as a
+         * function from a track position (ms) to that frame's pixels (`Bitmap.getPixels` shape);
+         * null draws none for that frame. Null overlay draws nothing for the whole export.
+         */
+        overlay: ((positionMs: Long) -> IntArray?)? = null,
         background: BackgroundExportSpec? = null,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
@@ -221,6 +226,7 @@ class VideoExporter(
                         loopSafe,
                         range,
                         codec,
+                        loudnessTarget,
                         overlay,
                         underlay,
                         onProgress,
@@ -259,7 +265,7 @@ class VideoExporter(
         range: ExportRange?,
         codec: ExportCodec,
         loudnessTarget: LoudnessTarget,
-        overlay: IntArray?,
+        overlay: ((positionMs: Long) -> IntArray?)?,
         underlay: OffscreenUnderlay?,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
@@ -285,6 +291,7 @@ class VideoExporter(
                     loopSafe,
                     range,
                     codec,
+                    loudnessTarget,
                     overlay,
                     underlay,
                     onProgress,
@@ -314,11 +321,10 @@ class VideoExporter(
      * built to measure "the thing that will actually be uploaded", and by the time [encodeInto]
      * has run, the AAC track already lives inside a container [LoudnessMeter] can open directly —
      * unlike [AudioTranscoder]'s intermediate `.bin`, which is a raw elementary stream with no
-     * container framing for [android.media.MediaExtractor] to parse. Geode does not yet have
-     * anywhere upstream to apply the resulting gain: [AudioTranscoder] owns the only PCM Geode
-     * ever holds for this file, and turning [LoudnessAdvice.gainDb] into an actual correction
-     * means scaling samples inside its decode loop, which this unit does not touch. So today this
-     * only reports what a platform would do to the file as exported.
+     * container framing for [android.media.MediaExtractor] to parse. [encodeInto] already applied
+     * a normalising gain via [AudioTranscoder.sourceGain] before this runs, so for a
+     * [LoudnessTarget.Normalising] target this is confirmation of where the file landed, not the
+     * only place a gain gets computed.
      *
      * A file the encoder just finished writing successfully is not allowed to be reported as a
      * failed export over a problem in this purely-informational re-read, so any exception here is
@@ -357,7 +363,8 @@ class VideoExporter(
         loopSafe: Boolean,
         range: ExportRange?,
         codec: ExportCodec,
-        overlay: IntArray?,
+        loudnessTarget: LoudnessTarget,
+        overlay: ((positionMs: Long) -> IntArray?)?,
         underlay: OffscreenUnderlay?,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
@@ -386,12 +393,28 @@ class VideoExporter(
 
             val muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4).also { muxerRef = it }
             val rangeStartMs = range?.startMs ?: 0L
+            val audioTranscoder = AudioTranscoder(context)
+            // A second, dedicated decode of the source to read its level before any gain is baked
+            // into the AAC track — the cost of actually applying [loudnessTarget] instead of only
+            // measuring the result afterward. Bounded to the same range that gets exported, so the
+            // gain is computed against the clip that ships rather than the whole source file it may
+            // be trimmed from. See AudioTranscoder.sourceGain for why this can't be folded into the
+            // transcode pass below.
+            val gain =
+                audioTranscoder.sourceGain(
+                    uri = audioUri,
+                    target = loudnessTarget,
+                    startMs = rangeStartMs,
+                    maxDurationMs = range?.durationMs ?: 0L,
+                    isCancelled = isCancelled,
+                )
             val aac =
-                AudioTranscoder(context)
+                audioTranscoder
                     .transcode(
                         uri = audioUri,
                         maxDurationMs = range?.durationMs ?: 0L,
                         startMs = rangeStartMs,
+                        gain = gain,
                         isCancelled = isCancelled,
                     ) { onProgress(it * 0.1f) }
                     .also { aacRef = it }

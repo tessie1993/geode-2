@@ -65,6 +65,7 @@ import dev.geode.render.scene.CustomizeTab
 import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneParams
 import dev.geode.viz.ArtTitleOptions
+import dev.geode.viz.LyricOptions
 import dev.geode.viz.WatermarkOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -542,10 +543,16 @@ class PlayerSession internal constructor(
 
     private fun loadLyricsFor(uri: Uri?) {
         _lyrics.value = null
+        overlay.setLyrics(null)
         if (uri == null) return
         scope.launch(Dispatchers.IO) {
             val found = LyricsLoader.load(application, uri)
-            withContext(Dispatchers.Main) { if (currentUri == uri) _lyrics.value = found }
+            withContext(Dispatchers.Main) {
+                if (currentUri == uri) {
+                    _lyrics.value = found
+                    overlay.setLyrics(found)
+                }
+            }
         }
     }
 
@@ -657,7 +664,7 @@ class PlayerSession internal constructor(
 
     fun setRandomInterval(seconds: Int) = autoVisuals.setRandomInterval(seconds)
 
-    fun setRandomOnBeat(enabled: Boolean) = autoVisuals.setRandomOnBeat(enabled)
+    fun setRandomOnSection(enabled: Boolean) = autoVisuals.setRandomOnSection(enabled)
 
     fun setRandomIncludeStyles(enabled: Boolean) = autoVisuals.setRandomIncludeStyles(enabled)
 
@@ -692,16 +699,14 @@ class PlayerSession internal constructor(
 
     internal fun setOverlayOptions(transform: (ArtTitleOptions) -> ArtTitleOptions) = overlay.setOptions(transform)
 
+    internal val overlayLyricOptions: StateFlow<LyricOptions> get() = overlay.lyricOptions
+
+    internal fun setOverlayLyricOptions(transform: (LyricOptions) -> LyricOptions) = overlay.setLyricOptions(transform)
+
     internal fun setOverlaySurfaceSize(
         width: Int,
         height: Int,
     ) = overlay.onSurfaceSizeChanged(width, height)
-
-    /** For [ExportController]: composes the overlay at the export's own frame size. */
-    internal fun composeOverlayForExport(
-        width: Int,
-        height: Int,
-    ): OverlayPixels = overlay.composeForExport(width, height, _uiState.value.title, _uiState.value.artist, currentUri?.toString())
 
     internal val watermarkOptions: StateFlow<WatermarkOptions> get() = overlay.watermarkOptions
 
@@ -710,6 +715,13 @@ class PlayerSession internal constructor(
     internal fun pickWatermarkImage(uri: Uri) = overlay.pickWatermarkImage(uri)
 
     internal fun clearWatermarkImage() = overlay.clearWatermarkImage()
+
+    /** For [ExportController]: a per-position overlay provider at the export's own frame size. */
+    internal fun overlayProviderForExport(
+        width: Int,
+        height: Int,
+    ): (Long) -> IntArray? =
+        overlay.overlayProviderForExport(width, height, _uiState.value.title, _uiState.value.artist, currentUri?.toString())
 
     val deviceTracks: StateFlow<List<DeviceTrack>> get() = musicLibrary.deviceTracks
 
@@ -1092,6 +1104,7 @@ class PlayerSession internal constructor(
                 override val guiPrefs: GuiPrefs get() = settings.guiPrefs.value
                 override val sceneId: String get() = _vizState.value.sceneId
                 override val sceneParams get() = _vizState.value.params
+                override val positionMs: Long get() = player.currentPosition.coerceAtLeast(0)
 
                 override fun lfoConfigs() = modulation.lfos.value
 
@@ -1113,7 +1126,7 @@ class PlayerSession internal constructor(
                 override fun overlayPixelsFor(
                     width: Int,
                     height: Int,
-                ): IntArray? = composeOverlayForExport(width, height).pixels
+                ): (Long) -> IntArray? = overlayProviderForExport(width, height)
             },
         )
 
@@ -1175,6 +1188,16 @@ class PlayerSession internal constructor(
     fun cancelExport() = exportController.cancelExport()
 
     fun resetExportState() = exportController.resetExportState()
+
+    val stillState: StateFlow<StillPhase> get() = exportController.stillState
+
+    fun saveStillFrame(
+        aspect: ExportAspect,
+        sceneFactory: SceneFactory,
+        destination: Uri? = null,
+    ) = exportController.saveStillFrame(aspect, sceneFactory, destination)
+
+    fun resetStillState() = exportController.resetStillState()
 
     fun refreshStudioClips() = exportController.refreshStudioClips()
 

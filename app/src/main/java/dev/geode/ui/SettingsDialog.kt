@@ -1,5 +1,6 @@
 package dev.geode.ui
 
+import android.content.Intent
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -59,6 +60,8 @@ fun SettingsDialog(
     onStartToDestination: (ExportAspect, Int, Boolean, ExportRange?, ExportCodec) -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
+    stillPhase: StillPhase = StillPhase.Idle,
+    onSaveFrame: (ExportAspect) -> Unit = {},
 ) {
     val context = LocalContext.current
     val exportPrefs = remember { ExportPrefsStore(GeodePrefsFiles(context).general) }
@@ -355,6 +358,13 @@ fun SettingsDialog(
                             enabled = hasMedia,
                             modifier = Modifier.fillMaxWidth(),
                         )
+                        GlassButton(
+                            text = stringResource(R.string.export_still_button),
+                            onClick = { onSaveFrame(ExportAspect.of(quality, ratio)) },
+                            enabled = hasMedia && !stillPhase.isBusy,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        StillPhaseStatus(stillPhase, chooserTitle)
                     }
                 }
             }
@@ -369,6 +379,47 @@ fun SettingsDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StillPhaseStatus(
+    stillPhase: StillPhase,
+    chooserTitle: String,
+) {
+    val context = LocalContext.current
+    when (stillPhase) {
+        StillPhase.Running ->
+            Text(
+                stringResource(R.string.export_still_saving),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        is StillPhase.Done -> {
+            Text(
+                stringResource(R.string.export_still_saved),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            GlassButton(
+                text = stringResource(R.string.export_upload_drive),
+                onClick = {
+                    val share =
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "image/png"
+                            putExtra(Intent.EXTRA_STREAM, stillPhase.uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    context.startActivity(Intent.createChooser(share, chooserTitle))
+                },
+            )
+        }
+        is StillPhase.Failed ->
+            Text(
+                stringResource(R.string.export_failed, stillPhase.message),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        StillPhase.Idle -> Unit
     }
 }
 

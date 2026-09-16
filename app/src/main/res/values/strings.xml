@@ -569,7 +569,10 @@
     <string name="export_loop_start">Render loop</string>
     <string name="export_loop_rendering">Rendering… %1$d%%</string>
     <string name="export_loudness_target">Loudness target</string>
-    <string name="export_loudness_hint">Geode measures the finished file against this target once export completes. It does not yet change the level to match — pick the platform you\'re shipping to, or Leave as-is to ship the level you mixed.</string>
+    <string name="export_loudness_hint">Geode matches the level to this target while exporting, then measures the finished file to confirm it landed there — pick the platform you\'re shipping to, or Leave as-is to ship the level you mixed.</string>
+    <string name="export_still_button">Save frame</string>
+    <string name="export_still_saving">Saving frame…</string>
+    <string name="export_still_saved">Frame saved.</string>
     <string name="export_error_codec">This device\'s video encoder could not keep up with that render — try a lower quality, a smaller size, or a different codec in the Export tab.</string>
     <string name="export_error_io">The export could not read or write a file it needed. Check that the source clip is still there and that storage is not full.</string>
     <string name="export_error_invalid_project">That could not be turned into a video — check that its clips still point at files Geode can read.</string>
@@ -668,6 +671,10 @@
     <string name="glass_gallery_segment_two">Two</string>
     <string name="glass_gallery_segment_three">Three</string>
 
+    <!-- Boot intro wordmark, shown as the glass drop lands (ui/BootIntro.kt). -->
+    <string name="boot_wordmark">Geode</string>
+    <string name="boot_tagline">VISUALIZE THE INVISIBLE</string>
+
     <!-- Font colour swatches. Mineral names; the argb value is what persists. -->
     <string name="font_color_auto">Auto</string>
     <string name="font_color_white">White</string>
@@ -711,8 +718,8 @@
     <string name="autoviz_random_off_auto">Random is off — the Auto button on the Now Playing screen turns it on.</string>
     <string name="autoviz_shape_hint">The settings below shape it whether it is running or not, so a session can be set up before it starts — and they are remembered across restarts.</string>
     <string name="autoviz_switch_every">Switch every %1$d s</string>
-    <string name="autoviz_on_beat">Switch on a strong beat</string>
-    <string name="autoviz_on_beat_hint">Waits for a big moment in the music instead of switching the instant the timer is up, so a change lands with the track rather than across it. It still holds a look for at least half the interval, and forces a switch at twice it, so a quiet passage cannot stall the rotation.</string>
+    <string name="autoviz_on_beat">Switch on section change</string>
+    <string name="autoviz_on_beat_hint">Waits for a section change or a burst of novelty in the music instead of switching the instant the timer is up, so a change lands with the track rather than across it. It still holds a look for at least six seconds and at least half the interval, and forces a switch at twice it, so a quiet passage cannot stall the rotation.</string>
     <string name="autoviz_pick_from">Pick from</string>
     <string name="autoviz_pick_styles">Styles</string>
     <string name="autoviz_pick_presets">Saved presets</string>
@@ -858,6 +865,11 @@
     <string name="overlay_size_small">Small</string>
     <string name="overlay_size_medium">Medium</string>
     <string name="overlay_size_large">Large</string>
+    <string name="overlay_lyric_sheet_title">Synced lyrics</string>
+    <string name="overlay_lyric_enable">Show current line over the visualizer</string>
+    <string name="overlay_lyric_position_top">Top</string>
+    <string name="overlay_lyric_position_center">Centre</string>
+    <string name="overlay_lyric_position_bottom">Bottom</string>
     <string name="overlay_watermark_section">Logo / watermark</string>
     <string name="overlay_watermark_enable">Show over the visualizer</string>
     <string name="overlay_watermark_pick">Choose image…</string>

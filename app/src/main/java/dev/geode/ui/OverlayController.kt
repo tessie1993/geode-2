@@ -10,6 +10,8 @@ import dev.geode.data.OverlayPrefsStore
 import dev.geode.playback.MediaArtwork
 import dev.geode.viz.ArtTitleLayer
 import dev.geode.viz.ArtTitleOptions
+import dev.geode.viz.LyricLayer
+import dev.geode.viz.LyricOptions
 import dev.geode.viz.OverlayComposer
 import dev.geode.viz.OverlayFrame
 import dev.geode.viz.WatermarkLayer
@@ -27,7 +29,7 @@ internal class OverlayPixels(
 )
 
 /**
- * Owns the cover-art/title overlay's options and composes it into the ARGB pixels
+ * Owns the cover-art/title/lyric/watermark overlay's options and composes it into the ARGB pixels
  * [dev.geode.render.bridge.NativeViz.setOverlay] expects, for the live view.
  *
  * Every mutable field here (options aside, which is a [StateFlow]) is only ever touched from
@@ -52,6 +54,9 @@ internal class OverlayController(
     private val _watermarkOptions = MutableStateFlow(prefsStore.loadWatermark())
     val watermarkOptions: StateFlow<WatermarkOptions> = _watermarkOptions
 
+    private val _lyricOptions = MutableStateFlow(prefsStore.loadLyric())
+    val lyricOptions: StateFlow<LyricOptions> = _lyricOptions
+
     private var surfaceWidth = 0
     private var surfaceHeight = 0
     private var title: String? = null
@@ -60,15 +65,18 @@ internal class OverlayController(
     private var artworkUri: String? = null
     private var artwork: Bitmap? = null
 
-    // Read from both storeScope (live view) and the export dispatcher (composeForExport). The
-    // reference is only ever replaced, never recycled while still assigned here - an export may
-    // be mid-draw with the old bitmap on its own thread - so @Volatile alone is enough for safe
-    // publication; the stale bitmap is left for the collector instead.
+    // Read from both storeScope (live view) and the export dispatcher (overlayProviderForExport).
+    // The reference is only ever replaced, never recycled while still assigned here - an export
+    // may be mid-draw with the old bitmap on its own thread - so @Volatile alone is enough for
+    // safe publication; the stale bitmap is left for the collector instead.
     @Volatile
     private var watermarkBitmap: Bitmap? = null
 
+    private var lyrics: Lyrics? = null
+    private var lastLineIndex = NO_LINE
+
     init {
-        composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(_watermarkOptions.value, null))
+        composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(_watermarkOptions.value, null), LyricLayer(_lyricOptions.value))
         storeScope.launch {
             val persisted = _watermarkOptions.value
             val uri = persisted.uri
@@ -79,10 +87,10 @@ internal class OverlayController(
                 val cleared = persisted.copy(enabled = false, uri = null)
                 _watermarkOptions.value = cleared
                 prefsStore.saveWatermark(cleared)
-                composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(cleared, null))
+                composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(cleared, null), LyricLayer(_lyricOptions.value))
             } else {
                 watermarkBitmap = bitmap
-                composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(persisted, bitmap))
+                composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(persisted, bitmap), LyricLayer(_lyricOptions.value))
                 recompose()
             }
         }
@@ -98,7 +106,8 @@ internal class OverlayController(
                     artwork != null -> artwork
                     else -> artworkUri?.let { MediaArtwork.decodeEmbedded(appContext, it) }
                 }
-            composer.layers = listOf(ArtTitleLayer(updated), WatermarkLayer(_watermarkOptions.value, watermarkBitmap))
+            composer.layers =
+                listOf(ArtTitleLayer(updated), WatermarkLayer(_watermarkOptions.value, watermarkBitmap), LyricLayer(_lyricOptions.value))
             prefsStore.save(updated)
             recompose()
         }
@@ -109,8 +118,18 @@ internal class OverlayController(
         val updated = transform(_watermarkOptions.value)
         _watermarkOptions.value = updated
         storeScope.launch {
-            composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(updated, watermarkBitmap))
+            composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(updated, watermarkBitmap), LyricLayer(_lyricOptions.value))
             prefsStore.saveWatermark(updated)
+            recompose()
+        }
+    }
+
+    fun setLyricOptions(transform: (LyricOptions) -> LyricOptions) {
+        val updated = transform(_lyricOptions.value)
+        _lyricOptions.value = updated
+        storeScope.launch {
+            composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(_watermarkOptions.value, watermarkBitmap), LyricLayer(updated))
+            prefsStore.saveLyric(updated)
             recompose()
         }
     }
@@ -131,7 +150,19 @@ internal class OverlayController(
             val updated = _watermarkOptions.value.copy(enabled = true, uri = uri.toString())
             _watermarkOptions.value = updated
             prefsStore.saveWatermark(updated)
-            composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(updated, bitmap))
+            composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(updated, bitmap), LyricLayer(_lyricOptions.value))
+            recompose()
+        }
+    }
+
+    /**
+     * Called whenever [PlayerSession] loads (or clears) the lyrics for the current track, so this
+     * reuses that instance instead of loading its own copy.
+     */
+    fun setLyrics(lyrics: Lyrics?) {
+        storeScope.launch {
+            this@OverlayController.lyrics = lyrics
+            lastLineIndex = NO_LINE
             recompose()
         }
     }
@@ -143,7 +174,7 @@ internal class OverlayController(
             val updated = _watermarkOptions.value.copy(enabled = false, uri = null)
             _watermarkOptions.value = updated
             prefsStore.saveWatermark(updated)
-            composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(updated, null))
+            composer.layers = listOf(ArtTitleLayer(_options.value), WatermarkLayer(updated, null), LyricLayer(_lyricOptions.value))
             recompose()
         }
     }
@@ -184,9 +215,9 @@ internal class OverlayController(
      * with the currently playing track's state.
      *
      * [ArtTitleLayer] never reads [OverlayFrame.positionMs] - it always draws once nothing else
-     * queued behind it - so this only recomposes when text or artwork actually changed, not on
-     * every tick's advancing position. A future position-driven layer would need to ask for a
-     * redraw itself rather than rely on this ticking it every 500ms regardless.
+     * queued behind it - so this only recomposes when text or artwork actually changed. The lyric
+     * line is position-driven, but is throttled the same way: [lastLineIndex] only advances when
+     * [Lyrics.indexAt] actually returns a different line, not on every tick's advancing position.
      */
     fun onTick(
         title: String?,
@@ -210,34 +241,74 @@ internal class OverlayController(
                         null
                     }
             }
-            if (changed) recompose()
+            val lineIndex = lyrics?.indexAt(positionMs) ?: NO_LINE
+            val lineChanged = lineIndex != lastLineIndex
+            lastLineIndex = lineIndex
+            if (changed || lineChanged) recompose()
         }
     }
 
     /**
-     * Composes the overlay at an export's frame size from the exported track's own state.
+     * Builds a per-position overlay provider for an export: the cover-art/title and watermark
+     * blocks are composed once, since neither depends on position, and the lyric line block is
+     * only recomposed when [Lyrics.indexAt] returns a different line as the export's position
+     * advances - [dev.geode.render.offscreen.OffscreenSceneRenderer.renderFrame] then only
+     * re-uploads the overlay when the returned array is a different instance than last frame's.
      *
-     * Uses a composer of its own rather than [composer]: an export runs on its own dispatcher
-     * while the live view may still be running on [storeScope], and the two must never touch the
-     * same composer's cache.
+     * A composer of its own, not [composer]: an export runs on its own dispatcher while the live
+     * view may still be running on [storeScope], and the two must never touch the same composer's
+     * cache.
      */
-    fun composeForExport(
+    fun overlayProviderForExport(
         width: Int,
         height: Int,
         title: String?,
         artist: String?,
         artworkUri: String?,
-    ): OverlayPixels {
+    ): (Long) -> IntArray? {
         val options = _options.value
-        val layer = ArtTitleLayer(options)
+        val artLayer = ArtTitleLayer(options)
         val watermarkLayer = WatermarkLayer(_watermarkOptions.value, watermarkBitmap)
-        // Nothing to draw: skip the artwork decode too, so a disabled overlay costs an export
-        // nothing (the common case - the feature defaults to off).
-        if (!layer.enabled && !watermarkLayer.enabled) return OverlayPixels(null, width, height)
-        val art = if (options.showArtwork) artworkUri?.let { MediaArtwork.decodeEmbedded(appContext, it) } else null
-        val exportComposer = OverlayComposer().apply { layers = listOf(layer, watermarkLayer) }
-        val pixels = exportComposer.compose(width, height, OverlayFrame(width, height, 0L, title, artist, art))
-        return OverlayPixels(pixels, width, height)
+        val lyricLayer = LyricLayer(_lyricOptions.value)
+        val layers =
+            listOfNotNull(
+                artLayer.takeIf { it.enabled },
+                watermarkLayer.takeIf { it.enabled },
+                lyricLayer.takeIf { it.enabled },
+            )
+        if (layers.isEmpty()) return { null }
+        // Nothing to draw: skip the artwork decode too, so an art/title-disabled export (e.g. a
+        // lyrics-only or watermark-only one) costs nothing extra for it (the common case - the
+        // feature defaults off).
+        val art =
+            if (artLayer.enabled && options.showArtwork) {
+                artworkUri?.let { MediaArtwork.decodeEmbedded(appContext, it) }
+            } else {
+                null
+            }
+        // Only consult lyrics (and so only vary the composed frame across the export) when the
+        // lyric layer is actually enabled - otherwise this stays the fixed single-frame overlay
+        // exports have always had.
+        val lyricsForExport = if (lyricLayer.enabled) lyrics else null
+        val exportComposer = OverlayComposer().apply { this.layers = layers }
+        var composed = false
+        var lastIndex = NO_LINE
+        var lastPixels: IntArray? = null
+        return { positionMs ->
+            val index = lyricsForExport?.indexAt(positionMs) ?: NO_LINE
+            if (!composed || index != lastIndex) {
+                composed = true
+                lastIndex = index
+                val (current, next) = lineTextAt(lyricsForExport, index)
+                lastPixels =
+                    exportComposer.compose(
+                        width,
+                        height,
+                        OverlayFrame(width, height, positionMs, title, artist, art, current, next),
+                    )
+            }
+            lastPixels
+        }
     }
 
     private fun recompose() {
@@ -247,13 +318,23 @@ internal class OverlayController(
             if (width <= 0 || height <= 0) {
                 null
             } else {
-                composer.compose(width, height, OverlayFrame(width, height, positionMs, title, artist, artwork))
+                val (current, next) = lineTextAt(lyrics, lastLineIndex)
+                composer.compose(width, height, OverlayFrame(width, height, positionMs, title, artist, artwork, current, next))
             }
         host.publishOverlay(OverlayPixels(pixels, width, height))
+    }
+
+    private fun lineTextAt(
+        lyrics: Lyrics?,
+        index: Int,
+    ): Pair<String?, String?> {
+        if (lyrics == null || index < 0) return null to null
+        return lyrics.lines.getOrNull(index)?.text to lyrics.lines.getOrNull(index + 1)?.text
     }
 
     private companion object {
         /** Long-edge cap for a decoded watermark - plenty for a logo drawn at up to 30% of frame. */
         const val WATERMARK_MAX_PX = 512
+        const val NO_LINE = -1
     }
 }

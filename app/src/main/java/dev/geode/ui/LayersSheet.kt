@@ -22,6 +22,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
 import dev.geode.viz.ArtTitleOptions
+import dev.geode.viz.LyricOptions
+import dev.geode.viz.LyricPosition
+import dev.geode.viz.LyricSize
 import dev.geode.viz.OverlayPosition
 import dev.geode.viz.OverlaySize
 import dev.geode.viz.WatermarkCorner
@@ -50,7 +53,24 @@ private fun watermarkCornerLabel(corner: WatermarkCorner) =
         WatermarkCorner.BOTTOM_RIGHT -> R.string.overlay_watermark_corner_bottom_right
     }
 
-/** Toggles and choices for the cover-art/title overlay drawn into the visualizer and its exports. */
+private fun lyricPositionLabel(position: LyricPosition) =
+    when (position) {
+        LyricPosition.TOP -> R.string.overlay_lyric_position_top
+        LyricPosition.CENTER -> R.string.overlay_lyric_position_center
+        LyricPosition.BOTTOM -> R.string.overlay_lyric_position_bottom
+    }
+
+private fun lyricSizeLabel(size: LyricSize) =
+    when (size) {
+        LyricSize.SMALL -> R.string.overlay_size_small
+        LyricSize.MEDIUM -> R.string.overlay_size_medium
+        LyricSize.LARGE -> R.string.overlay_size_large
+    }
+
+/**
+ * Toggles and choices for the cover-art/title, synced-lyric, and watermark overlays drawn into
+ * the visualizer and its exports.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LayersSheet(
@@ -60,6 +80,8 @@ internal fun LayersSheet(
     onWatermarkOptionsChange: (WatermarkOptions) -> Unit,
     onPickWatermarkImage: (Uri) -> Unit,
     onClearWatermarkImage: () -> Unit,
+    lyricOptions: LyricOptions,
+    onLyricOptionsChange: (LyricOptions) -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -101,6 +123,38 @@ internal fun LayersSheet(
                         filled = size == options.size,
                         onClick = { onOptionsChange(options.copy(size = size)) },
                     ) { Text(stringResource(sizeLabel(size))) }
+                }
+            }
+
+            HorizontalDivider()
+            Text(stringResource(R.string.overlay_lyric_sheet_title), style = MaterialTheme.typography.titleMedium)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(stringResource(R.string.overlay_lyric_enable))
+                Switch(
+                    checked = lyricOptions.enabled,
+                    onCheckedChange = { onLyricOptionsChange(lyricOptions.copy(enabled = it)) },
+                )
+            }
+
+            Text(stringResource(R.string.overlay_position_label), style = MaterialTheme.typography.labelLarge)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LyricPosition.entries.forEach { position ->
+                    CrystalButton(
+                        compact = true,
+                        filled = position == lyricOptions.position,
+                        onClick = { onLyricOptionsChange(lyricOptions.copy(position = position)) },
+                    ) { Text(stringResource(lyricPositionLabel(position))) }
+                }
+            }
+
+            Text(stringResource(R.string.overlay_size_label), style = MaterialTheme.typography.labelLarge)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LyricSize.entries.forEach { size ->
+                    CrystalButton(
+                        compact = true,
+                        filled = size == lyricOptions.size,
+                        onClick = { onLyricOptionsChange(lyricOptions.copy(size = size)) },
+                    ) { Text(stringResource(lyricSizeLabel(size))) }
                 }
             }
 
