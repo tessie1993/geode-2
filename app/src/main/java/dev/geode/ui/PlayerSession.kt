@@ -62,6 +62,7 @@ import dev.geode.render.scene.CustomizeTab
 import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneParams
 import dev.geode.viz.ArtTitleOptions
+import dev.geode.viz.WatermarkOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -699,6 +700,14 @@ class PlayerSession internal constructor(
         height: Int,
     ): OverlayPixels =
         overlay.composeForExport(width, height, _uiState.value.title, _uiState.value.artist, currentUri?.toString())
+
+    internal val watermarkOptions: StateFlow<WatermarkOptions> get() = overlay.watermarkOptions
+
+    internal fun setWatermarkOptions(transform: (WatermarkOptions) -> WatermarkOptions) = overlay.setWatermarkOptions(transform)
+
+    internal fun pickWatermarkImage(uri: Uri) = overlay.pickWatermarkImage(uri)
+
+    internal fun clearWatermarkImage() = overlay.clearWatermarkImage()
 
     val deviceTracks: StateFlow<List<DeviceTrack>> get() = musicLibrary.deviceTracks
 

@@ -166,9 +166,14 @@ fun VisualsHub(
         }
     }
     if (showLayersSheet) {
+        val watermarkOptions by viewModel.watermarkOptions.collectAsStateWithLifecycle()
         LayersSheet(
             options = overlayOptions,
             onOptionsChange = { updated -> viewModel.setOverlayOptions { updated } },
+            watermarkOptions = watermarkOptions,
+            onWatermarkOptionsChange = { updated -> viewModel.setWatermarkOptions { updated } },
+            onPickWatermarkImage = { uri -> viewModel.pickWatermarkImage(uri) },
+            onClearWatermarkImage = { viewModel.clearWatermarkImage() },
             onDismiss = { showLayersSheet = false },
         )
     }
