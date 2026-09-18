@@ -12,13 +12,10 @@ data class ThemePack(
     val palette: StonePalette,
     val motion: StoneMotion,
     val material: StoneMaterial,
-    val sounds: StoneSounds,
-    val surfaces: Map<StoneComponent, StoneStateArt>,
+    val sounds: StoneSounds = StoneSounds(),
+    val surfaces: Map<StoneComponent, StoneStateArt> = emptyMap(),
 ) {
-    fun surface(component: StoneComponent): StoneStateArt =
-        requireNotNull(surfaces[component]) {
-            "theme pack '$slug' is missing surface art for $component"
-        }
+    fun surface(component: StoneComponent): StoneStateArt? = surfaces[component]
 }
 
 data class StonePalette(
@@ -61,9 +58,9 @@ data class StoneMaterial(
 )
 
 data class StoneSounds(
-    @param:RawRes val click: Int,
-    @param:RawRes val confirm: Int,
-    @param:RawRes val swoop: Int,
+    @param:RawRes val click: Int = 0,
+    @param:RawRes val confirm: Int = 0,
+    @param:RawRes val swoop: Int = 0,
 )
 
 enum class StoneComponent {
@@ -96,11 +93,11 @@ enum class StoneState {
 }
 
 data class StoneStateArt(
-    @param:DrawableRes val default: Int,
-    @param:DrawableRes val focused: Int,
-    @param:DrawableRes val pressed: Int,
-    @param:DrawableRes val selected: Int,
-    @param:DrawableRes val disabled: Int,
+    @param:DrawableRes val default: Int = 0,
+    @param:DrawableRes val focused: Int = 0,
+    @param:DrawableRes val pressed: Int = 0,
+    @param:DrawableRes val selected: Int = 0,
+    @param:DrawableRes val disabled: Int = 0,
 ) {
     @DrawableRes
     fun forState(state: StoneState): Int =

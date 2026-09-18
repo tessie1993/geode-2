@@ -17,7 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun StoneSurfaceArt(
@@ -29,6 +36,43 @@ fun StoneSurfaceArt(
     val pack = LocalThemePack.current
     val art = pack.surface(component)
     val motion = pack.motion
+
+    if (art == null || art.default == 0) {
+        val corner = when (component) {
+            StoneComponent.CHIP, StoneComponent.COMPACT_BUTTON, StoneComponent.PRIMARY_BUTTON, StoneComponent.SECONDARY_BUTTON -> 24.dp
+            StoneComponent.ICON_BUTTON, StoneComponent.KNOB, StoneComponent.PROGRESS_RING, StoneComponent.TOGGLE, StoneComponent.SLIDER_THUMB -> 50.dp
+            StoneComponent.BOTTOM_SHEET -> 32.dp
+            else -> 20.dp
+        }
+        val shape = RoundedCornerShape(corner)
+        val alpha = when (state) {
+            StoneState.PRESSED -> 0.45f
+            StoneState.FOCUSED, StoneState.SELECTED -> 0.38f
+            StoneState.DISABLED -> 0.12f
+            StoneState.DEFAULT -> 0.28f
+        }
+        val fillBrush = Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = alpha),
+                pack.palette.primary.copy(alpha = alpha * 0.7f),
+                pack.palette.accent.copy(alpha = alpha * 0.5f),
+            )
+        )
+        val rimBrush = Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.75f),
+                pack.palette.glow.copy(alpha = 0.5f),
+                Color.White.copy(alpha = 0.35f),
+            )
+        )
+        Box(
+            modifier = modifier
+                .clip(shape)
+                .background(fillBrush)
+                .border(1.dp, rimBrush, shape)
+        )
+        return
+    }
 
     @Composable
     fun fade(target: StoneState): Float {
