@@ -28,6 +28,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.imageResource
+import dev.geode.R
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -68,6 +72,11 @@ fun LiquidBackground(
     val field = LocalWaterField.current ?: rememberWaterField(liquidMotion = motion, reducedMotion = reducedMotion)
     val bubbles = remember(bubbleDensity) { generateBubbles(bubbleDensity) }
 
+    val context = LocalContext.current
+    val baseImage = remember {
+        ImageBitmap.imageResource(context.resources, R.drawable.tp_opaline_ambient_portrait)
+    }
+
     val (hw, hh) = field.heightGridSize
     val causticBitmap = remember(hw, hh) { Bitmap.createBitmap(hw, hh, Bitmap.Config.ARGB_8888) }
     val causticPixels = remember(hw, hh) { IntArray(hw * hh) }
@@ -96,14 +105,18 @@ fun LiquidBackground(
     ) {
         // Reads frameTick so this draw block re-runs every time a new frame's caustics/dye land.
         frameTick.let { }
-        drawBase()
+        drawBase(baseImage)
         drawCausticLayer(causticImage, shader)
         drawBubbles(bubbles, field, reducedMotion)
     }
 }
 
-private fun DrawScope.drawBase() {
-    drawRect(GlassPalette.base)
+private fun DrawScope.drawBase(image: ImageBitmap) {
+    drawImage(
+        image,
+        dstSize = IntSize(size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1)),
+        filterQuality = FilterQuality.Low,
+    )
 }
 
 private fun DrawScope.drawCausticLayer(
@@ -114,7 +127,7 @@ private fun DrawScope.drawCausticLayer(
     if (shader != null) {
         drawRefractedCaustics(image, shader, dst)
     } else {
-        drawImage(image, dstSize = dst, filterQuality = FilterQuality.Low, alpha = 0.85f)
+        drawImage(image, dstSize = dst, filterQuality = FilterQuality.Low, alpha = 0.55f, blendMode = BlendMode.Screen)
     }
 }
 

@@ -29,27 +29,35 @@ import dev.geode.ui.theme.MysteryQuestFamily
  * A single source of truth: every glass primitive reads these instead of hardcoding colour.
  */
 object GlassPalette {
-    val base = Color(0xFF8C95BB)
-    val baseLight = Color(0xFFA4ACCB)
-    val baseShadow = Color(0xFF6F78A3)
+    val base = Color(0xFF9AA7C3) // Canonical Base Water Slate
+    val baseLight = Color(0xFFB5C1DC)
+    val baseShadow = Color(0xFF7582A0)
 
-    val mint = Color(0xFFBFEBD8)
-    val lavender = Color(0xFFCDBDF0)
-    val peach = Color(0xFFF6CDB2)
-    val pink = Color(0xFFF3BFD8)
-    val sky = Color(0xFFBFD8F2)
+    val lilac = Color(0xFFD8C5E8)
+    val mint = Color(0xFFCEE6D4)
+    val butter = Color(0xFFE7E5BA)
+    val rose = Color(0xFFE8C8D8)
+    val cyan = Color(0xFF8DDEF0)
+    val violet = Color(0xFFD6A9EA)
 
-    val glassFill: Color = Color.White.copy(alpha = 0.32f)
-    val glassRim: Color = Color.White.copy(alpha = 0.55f)
-    val glassShadow: Color = baseShadow.copy(alpha = 0.35f)
+    // Palette aliases for compatibility
+    val lavender = lilac
+    val peach = butter
+    val pink = rose
+    val sky = cyan
 
-    val textPrimary: Color = Color.White.copy(alpha = 0.92f)
-    val textSecondary: Color = Color.White.copy(alpha = 0.66f)
+    val glassFill: Color = Color(0x38FAFBFF)
+    val glassRim: Color = Color(0x8CFAFBFF)
+    val glassShadow: Color = baseShadow.copy(alpha = 0.32f)
+
+    val textPrimary: Color = Color(0xFFFAFBFF)
+    val textSecondary: Color = Color(0xBBFAFBFF)
 }
 
 /** Shape tokens shared by every glass primitive. */
 object GlassShapes {
     val pill: Shape = RoundedCornerShape(percent = 50)
+    val pebble: Shape = RoundedCornerShape(topStart = 32.dp, topEnd = 24.dp, bottomEnd = 30.dp, bottomStart = 22.dp)
     val bubble: Shape = CircleShape
     val tile: Shape = RoundedCornerShape(28.dp)
     val sheet: Shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)

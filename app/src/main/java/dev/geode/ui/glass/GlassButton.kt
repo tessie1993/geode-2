@@ -55,6 +55,39 @@ fun GlassButton(
     }
 }
 
+/** An irregular organic pebble button conforming to the mockups. */
+@Composable
+fun GlassPebbleButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+    selected: Boolean = false,
+    tint: Color? = null,
+) {
+    val alpha = if (enabled) 1f else 0.5f
+    Row(
+        modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .glassSurface(shape = GlassShapes.pebble, tint = tint, selected = selected)
+            .floatOnWater()
+            .glassTouch(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val content = GlassPalette.textPrimary.copy(alpha = alpha)
+        CompositionLocalProvider(LocalContentColor provides content) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, tint = content)
+                Spacer(Modifier.size(8.dp))
+            }
+            ProvideTextStyle(MaterialTheme.typography.labelLarge) { Text(text) }
+        }
+    }
+}
+
 /** A circular icon button, e.g. the shortcut bubbles floating on the canvas in ref-05. */
 @Composable
 fun GlassBubbleButton(

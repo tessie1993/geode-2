@@ -71,11 +71,17 @@ private fun GalleryTopBar() {
 
 @Composable
 private fun GalleryButtons() {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        GlassButton(text = stringResource(R.string.glass_gallery_button_label), onClick = {}, icon = GlassIcons.Heart)
-        GlassBubbleButton(icon = GlassIcons.Star, contentDescription = null, onClick = {})
-        GlassTile(onClick = {}) { Icon(GlassIcons.Camera, contentDescription = null) }
-        GlassPlayButton(icon = GlassIcons.Play, contentDescription = stringResource(R.string.action_play), onClick = {})
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            GlassButton(text = stringResource(R.string.glass_gallery_button_label), onClick = {}, icon = GlassIcons.Heart)
+            GlassBubbleButton(icon = GlassIcons.Star, contentDescription = null, onClick = {})
+            GlassTile(onClick = {}) { Icon(GlassIcons.Camera, contentDescription = null) }
+            GlassPlayButton(icon = GlassIcons.Play, contentDescription = stringResource(R.string.action_play), onClick = {})
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            GlassPebbleButton(text = "Opaline Pebble", onClick = {}, icon = GlassIcons.Star, selected = true)
+            GlassPebbleButton(text = "Quiet Water", onClick = {})
+        }
     }
 }
 
