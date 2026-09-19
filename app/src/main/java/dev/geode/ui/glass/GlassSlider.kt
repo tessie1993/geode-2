@@ -16,8 +16,6 @@ import androidx.compose.ui.unit.dp
 
 /**
  * A glass tube track with an iridescent fill on the filled side and a pearl sphere thumb.
- * Same signature shape as `CrystalSlider` (`ui/CrystalControls.kt`) so a screen unit can swap the
- * call 1:1.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
