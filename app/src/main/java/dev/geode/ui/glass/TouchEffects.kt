@@ -383,18 +383,21 @@ private fun ContentDrawScope.drawRippleRings(ripple: GlassRipple) {
 private fun ContentDrawScope.drawInkSwirl(state: GlassTouchState) {
     val p = state.inkProgress.value
     val fade = (1f - p).coerceIn(0f, 1f)
-    val maxRadius = size.minDimension * 0.9f
+    val maxRadius = size.minDimension * 0.95f
+    val count = inkArcColors.size
     inkArcColors.forEachIndexed { i, color ->
-        val radius = maxRadius * (0.25f + 0.18f * i) * (0.4f + 0.6f * p)
+        val step = i.toFloat() / count
+        val radius = maxRadius * (0.32f + 0.68f * p) * (0.88f + 0.12f * kotlin.math.sin(step * 6.28f + p * 3f))
         val rect = Rect(center = state.inkOrigin, radius = radius)
+        val strokeW = 4.dp.toPx() + 6.dp.toPx() * (1f - p)
         drawArc(
-            color = color.copy(alpha = 0.32f * fade),
-            startAngle = i * 72f + p * 220f,
-            sweepAngle = 46f,
+            color = color.copy(alpha = 0.45f * fade),
+            startAngle = i * (360f / count) + p * 160f,
+            sweepAngle = (360f / count) + 20f,
             useCenter = false,
             topLeft = rect.topLeft,
             size = rect.size,
-            style = Stroke(width = 3.dp.toPx()),
+            style = Stroke(width = strokeW),
             blendMode = BlendMode.Plus,
         )
     }
