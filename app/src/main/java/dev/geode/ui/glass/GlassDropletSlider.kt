@@ -367,12 +367,13 @@ private fun DrawScope.drawOrganicPinchedTrack(
     // 3. Subtle internal light glow along filled fraction
     if (fraction > 0.01f) {
         val filledW = (w * fraction).coerceIn(0f, w)
+        val glowAlpha = if (enabled) 1f else 0.4f
         drawLine(
             brush = Brush.horizontalGradient(
                 colors = listOf(
-                    GlassPalette.cyan.copy(alpha = 0.65f),
-                    GlassPalette.mint.copy(alpha = 0.55f),
-                    GlassPalette.lavender.copy(alpha = 0.45f),
+                    GlassPalette.cyan.copy(alpha = 0.65f * glowAlpha),
+                    GlassPalette.mint.copy(alpha = 0.55f * glowAlpha),
+                    GlassPalette.lavender.copy(alpha = 0.45f * glowAlpha),
                 ),
                 endX = filledW,
             ),
