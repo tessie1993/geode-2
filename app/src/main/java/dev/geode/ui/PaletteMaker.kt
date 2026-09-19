@@ -38,6 +38,7 @@ import dev.geode.R
 import dev.geode.data.CustomPalette
 import dev.geode.data.PaletteStore
 import dev.geode.render.scene.SceneParams
+import dev.geode.ui.glass.GlassSlider
 
 @Stable
 internal class SavedPalettes(
@@ -154,7 +155,7 @@ internal fun PaletteMakerCard(
             stringResource(R.string.palette_base_hue, "%.2f".format(baseHue)),
             style = MaterialTheme.typography.labelSmall,
         )
-        CrystalSlider(
+        GlassSlider(
             value = baseHue,
             onValueChange = { baseHue = it },
             valueRange = 0f..1f,
@@ -164,7 +165,7 @@ internal fun PaletteMakerCard(
             stringResource(R.string.palette_hue_span, "%.2f".format(hueSpan)),
             style = MaterialTheme.typography.labelSmall,
         )
-        CrystalSlider(
+        GlassSlider(
             value = hueSpan,
             onValueChange = { hueSpan = it },
             valueRange = 0f..1f,

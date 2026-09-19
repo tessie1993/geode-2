@@ -24,6 +24,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,8 +63,9 @@ import dev.geode.render.TouchField
 import dev.geode.render.VisualizerRenderer
 import dev.geode.render.VisualizerView
 import dev.geode.render.scene.TouchTransform
-import dev.geode.ui.theme.StoneIcon
-import dev.geode.ui.theme.StoneIconArt
+import dev.geode.ui.glass.GlassPlayButton
+import dev.geode.ui.glass.LiquidBackground
+import dev.geode.ui.glass.glassScrim
 import kotlin.math.PI
 import kotlin.math.abs
 
@@ -129,12 +135,16 @@ fun VisualizerScreen(
                     },
             )
         } else {
-            CrystalBackground(Modifier.fillMaxSize(), reducedMotion = gui.reducedMotion)
+            LiquidBackground(Modifier.fillMaxSize(), motion = gui.liquidMotion, reducedMotion = gui.reducedMotion)
             Column(
                 Modifier.align(Alignment.Center).padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                CrystalOverline(stringResource(R.string.second_screen_showing_on))
+                Text(
+                    stringResource(R.string.second_screen_showing_on).uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.6.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
+                    color = accentTextColor().copy(alpha = 0.9f),
+                )
                 Text(
                     externalDisplayName,
                     style = MaterialTheme.typography.headlineSmall,
@@ -243,21 +253,19 @@ fun VisualizerScreen(
                             )
                         }
                         IconButton(onClick = viewModel::previous, enabled = state.hasMedia) {
-                            StoneIconArt(StoneIcon.PREVIOUS, stringResource(R.string.action_previous))
+                            Icon(Icons.Outlined.SkipPrevious, stringResource(R.string.action_previous))
                         }
-                        CrystalPlayButton(
-                            icon = if (state.isPlaying) StoneIcon.PAUSE else StoneIcon.PLAY,
-                            contentDescription =
-                                stringResource(if (state.isPlaying) R.string.action_pause else R.string.action_play),
-                            onClick = viewModel::togglePlayPause,
+                        GlassPlayButton(
+                            isPlaying = state.isPlaying,
+                            onToggle = viewModel::togglePlayPause,
                             enabled = state.hasMedia,
                         )
                         IconButton(onClick = viewModel::next, enabled = state.hasMedia) {
-                            StoneIconArt(StoneIcon.NEXT, stringResource(R.string.action_next))
+                            Icon(Icons.Outlined.SkipNext, stringResource(R.string.action_next))
                         }
                         IconButton(onClick = viewModel::cycleRepeatMode) {
-                            StoneIconArt(
-                                StoneIcon.REPEAT,
+                            Icon(
+                                Icons.Outlined.Repeat,
                                 stringResource(R.string.action_repeat),
                                 tint =
                                     if (state.repeatMode != Player.REPEAT_MODE_OFF) {
@@ -274,11 +282,11 @@ fun VisualizerScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         TextButton(onClick = onOpenVisuals) {
-                            StoneIconArt(StoneIcon.SETTINGS, null)
+                            Icon(Icons.Outlined.Tune, null)
                             Text("  " + stringResource(R.string.nav_visuals))
                         }
                         TextButton(onClick = viewModel::cycleAutoMode) {
-                            StoneIconArt(StoneIcon.QUEUE, null)
+                            Icon(Icons.Outlined.AutoAwesome, null)
                             Text(
                                 "  " +
                                     stringResource(

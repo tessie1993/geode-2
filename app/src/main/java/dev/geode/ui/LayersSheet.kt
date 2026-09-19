@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
+import dev.geode.ui.glass.GlassButton
+import dev.geode.ui.glass.GlassSlider
 import dev.geode.viz.ArtTitleOptions
 import dev.geode.viz.LyricOptions
 import dev.geode.viz.LyricPosition
@@ -107,7 +109,7 @@ internal fun LayersSheet(
             Text(stringResource(R.string.overlay_position_label), style = MaterialTheme.typography.labelLarge)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 OverlayPosition.entries.forEach { position ->
-                    CrystalButton(
+                    GlassButton(
                         compact = true,
                         filled = position == options.position,
                         onClick = { onOptionsChange(options.copy(position = position)) },
@@ -118,7 +120,7 @@ internal fun LayersSheet(
             Text(stringResource(R.string.overlay_size_label), style = MaterialTheme.typography.labelLarge)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 OverlaySize.entries.forEach { size ->
-                    CrystalButton(
+                    GlassButton(
                         compact = true,
                         filled = size == options.size,
                         onClick = { onOptionsChange(options.copy(size = size)) },
@@ -139,7 +141,7 @@ internal fun LayersSheet(
             Text(stringResource(R.string.overlay_position_label), style = MaterialTheme.typography.labelLarge)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 LyricPosition.entries.forEach { position ->
-                    CrystalButton(
+                    GlassButton(
                         compact = true,
                         filled = position == lyricOptions.position,
                         onClick = { onLyricOptionsChange(lyricOptions.copy(position = position)) },
@@ -150,7 +152,7 @@ internal fun LayersSheet(
             Text(stringResource(R.string.overlay_size_label), style = MaterialTheme.typography.labelLarge)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 LyricSize.entries.forEach { size ->
-                    CrystalButton(
+                    GlassButton(
                         compact = true,
                         filled = size == lyricOptions.size,
                         onClick = { onLyricOptionsChange(lyricOptions.copy(size = size)) },
@@ -186,11 +188,11 @@ private fun WatermarkSection(
     Text(stringResource(R.string.overlay_watermark_section), style = MaterialTheme.typography.titleMedium)
 
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        CrystalButton(compact = true, filled = false, onClick = { picker.launch(arrayOf("image/*")) }) {
+        GlassButton(compact = true, filled = false, onClick = { picker.launch(arrayOf("image/*")) }) {
             Text(stringResource(R.string.overlay_watermark_pick))
         }
         if (options.uri != null) {
-            CrystalButton(compact = true, filled = false, onClick = onClearImage) {
+            GlassButton(compact = true, filled = false, onClick = onClearImage) {
                 Text(stringResource(R.string.overlay_watermark_clear))
             }
         }
@@ -215,7 +217,7 @@ private fun WatermarkSection(
     Text(stringResource(R.string.overlay_watermark_corner_label), style = MaterialTheme.typography.labelLarge)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         WatermarkCorner.entries.forEach { corner ->
-            CrystalButton(
+            GlassButton(
                 compact = true,
                 filled = corner == options.corner,
                 onClick = { onOptionsChange(options.copy(corner = corner)) },
@@ -228,7 +230,7 @@ private fun WatermarkSection(
             stringResource(R.string.overlay_watermark_size_label, (options.sizeFraction * 100).toInt()),
             style = MaterialTheme.typography.labelLarge,
         )
-        CrystalSlider(
+        GlassSlider(
             value = options.sizeFraction,
             onValueChange = { onOptionsChange(options.copy(sizeFraction = it)) },
             valueRange = WatermarkOptions.MIN_SIZE_FRACTION..WatermarkOptions.MAX_SIZE_FRACTION,
@@ -240,7 +242,7 @@ private fun WatermarkSection(
             stringResource(R.string.overlay_watermark_opacity_label, (options.opacity * 100).toInt()),
             style = MaterialTheme.typography.labelLarge,
         )
-        CrystalSlider(
+        GlassSlider(
             value = options.opacity,
             onValueChange = { onOptionsChange(options.copy(opacity = it)) },
             valueRange = WatermarkOptions.MIN_OPACITY..WatermarkOptions.MAX_OPACITY,

@@ -61,8 +61,20 @@ import dev.geode.render.scene.CustomizeTab
 import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.VisualStyleCatalog
-import dev.geode.ui.theme.StoneIcon
-import dev.geode.ui.theme.StoneIconArt
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Share
+import dev.geode.ui.glass.GlassButton
+import dev.geode.ui.glass.GlassHorizontalTabs
+import dev.geode.ui.glass.GlassPalette
+import dev.geode.ui.glass.GlassShapes
+import dev.geode.ui.glass.GlassSlider
+import dev.geode.ui.glass.glassSurface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -99,11 +111,9 @@ fun VisualsHub(
             if (liveBackdrop) {
                 Modifier
                     .padding(horizontal = 8.dp, vertical = 6.dp)
-                    .readingPlate(
-                        opacity = (gui.barOpacity * 0.62f).coerceIn(0.18f, 0.7f),
-                        tint = MaterialTheme.colorScheme.surface,
-                        corner = 20.dp,
-                        glow = MaterialTheme.colorScheme.primary,
+                    .glassSurface(
+                        shape = GlassShapes.tile,
+                        tint = MaterialTheme.colorScheme.surface.copy(alpha = (gui.barOpacity * 0.62f).coerceIn(0.18f, 0.7f)),
                     )
             } else {
                 Modifier
@@ -116,16 +126,28 @@ fun VisualsHub(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Column(Modifier.weight(1f)) {
-                        CrystalOverline(
-                            when {
+                        Text(
+                            (when {
                                 takes.recording -> "● Recording  ${formatTakeTime(takes.recordedMs)}"
                                 takes.replaying != null -> "▶ ${takes.replaying}"
                                 liveBackdrop -> "Live overlay"
                                 else -> "Geode"
-                            },
+                            }).uppercase(),
+                            style =
+                                MaterialTheme.typography.labelSmall.copy(
+                                    letterSpacing = 2.6.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                                ),
                             color = if (takes.recording) MaterialTheme.colorScheme.error else accentTextColor(),
                         )
-                        GlowTitle("Visuals")
+                        Text(
+                            "Visuals",
+                            style =
+                                MaterialTheme.typography.headlineSmall.copy(
+                                    shadow = Shadow(color = GlassPalette.cyan.copy(alpha = 0.6f), blurRadius = 24f),
+                                ),
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
                     }
                     IconButton(onClick = {
                         if (takes.recording) studioViewModel.stopRecording() else studioViewModel.startRecording()
@@ -150,12 +172,12 @@ fun VisualsHub(
                             tint = if (liveBackdrop) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                         )
                     }
-                    CrystalButton(compact = true, filled = false, onClick = { showLayersSheet = true }) {
+                    GlassButton(compact = true, filled = false, onClick = { showLayersSheet = true }) {
                         Text(stringResource(R.string.overlay_layers_entry))
                     }
-                    CrystalButton(compact = true, filled = false, onClick = onOpenNowPlaying) { Text("View live") }
+                    GlassButton(compact = true, filled = false, onClick = onOpenNowPlaying) { Text("View live") }
                 }
-                CrystalTabs(titles = tabs, selected = tab, onSelect = { tab = it })
+                GlassHorizontalTabs(titles = tabs, selected = tab, onSelect = { tab = it }, scrollable = true)
                 when (tab) {
                     0 -> PresetsTreeTab(viewModel, visualizerView)
                     1 -> StylesTab(viewModel, visualizerView, onOpenTextures = { tab = 3 })
@@ -242,7 +264,7 @@ private fun PresetsTreeTab(
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
-                CrystalButton(compact = true, filled = false, onClick = {
+                GlassButton(compact = true, filled = false, onClick = {
                     val pasted = clipboardText(context)
                     importNote =
                         when {
@@ -252,13 +274,13 @@ private fun PresetsTreeTab(
                                     ?: "That clipboard text is not a Geode preset link."
                         }
                 }) { Text("Paste a shared preset") }
-                CrystalButton(compact = true, filled = false, onClick = {
+                GlassButton(compact = true, filled = false, onClick = {
                     presetFilePicker.launch(arrayOf("*/*"))
                 }) { Text("Open a preset file") }
-                CrystalButton(compact = true, filled = false, onClick = { showTemplates = true }) {
+                GlassButton(compact = true, filled = false, onClick = { showTemplates = true }) {
                     Text(stringResource(R.string.template_entry_point))
                 }
-                CrystalButton(compact = true, filled = false, onClick = { showBackground = true }) {
+                GlassButton(compact = true, filled = false, onClick = { showBackground = true }) {
                     Text(stringResource(R.string.background_entry_point))
                 }
             }
@@ -278,7 +300,7 @@ private fun PresetsTreeTab(
                     placeholder = { Text("New folder name") },
                     singleLine = true,
                 )
-                CrystalButton(onClick = {
+                GlassButton(onClick = {
                     if (newFolder.isNotBlank()) {
                         visualsViewModel.addPresetFolder(newFolder.trim())
                         newFolder = ""
@@ -380,7 +402,7 @@ private fun PresetsTreeTab(
                     placeholder = { Text("Save current as…") },
                     singleLine = true,
                 )
-                CrystalButton(onClick = {
+                GlassButton(onClick = {
                     if (saveName.isNotBlank()) {
                         val existing = presetReplaceTarget(saveName, viz.presets)
                         if (existing != null) {
@@ -399,7 +421,7 @@ private fun PresetsTreeTab(
             if (folders.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 12.dp)) {
                     (listOf("") + folders).forEach { f ->
-                        CrystalButton(compact = true, filled = saveFolder == f, onClick = { saveFolder = f }) {
+                        GlassButton(compact = true, filled = saveFolder == f, onClick = { saveFolder = f }) {
                             Text(f.ifEmpty { "root" }, style = MaterialTheme.typography.bodySmall)
                         }
                     }
@@ -430,7 +452,7 @@ private fun PresetsTreeTab(
                 }
             },
             confirmButton = {
-                CrystalButton(enabled = proposed.isNotBlank() && !collides, onClick = {
+                GlassButton(enabled = proposed.isNotBlank() && !collides, onClick = {
                     visualsViewModel.renamePresetFolder(old, proposed)
                     if (saveFolder == old) saveFolder = proposed
                     renamingFolder = null
@@ -450,7 +472,7 @@ private fun PresetsTreeTab(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     (listOf("") + folders).forEach { f ->
-                        CrystalButton(compact = true, filled = f == current, onClick = {
+                        GlassButton(compact = true, filled = f == current, onClick = {
                             visualsViewModel.movePresetToFolder(name, f)
                             movingPreset = null
                         }) { Text(f.ifEmpty { "root" }, style = MaterialTheme.typography.bodySmall) }
@@ -471,7 +493,7 @@ private fun PresetsTreeTab(
                 )
             },
             confirmButton = {
-                CrystalButton(onClick = {
+                GlassButton(onClick = {
                     visualsViewModel.savePreset(
                         saveName.trim(),
                         visualizerView.visualizerRenderer.customShaderFor(viewModel.vizState.value.sceneId),
@@ -495,7 +517,7 @@ private fun PresetsTreeTab(
                 )
             },
             confirmButton = {
-                CrystalButton(onClick = {
+                GlassButton(onClick = {
                     visualsViewModel.deletePreset(name)
                     deletingPreset = null
                 }) { Text("Delete") }
@@ -580,15 +602,16 @@ private fun StylesTab(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                CrystalButton(compact = true, filled = false, onClick = { pickScene(suggested) }) {
+                GlassButton(compact = true, filled = false, onClick = { pickScene(suggested) }) {
                     Text(sceneDisplayLabel(suggested), style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
-        CrystalTabs(
+        GlassHorizontalTabs(
             titles = listOf("Silk", "Life", "Mycelium", "Acid", "Shaders", "Fluid", "Cymatics", "MilkDrop"),
             selected = sub,
             onSelect = { sub = it },
+            scrollable = true,
         )
         when (sub) {
             0 -> SceneList(VisualStyleCatalog.silkIds, viz.sceneId, pickScene)
@@ -628,7 +651,7 @@ private fun SceneList(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.size(6.dp), contentAlignment = Alignment.Center) {
-                    if (sel) CrystalGem(MaterialTheme.colorScheme.primary, size = 6.dp)
+                    if (sel) Box(Modifier.size(6.dp).background(GlassPalette.mint, CircleShape))
                 }
                 Text(
                     sceneDisplayLabel(id),
@@ -704,9 +727,9 @@ private fun MilkDropTab(
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CrystalButton(onClick = { milkPicker.launch(arrayOf("*/*")) }) { Text("Load .milk file") }
-            CrystalButton(filled = false, onClick = { milkFolderPicker.launch(null) }) { Text("Import folder…") }
-            CrystalButton(filled = false, onClick = onOpenTextures) { Text("Textures…") }
+            GlassButton(onClick = { milkPicker.launch(arrayOf("*/*")) }) { Text("Load .milk file") }
+            GlassButton(filled = false, onClick = { milkFolderPicker.launch(null) }) { Text("Import folder…") }
+            GlassButton(filled = false, onClick = onOpenTextures) { Text("Textures…") }
         }
         packReport?.let { r ->
             Text(
@@ -773,7 +796,7 @@ private fun MilkDropTab(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.size(6.dp), contentAlignment = Alignment.Center) {
-                    if (active) CrystalGem(MaterialTheme.colorScheme.primary, size = 6.dp)
+                    if (active) Box(Modifier.size(6.dp).background(GlassPalette.mint, CircleShape))
                 }
                 Text(
                     f.nameWithoutExtension,
@@ -839,7 +862,7 @@ private fun MilkTexturePickerDialog(
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {},
-        dismissButton = { CrystalButton(filled = false, onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { GlassButton(filled = false, onClick = onDismiss) { Text("Cancel") } },
         title = { Text("Texture for \"$expected\"") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -896,13 +919,14 @@ internal fun CustomizePanel(
         }
     }
     Column(Modifier.fillMaxSize()) {
-        CrystalTabs(
+        GlassHorizontalTabs(
             titles = titles,
             selected = sub,
             onSelect = {
                 sub = it
                 shownTitle = titles[it]
             },
+            scrollable = true,
         )
         CustomizeToolbar(viewModel, visualizerView, viz.params, tabs.getOrNull(sub), query) { query = it }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
@@ -1039,7 +1063,7 @@ private fun CustomizeToolbar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CrystalButton(
+            GlassButton(
                 compact = true,
                 enabled = tab != null,
                 onClick = { tab?.let(visualsViewModel::randomizeParams) },
@@ -1048,13 +1072,13 @@ private fun CustomizeToolbar(
                 Spacer(Modifier.width(6.dp))
                 Text(if (tab == null) "Randomize" else "Randomize ${tab.title}")
             }
-            CrystalButton(compact = true, filled = false, enabled = history.canUndo, onClick = visualsViewModel::undoParams) {
+            GlassButton(compact = true, filled = false, enabled = history.canUndo, onClick = visualsViewModel::undoParams) {
                 Text("Undo")
             }
-            CrystalButton(compact = true, filled = false, enabled = history.canRedo, onClick = visualsViewModel::redoParams) {
+            GlassButton(compact = true, filled = false, enabled = history.canRedo, onClick = visualsViewModel::redoParams) {
                 Text("Redo")
             }
-            CrystalButton(
+            GlassButton(
                 compact = true,
                 filled = false,
                 enabled = tab != null,
@@ -1062,10 +1086,10 @@ private fun CustomizeToolbar(
             ) {
                 Text(if (tab == null) "Reset tab" else "Reset ${tab.title}")
             }
-            CrystalButton(compact = true, filled = false, enabled = changed > 0, onClick = { confirmReset = true }) {
+            GlassButton(compact = true, filled = false, enabled = changed > 0, onClick = { confirmReset = true }) {
                 Text("Reset all")
             }
-            CrystalButton(compact = true, filled = false, onClick = { savingPreset = true }) { Text("Save as preset") }
+            GlassButton(compact = true, filled = false, onClick = { savingPreset = true }) { Text("Save as preset") }
             Text(
                 if (changed == 0) "defaults" else "$changed changed",
                 style = MaterialTheme.typography.labelSmall,
@@ -1078,15 +1102,15 @@ private fun CustomizeToolbar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("A/B", style = MaterialTheme.typography.labelSmall, color = accentTextColor())
-            CrystalButton(compact = true, filled = false, onClick = visualsViewModel::captureSnapshotA) { Text("Set A") }
-            CrystalButton(
+            GlassButton(compact = true, filled = false, onClick = visualsViewModel::captureSnapshotA) { Text("Set A") }
+            GlassButton(
                 compact = true,
                 filled = false,
                 enabled = ab.a != null,
                 onClick = visualsViewModel::recallSnapshotA,
             ) { Text("Recall A") }
-            CrystalButton(compact = true, filled = false, onClick = visualsViewModel::captureSnapshotB) { Text("Set B") }
-            CrystalButton(
+            GlassButton(compact = true, filled = false, onClick = visualsViewModel::captureSnapshotB) { Text("Set B") }
+            GlassButton(
                 compact = true,
                 filled = false,
                 enabled = ab.b != null,
@@ -1095,7 +1119,7 @@ private fun CustomizeToolbar(
         }
         if (ab.canBlend) {
             Text("Blend A → B ${"%.2f".format(ab.blend)}", style = MaterialTheme.typography.labelSmall)
-            CrystalSlider(
+            GlassSlider(
                 value = ab.blend,
                 onValueChange = visualsViewModel::blendSnapshots,
                 valueRange = 0f..1f,
@@ -1116,7 +1140,7 @@ private fun CustomizeToolbar(
                 )
             },
             confirmButton = {
-                CrystalButton(enabled = presetName.isNotBlank(), onClick = {
+                GlassButton(enabled = presetName.isNotBlank(), onClick = {
                     visualsViewModel.savePreset(
                         presetName.trim(),
                         visualizerView.visualizerRenderer.customShaderFor(viewModel.vizState.value.sceneId),
@@ -1139,7 +1163,7 @@ private fun CustomizeToolbar(
                 )
             },
             confirmButton = {
-                CrystalButton(onClick = {
+                GlassButton(onClick = {
                     visualsViewModel.resetAllCustomize()
                     confirmReset = false
                 }) { Text("Reset") }
@@ -1290,7 +1314,7 @@ private fun TakesTab(viewModel: StudioViewModel) {
                 }
             },
             confirmButton = {
-                CrystalButton(enabled = renameError == null, onClick = {
+                GlassButton(enabled = renameError == null, onClick = {
                     studioViewModel.renameTake(old, proposed)
                     renaming = null
                 }) { Text("Rename") }
@@ -1306,7 +1330,7 @@ private fun TakesTab(viewModel: StudioViewModel) {
                 Text("Deletes this recorded performance for good — there is no undo.")
             },
             confirmButton = {
-                CrystalButton(onClick = {
+                GlassButton(onClick = {
                     studioViewModel.deleteTake(name)
                     deleting = null
                 }) { Text("Delete") }
@@ -1333,11 +1357,11 @@ private fun TexturesHubTab(
             }
         }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        CrystalButton(onClick = { picker.launch(arrayOf("image/*")) }) { Text("Import images") }
+        GlassButton(onClick = { picker.launch(arrayOf("image/*")) }) { Text("Import images") }
         textures.forEach { tex ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(tex.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                CrystalButton(compact = true, filled = false, onClick = {
+                GlassButton(compact = true, filled = false, onClick = {
                     visualsViewModel.useTexture(tex.name) { path -> selectMilk(viewModel, visualizerView, path) }
                 }) { Text("Use") }
                 IconButton(onClick = { deletingTexture = tex.name }) {
@@ -1358,7 +1382,7 @@ private fun TexturesHubTab(
                 )
             },
             confirmButton = {
-                CrystalButton(onClick = {
+                GlassButton(onClick = {
                     visualsViewModel.removeTexture(name)
                     deletingTexture = null
                 }) { Text("Delete") }
@@ -1406,7 +1430,7 @@ private fun GlslHubTab(
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CrystalButton(onClick = { viewModel.applyCustomShader(source) }) { Text("Apply shader") }
+            GlassButton(onClick = { viewModel.applyCustomShader(source) }) { Text("Apply shader") }
             TextButton(onClick = {
                 source = visualizerView.visualizerRenderer.customShaderFor(viz.sceneId) ?: ""
             }) { Text("Revert") }

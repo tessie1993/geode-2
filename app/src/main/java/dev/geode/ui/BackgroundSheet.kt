@@ -20,6 +20,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.data.BackgroundPrefsStore
 import dev.geode.render.UnderlayBlend
+import dev.geode.ui.glass.GlassButton
+import dev.geode.ui.glass.GlassSlider
 import kotlin.math.roundToInt
 
 /** Picks the background image behind the scene, and its blend/amount/blur/dim. */
@@ -48,11 +50,11 @@ fun BackgroundSheet(onDismiss: () -> Unit) {
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CrystalButton(compact = true, filled = false, onClick = { picker.launch(arrayOf("image/*")) }) {
+                GlassButton(compact = true, filled = false, onClick = { picker.launch(arrayOf("image/*")) }) {
                     Text(stringResource(R.string.background_pick))
                 }
                 if (prefs.uri != null) {
-                    CrystalButton(compact = true, filled = false, onClick = visualsViewModel::clearBackgroundImage) {
+                    GlassButton(compact = true, filled = false, onClick = visualsViewModel::clearBackgroundImage) {
                         Text(stringResource(R.string.background_clear))
                     }
                 }
@@ -75,7 +77,7 @@ fun BackgroundSheet(onDismiss: () -> Unit) {
                     stringResource(R.string.background_amount, (prefs.amount * 100).roundToInt()),
                     style = MaterialTheme.typography.labelMedium,
                 )
-                CrystalSlider(
+                GlassSlider(
                     value = prefs.amount,
                     onValueChange = visualsViewModel::setBackgroundAmount,
                     valueRange = 0f..1f,
@@ -83,7 +85,7 @@ fun BackgroundSheet(onDismiss: () -> Unit) {
             }
             Column {
                 Text(stringResource(R.string.background_blur, prefs.blurRadius), style = MaterialTheme.typography.labelMedium)
-                CrystalSlider(
+                GlassSlider(
                     value = prefs.blurRadius.toFloat(),
                     onValueChange = { visualsViewModel.setBackgroundBlurRadius(it.roundToInt()) },
                     valueRange = BackgroundPrefsStore.BLUR_RANGE.first.toFloat()..BackgroundPrefsStore.BLUR_RANGE.last.toFloat(),
@@ -94,7 +96,7 @@ fun BackgroundSheet(onDismiss: () -> Unit) {
                     stringResource(R.string.background_dim, (prefs.dim * 100).roundToInt()),
                     style = MaterialTheme.typography.labelMedium,
                 )
-                CrystalSlider(
+                GlassSlider(
                     value = prefs.dim,
                     onValueChange = visualsViewModel::setBackgroundDim,
                     valueRange = 0f..1f,
@@ -111,7 +113,7 @@ private fun blendOption(
     current: UnderlayBlend,
     onSelect: (UnderlayBlend) -> Unit,
 ) {
-    CrystalButton(compact = true, filled = current == option, onClick = { onSelect(option) }) {
+    GlassButton(compact = true, filled = current == option, onClick = { onSelect(option) }) {
         Text(stringResource(labelRes), style = MaterialTheme.typography.bodySmall)
     }
 }

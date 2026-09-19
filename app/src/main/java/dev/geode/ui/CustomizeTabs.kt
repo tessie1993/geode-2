@@ -1,5 +1,6 @@
 package dev.geode.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -59,6 +62,9 @@ import dev.geode.render.scene.ParamScope
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
 import dev.geode.render.scene.VisualStyleCatalog
+import dev.geode.ui.glass.GlassButton
+import dev.geode.ui.glass.GlassPalette
+import dev.geode.ui.glass.GlassSlider
 import kotlin.math.ln
 import kotlin.math.pow
 
@@ -110,15 +116,24 @@ internal fun SectionHeader(
         modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CrystalGem(MaterialTheme.colorScheme.primary, size = 5.dp)
+        Box(
+            Modifier
+                .padding(end = 8.dp)
+                .size(6.dp)
+                .background(GlassPalette.mint, CircleShape),
+        )
         Text(
             title.uppercase(),
-            modifier = Modifier.padding(start = 8.dp),
             style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 2.sp),
             color = accentTextColor(),
         )
     }
-    Box(Modifier.fillMaxWidth().height(1.dp).luminousHairline(MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)))
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(GlassPalette.glassRim.copy(alpha = 0.35f)),
+    )
 }
 
 @Composable
@@ -309,7 +324,7 @@ internal fun SceneTab(
                 }
             }
             Text("Duration ${"%.1f".format(transitionDurationSec)}s", style = MaterialTheme.typography.labelMedium)
-            CrystalSlider(value = transitionDurationSec, onValueChange = onTransitionDuration, valueRange = 0.3f..5f)
+            GlassSlider(value = transitionDurationSec, onValueChange = onTransitionDuration, valueRange = 0.3f..5f)
         }
         SectionHeader("MilkDrop", ParamScope.MILKDROP)
         CheckRow(ParamKeys.BLEND_PRESET_CHANGES, p.milkdropBlendPresets) {
@@ -402,7 +417,7 @@ internal fun ColorTab(
         SectionHeader("Palettes")
         if (onTakeArtworkPalette != null && sectionVisible()) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CrystalButton(compact = true, filled = false, onClick = onTakeArtworkPalette) {
+                GlassButton(compact = true, filled = false, onClick = onTakeArtworkPalette) {
                     Text("Take the colours from the artwork")
                 }
             }
@@ -542,7 +557,7 @@ private fun LayersSection() {
         LayersBus.state.value = layers.copy(blend = BlendMode.entries[it])
     }
     Text("Layer mix ${"%.2f".format(layers.mix)}", style = MaterialTheme.typography.labelMedium)
-    CrystalSlider(
+    GlassSlider(
         value = layers.mix,
         onValueChange = { LayersBus.state.value = layers.copy(mix = it) },
         valueRange = 0f..1f,
@@ -635,7 +650,7 @@ private fun RateSecondsSlider(
     val t = (ln(seconds.coerceIn(lo, hi) / lo) / ln(hi / lo)).coerceIn(0f, 1f)
     Column(Modifier.padding(vertical = 2.dp)) {
         Text("Rate ${"%.2f".format(seconds)} s per cycle", style = MaterialTheme.typography.labelSmall)
-        CrystalSlider(
+        GlassSlider(
             value = t,
             onValueChange = { onChange(lo * (hi / lo).pow(it)) },
             valueRange = 0f..1f,
@@ -690,7 +705,7 @@ internal fun LabeledSlider(
     if (!visible(label, scope)) return
     Column(Modifier.padding(vertical = 2.dp)) {
         ControlLabelRow("$display ${"%.2f".format(value)}", label)
-        CrystalSlider(value = value, onValueChange = onChange, valueRange = range, modifier = Modifier.fillMaxWidth())
+        GlassSlider(value = value, onValueChange = onChange, valueRange = range, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -995,7 +1010,7 @@ private fun LabeledIntSlider(
     if (!visible(label, scope)) return
     Column(Modifier.padding(vertical = 2.dp)) {
         ControlLabelRow("$display $value", label)
-        CrystalSlider(
+        GlassSlider(
             value = value.toFloat(),
             onValueChange = { onChange(it.toInt().coerceIn(range.first, range.last)) },
             valueRange = range.first.toFloat()..range.last.toFloat(),
