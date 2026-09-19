@@ -35,8 +35,12 @@ import dev.geode.data.TemplateImport
 import dev.geode.data.TemplateWrite
 import dev.geode.data.VideoTemplate
 import dev.geode.render.VisualizerView
-import dev.geode.ui.theme.StoneIcon
-import dev.geode.ui.theme.StoneIconArt
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.Icon
+import dev.geode.ui.glass.GlassButton
 
 /**
  * Save-load-share for video templates, opened next to the preset library it mirrors
@@ -78,7 +82,7 @@ fun TemplatesSheet(
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CrystalButton(compact = true, filled = false, onClick = {
+                    GlassButton(compact = true, filled = false, onClick = {
                         val pasted = clipboardText(context)
                         if (pasted.isNullOrBlank()) {
                             note = clipboardEmptyNote
@@ -86,7 +90,7 @@ fun TemplatesSheet(
                             visualsViewModel.importTemplateText(pasted) { outcome -> note = messageFor(outcome) }
                         }
                     }) { Text(stringResource(R.string.template_paste_link)) }
-                    CrystalButton(compact = true, filled = false, onClick = {
+                    GlassButton(compact = true, filled = false, onClick = {
                         filePicker.launch(arrayOf("*/*"))
                     }) { Text(stringResource(R.string.template_open_file)) }
                 }
@@ -112,7 +116,7 @@ fun TemplatesSheet(
                         placeholder = { Text(stringResource(R.string.template_save_placeholder)) },
                         singleLine = true,
                     )
-                    CrystalButton(onClick = {
+                    GlassButton(onClick = {
                         val trimmed = saveName.trim()
                         if (trimmed.isNotEmpty()) {
                             val shader = visualizerView.visualizerRenderer.customShaderFor(viz.sceneId)
@@ -178,7 +182,7 @@ fun TemplatesSheet(
             title = { Text(stringResource(R.string.template_delete_title, t.name)) },
             text = { Text(stringResource(R.string.template_delete_body)) },
             confirmButton = {
-                CrystalButton(onClick = {
+                GlassButton(onClick = {
                     visualsViewModel.deleteTemplate(t.id)
                     deleting = null
                 }) { Text(stringResource(R.string.template_delete)) }
@@ -202,16 +206,16 @@ private fun TemplateRow(
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(template.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         IconButton(onClick = onApply) {
-            StoneIconArt(StoneIcon.PLAY, applyLabel, tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Outlined.PlayArrow, applyLabel, tint = MaterialTheme.colorScheme.primary)
         }
         if (shareLabel != null && onShare != null) {
             IconButton(onClick = onShare) {
-                StoneIconArt(StoneIcon.SHARE, shareLabel)
+                Icon(Icons.Outlined.Share, shareLabel)
             }
         }
         if (trailingIsDestructive) {
             IconButton(onClick = onTrailing) {
-                StoneIconArt(StoneIcon.DELETE, trailingLabel, tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.Outlined.Delete, trailingLabel, tint = MaterialTheme.colorScheme.error)
             }
         } else {
             TextButton(onClick = onTrailing) { Text(trailingLabel) }

@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 /**
@@ -61,7 +62,7 @@ fun GlassPearlMatrix(
                         size = beadSize,
                         tint = tint,
                         onTap = { x, y ->
-                            view.performStoneHaptic(StoneHapticCue.SLIDER_TICK)
+                            view.performGlassHaptic(GlassHapticCue.SLIDER_TICK)
                             field?.tap(x, y, 1.8f)
                         },
                     )
@@ -166,7 +167,7 @@ fun InteractiveElasticDropletPod(
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { offset ->
-                        view.performStoneHaptic(StoneHapticCue.TAP)
+                        view.performGlassHaptic(GlassHapticCue.TAP)
                         field?.splat(offset.x, offset.y, 0f, -15f, GlassPalette.coral)
                     },
                     onDragEnd = {
@@ -188,7 +189,7 @@ fun InteractiveElasticDropletPod(
                                 ),
                             )
                         }
-                        view.performStoneHaptic(StoneHapticCue.SLIDER_TICK)
+                        view.performGlassHaptic(GlassHapticCue.SLIDER_TICK)
                     },
                     onDragCancel = {
                         scope.launch { stretchY.animateTo(1f, spring()) }

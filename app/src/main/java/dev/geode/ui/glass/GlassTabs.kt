@@ -1,10 +1,12 @@
 package dev.geode.ui.glass
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,11 +35,24 @@ fun GlassHorizontalTabs(
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    scrollable: Boolean = false,
 ) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    val rowModifier = if (scrollable) modifier.horizontalScroll(rememberScrollState()) else modifier
+    Row(rowModifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         titles.forEachIndexed { i, title -> GlassTabPill(title, i == selected) { onSelect(i) } }
     }
 }
+
+/** Alias for [GlassHorizontalTabs] for ergonomic drop-in replacement. */
+@Composable
+fun GlassTabs(
+    titles: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    scrollable: Boolean = false,
+) = GlassHorizontalTabs(titles, selected, onSelect, modifier, scrollable)
+
 
 @Composable
 private fun GlassTabPill(

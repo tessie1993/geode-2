@@ -33,8 +33,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.geode.ui.theme.StoneHapticCue
-import dev.geode.ui.theme.performStoneHaptic
 
 /**
  * Floating glass capsule navigation bar matching the mockup in liquid_player_lib_1789776612307.jpg:
@@ -88,7 +86,7 @@ fun GlassNavBar(
                             role = Role.Tab,
                             onClick = {
                                 if (!sel) {
-                                    view.performStoneHaptic(StoneHapticCue.SLIDER_TICK)
+                                    view.performGlassHaptic(GlassHapticCue.SLIDER_TICK)
                                     field?.tap(0f, 0f, 1.2f)
                                     onSelect(i)
                                 }

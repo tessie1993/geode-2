@@ -1,5 +1,6 @@
 package dev.geode.ui.glass
 
+import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithCache
@@ -266,3 +267,15 @@ private fun DrawScope.drawGlassGlowRing(
         blendMode = BlendMode.Plus,
     )
 }
+
+fun Modifier.glassScrim(
+    color: Color = Color.Black,
+    maxAlpha: Float = 0.35f,
+): Modifier =
+    background(
+        Brush.verticalGradient(
+            0f to Color.Transparent,
+            1f to color.copy(alpha = maxAlpha.coerceIn(0f, 1f)),
+        ),
+    )
+

@@ -25,8 +25,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.geode.ui.theme.StoneHapticCue
-import dev.geode.ui.theme.performStoneHaptic
 import kotlinx.coroutines.launch
 
 /**
@@ -66,7 +64,7 @@ fun GlassPearlSphereButton(
                 if (!enabled) return@pointerInput
                 detectTapGestures(
                     onPress = { offset ->
-                        view.performStoneHaptic(StoneHapticCue.TAP)
+                        view.performGlassHaptic(GlassHapticCue.TAP)
                         field?.tap(offset.x, offset.y, 2.5f)
                         scope.launch {
                             pressScale.animateTo(
@@ -258,7 +256,7 @@ fun GlassPearlAccentBead(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { offset ->
-                        view.performStoneHaptic(StoneHapticCue.SLIDER_TICK)
+                        view.performGlassHaptic(GlassHapticCue.SLIDER_TICK)
                         field?.tap(offset.x, offset.y, 1.8f)
                         scope.launch {
                             pressScale.animateTo(1.2f, spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioHighBouncy))

@@ -40,8 +40,6 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import dev.geode.ui.theme.StoneHapticCue
-import dev.geode.ui.theme.performStoneHaptic
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlinx.coroutines.CoroutineScope
@@ -111,7 +109,7 @@ fun Modifier.waterTouch(
             .pointerInput(drag, reducedMotion) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    view.performStoneHaptic(StoneHapticCue.TAP)
+                    view.performGlassHaptic(GlassHapticCue.TAP)
                     val rootDown = coords?.localToRoot(down.position) ?: down.position
                     startPress(scope, state, down.position, reducedMotion)
                     field?.tap(rootDown.x, rootDown.y, TAP_STRENGTH)
