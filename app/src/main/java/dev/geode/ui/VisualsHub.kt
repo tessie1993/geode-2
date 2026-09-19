@@ -328,7 +328,7 @@ private fun PresetsTreeTab(
                             IconButton(onClick = {
                                 renamingFolder = folder
                                 folderRenameText = folder
-                            }) { StoneIconArt(StoneIcon.EDIT, "Rename this folder") }
+                            }) { Icon(Icons.Outlined.Edit, "Rename this folder") }
                         }
                     }
                 }
@@ -337,10 +337,10 @@ private fun PresetsTreeTab(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(p.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     IconButton(onClick = { applyPresetLive(viewModel, visualizerView, p) }) {
-                        StoneIconArt(StoneIcon.PLAY, "Apply", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Outlined.PlayArrow, "Apply", tint = MaterialTheme.colorScheme.primary)
                     }
                     IconButton(onClick = { sharePreset(context, visualsViewModel, p.name) }) {
-                        StoneIconArt(StoneIcon.SHARE, "Share this preset")
+                        Icon(Icons.Outlined.Share, "Share this preset")
                     }
                     val playlistIndex = vizPlaylistIndexOf(viz.vizPlaylist, p.name)
                     val inPlaylist = playlistIndex >= 0
@@ -355,17 +355,17 @@ private fun PresetsTreeTab(
                             }
                         },
                     ) {
-                        StoneIconArt(
-                            StoneIcon.FAVORITE,
+                        Icon(
+                            if (inPlaylist) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                             if (inPlaylist) "Remove from visual playlist" else "Add to visual playlist",
                             tint = if (inPlaylist) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                         )
                     }
                     IconButton(onClick = { movingPreset = p.name }) {
-                        StoneIconArt(StoneIcon.FOLDER, "Move to another folder")
+                        Icon(Icons.Outlined.Folder, "Move to another folder")
                     }
                     IconButton(onClick = { deletingPreset = p.name }) {
-                        StoneIconArt(StoneIcon.DELETE, "Remove", tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Outlined.Delete, "Remove", tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -385,7 +385,7 @@ private fun PresetsTreeTab(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(p.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 IconButton(onClick = { applyPresetLive(viewModel, visualizerView, p) }) {
-                    StoneIconArt(StoneIcon.PLAY, "Apply", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Outlined.PlayArrow, "Apply", tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -1263,14 +1263,14 @@ private fun TakesTab(viewModel: StudioViewModel) {
                     if (playing) {
                         Icon(Icons.Filled.Stop, "Stop replay", tint = MaterialTheme.colorScheme.primary)
                     } else {
-                        StoneIconArt(StoneIcon.PLAY, "Replay this take", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Outlined.PlayArrow, "Replay this take", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
                 IconButton(onClick = {
                     studioViewModel.setExportTake(if (takes.exportTake == take.name) null else take.name)
                 }) {
-                    StoneIconArt(
-                        StoneIcon.FAVORITE,
+                    Icon(
+                        if (takes.exportTake == take.name) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                         "Render this take on the next export",
                         tint =
                             if (takes.exportTake == take.name) {
@@ -1283,9 +1283,9 @@ private fun TakesTab(viewModel: StudioViewModel) {
                 IconButton(onClick = {
                     renaming = take.name
                     renameText = take.name
-                }) { StoneIconArt(StoneIcon.EDIT, "Rename") }
+                }) { Icon(Icons.Outlined.Edit, "Rename") }
                 IconButton(onClick = { deleting = take.name }) {
-                    StoneIconArt(StoneIcon.DELETE, "Delete", tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Outlined.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -1365,7 +1365,7 @@ private fun TexturesHubTab(
                     visualsViewModel.useTexture(tex.name) { path -> selectMilk(viewModel, visualizerView, path) }
                 }) { Text("Use") }
                 IconButton(onClick = { deletingTexture = tex.name }) {
-                    StoneIconArt(StoneIcon.DELETE, "Delete this texture", tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Outlined.Delete, "Delete this texture", tint = MaterialTheme.colorScheme.error)
                 }
             }
         }
