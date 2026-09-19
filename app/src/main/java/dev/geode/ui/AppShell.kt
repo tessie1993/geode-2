@@ -64,6 +64,7 @@ import dev.geode.render.VisualizerView
 import dev.geode.ui.glass.GlassBubbleButton
 import dev.geode.ui.glass.GlassButton
 import dev.geode.ui.glass.GlassDialog
+import dev.geode.ui.glass.GlassDropletSlider
 import dev.geode.ui.glass.GlassIcons
 import dev.geode.ui.glass.GlassLinearProgress
 import dev.geode.ui.glass.GlassListRow
@@ -74,6 +75,7 @@ import dev.geode.ui.glass.GlassPalette
 import dev.geode.ui.glass.GlassShapes
 import dev.geode.ui.glass.GlassTextField
 import dev.geode.ui.glass.GlassTopBar
+import dev.geode.ui.glass.GlassTransportBar
 import dev.geode.ui.glass.GlassVerticalTabs
 import dev.geode.ui.glass.LiquidBackground
 import dev.geode.ui.glass.LocalWaterField
@@ -82,6 +84,7 @@ import dev.geode.ui.glass.glassSurface
 import dev.geode.ui.glass.glassTouch
 import dev.geode.ui.glass.rememberWaterField
 import dev.geode.ui.glass.waterScroll
+import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -198,11 +201,8 @@ private fun AppShellContent(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val miniPlayer: @Composable () -> Unit = {
         MiniPlayer(
-            title =
-                listOfNotNull(
-                    state.title,
-                    state.artist?.takeIf { it.isNotBlank() },
-                ).joinToString(" — ").ifBlank { null },
+            title = state.title ?: stringResource(R.string.title_untitled),
+            artist = state.artist?.takeIf { it.isNotBlank() },
             isPlaying = state.isPlaying,
             hasMedia = state.hasMedia,
             progress =
@@ -211,7 +211,11 @@ private fun AppShellContent(
                 } else {
                     0f
                 },
-            compact = gui.compactPlayer,
+            onSeek = { fraction ->
+                if (state.durationMs > 0) {
+                    viewModel.seekTo((state.durationMs * fraction).toLong())
+                }
+            },
             onExpand = appState::expand,
             onPlayPause = viewModel::togglePlayPause,
             onPrevious = viewModel::previous,
