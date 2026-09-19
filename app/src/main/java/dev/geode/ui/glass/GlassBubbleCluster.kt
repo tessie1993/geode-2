@@ -64,7 +64,7 @@ fun GlassPearlMatrix(
                         size = beadSize,
                         tint = tint,
                         onTap = { x, y ->
-                            view.performStoneHaptic(StoneHapticCue.TICK)
+                            view.performStoneHaptic(StoneHapticCue.SLIDER_TICK)
                             field?.tap(x, y, 1.8f)
                         },
                     )
@@ -191,7 +191,7 @@ fun InteractiveElasticDropletPod(
                                 ),
                             )
                         }
-                        view.performStoneHaptic(StoneHapticCue.TICK)
+                        view.performStoneHaptic(StoneHapticCue.SLIDER_TICK)
                     },
                     onDragCancel = {
                         scope.launch { stretchY.animateTo(1f, spring()) }

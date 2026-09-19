@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -227,7 +228,7 @@ private fun GalleryPearlMatrix() {
         GlassPearlMatrix()
         GlassTeardropContainer(
             modifier = Modifier.size(64.dp, 84.dp),
-            direction = TeardropDirection.UP,
+            orientation = TeardropOrientation.UP,
             tint = GlassPalette.cyan,
         ) {
             Icon(
@@ -238,7 +239,7 @@ private fun GalleryPearlMatrix() {
         }
         GlassTeardropContainer(
             modifier = Modifier.size(64.dp, 84.dp),
-            direction = TeardropDirection.DOWN,
+            orientation = TeardropOrientation.DOWN,
             tint = GlassPalette.lime,
         ) {
             Icon(

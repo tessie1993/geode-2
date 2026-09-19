@@ -51,6 +51,7 @@ object GlassPalette {
     val butter = gold
     val peach = coral
     val pink = magenta
+    val rose = magenta
     val sky = cerulean
     val violet = lavender
 
