@@ -23,9 +23,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import dev.geode.ui.theme.StoneHapticCue
-import dev.geode.ui.theme.performStoneHaptic
 import kotlinx.coroutines.launch
 
 /**

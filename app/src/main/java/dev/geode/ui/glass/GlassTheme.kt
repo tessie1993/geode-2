@@ -15,14 +15,24 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.geode.R
 import dev.geode.ui.GuiPrefs
-import dev.geode.ui.theme.MaliFamily
-import dev.geode.ui.theme.MysteryQuestFamily
+
+val MaliFamily =
+    FontFamily(
+        Font(R.font.mali_regular, FontWeight.Normal),
+        Font(R.font.mali_medium, FontWeight.Medium),
+        Font(R.font.mali_semibold, FontWeight.SemiBold),
+        Font(R.font.mali_bold, FontWeight.Bold),
+    )
+
+val MysteryQuestFamily = FontFamily(Font(R.font.mystery_quest_regular, FontWeight.Normal))
 
 /**
  * Colour tokens for the "liquid glass" design system (see docs/design/liquid-glass/README.md).
