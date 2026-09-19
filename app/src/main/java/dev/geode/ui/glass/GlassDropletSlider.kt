@@ -133,7 +133,7 @@ fun GlassDropletSlider(
                 ) {
                     // Volumetric 3D Pearl Rendering
                     Canvas(Modifier.matchParentSize()) {
-                        val radius = size.toPx() / 2f
+                        val radius = size.minDimension / 2f
                         val center = Offset(radius, radius)
 
                         // Contact shadow on track
@@ -176,7 +176,7 @@ fun GlassDropletSlider(
                                     Color.White.copy(alpha = 0.70f),
                                 ),
                                 start = Offset(0f, 0f),
-                                end = Offset(size.toPx(), size.toPx()),
+                                end = Offset(size.width, size.height),
                             ),
                             radius = radius - 0.5f,
                             center = center,

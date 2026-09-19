@@ -211,11 +211,7 @@ private fun AppShellContent(
                 } else {
                     0f
                 },
-            onSeek = { fraction ->
-                if (state.durationMs > 0) {
-                    viewModel.seekTo((state.durationMs * fraction).toLong())
-                }
-            },
+            onSeek = viewModel::seekTo,
             onExpand = appState::expand,
             onPlayPause = viewModel::togglePlayPause,
             onPrevious = viewModel::previous,
