@@ -22,7 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
@@ -30,11 +33,11 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 /**
- * A fluid liquid-glass slider matching ref-02 and video-v3/v4:
- * - Frosted pill guide tube with soft ambient shadow
- * - Luminous pastel fill gradient (mint -> peach -> lavender)
- * - Liquid pearl / droplet thumb that elastically stretches along drag axis and rebounds on release
- * - Tactile wave coupling into [LocalWaterField]
+ * A fluid liquid-glass slider directly matching the mockup in liquid_player_lib_1789776612307.jpg:
+ * - Organic pinched liquid glass track: wider bulbous ends that gently taper and pinch in the middle waist
+ * - Frosted glass body with internal diffuse glow and iridescent rim light
+ * - Volumetric 3D opalescent pearl thumb that elastically stretches during drag and rebounds with a spring
+ * - Tactile wave and caustic disturbance coupled into [LocalWaterField]
  */
 @Composable
 fun GlassDropletSlider(
@@ -45,7 +48,8 @@ fun GlassDropletSlider(
     enabled: Boolean = true,
     orientation: Orientation = Orientation.Horizontal,
     thumbSize: Dp = 26.dp,
-    trackThickness: Dp = 12.dp,
+    trackThickness: Dp = 26.dp,
+    pinchedTrack: Boolean = true,
 ) {
     val span = valueRange.endInclusive - valueRange.start
     val fraction = if (span > 0f) ((value - valueRange.start) / span).coerceIn(0f, 1f) else 0f
@@ -59,44 +63,27 @@ fun GlassDropletSlider(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .height(thumbSize + 8.dp)
+                .height(maxOf(thumbSize + 8.dp, trackThickness + 6.dp))
                 .floatOnWater(strength = 0.35f),
             contentAlignment = Alignment.CenterStart,
         ) {
             var widthPx = 1f
-            // 1. Frosted Glass Track
-            Box(
+
+            // 1. Organic Pinched Frosted Glass Track
+            Canvas(
                 Modifier
                     .fillMaxWidth()
                     .height(trackThickness)
-                    .glassSurface(shape = GlassShapes.pill)
                     .onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) },
             ) {
-                Canvas(Modifier.matchParentSize()) {
-                    val y = size.height / 2f
-                    val filledWidth = size.width * fraction
-                    if (filledWidth > 1f) {
-                        drawLine(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    GlassPalette.cyan,
-                                    GlassPalette.mint,
-                                    GlassPalette.gold,
-                                    GlassPalette.coral,
-                                ),
-                                endX = filledWidth,
-                            ),
-                            start = Offset(0f, y),
-                            end = Offset(filledWidth, y),
-                            strokeWidth = trackThickness.toPx() * 0.65f,
-                            cap = StrokeCap.Round,
-                            alpha = if (enabled) 0.80f else 0.35f,
-                        )
-                    }
+                if (pinchedTrack) {
+                    drawOrganicPinchedTrack(size.width, size.height, fraction, enabled)
+                } else {
+                    drawStandardTrack(size.width, size.height, fraction, enabled)
                 }
             }
 
-            // 2. Elastic Droplet Thumb
+            // 2. 3D Iridescent Spherical Pearl Thumb
             val thumbOffsetFraction = fraction.coerceIn(0f, 1f)
             Box(
                 Modifier
@@ -112,7 +99,6 @@ fun GlassDropletSlider(
                             scaleY = 1f / kotlin.math.sqrt(stretchScale.value.toDouble()).toFloat()
                         }
                         .size(thumbSize)
-                        .glassSurface(shape = GlassShapes.bubble, tint = GlassPalette.mint)
                         .draggable(
                             orientation = Orientation.Horizontal,
                             enabled = enabled,
@@ -121,10 +107,15 @@ fun GlassDropletSlider(
                                 val newFraction = (fraction + deltaFraction).coerceIn(0f, 1f)
                                 val r = currentRange.value
                                 currentOnChange.value(r.start + newFraction * (r.endInclusive - r.start))
-                                waterField?.tap(widthPx * newFraction, 0f, 0.4f)
+                                waterField?.tap(widthPx * newFraction, 0f, 0.45f)
                             },
                             onDragStarted = {
-                                scope.launch { stretchScale.animateTo(GlassMotion.DROPLET_ELONGATION_MAX, spring()) }
+                                scope.launch {
+                                    stretchScale.animateTo(
+                                        GlassMotion.DROPLET_ELONGATION_MAX,
+                                        spring(stiffness = GlassMotion.SPRING_STIFFNESS),
+                                    )
+                                }
                             },
                             onDragStopped = {
                                 scope.launch {
@@ -138,11 +129,77 @@ fun GlassDropletSlider(
                                 }
                             },
                         ),
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // Volumetric 3D Pearl Rendering
+                    Canvas(Modifier.matchParentSize()) {
+                        val radius = size.minDimension / 2f
+                        val center = Offset(radius, radius)
+
+                        // Contact shadow on track
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(GlassPalette.baseShadow.copy(alpha = 0.40f), Color.Transparent),
+                                center = center + Offset(0f, radius * 0.35f),
+                                radius = radius * 1.15f,
+                            ),
+                            radius = radius * 1.15f,
+                            center = center + Offset(0f, radius * 0.35f),
+                        )
+
+                        // Opaline iridescent pearl core
+                        val lightCenter = center - Offset(radius * 0.28f, radius * 0.28f)
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.95f),
+                                    Color.White.copy(alpha = 0.70f),
+                                    GlassPalette.mint.copy(alpha = 0.45f),
+                                    GlassPalette.lavender.copy(alpha = 0.35f),
+                                    GlassPalette.baseShadow.copy(alpha = 0.20f),
+                                ),
+                                center = lightCenter,
+                                radius = radius * 1.05f,
+                            ),
+                            radius = radius,
+                            center = center,
+                        )
+
+                        // Iridescent rim
+                        drawCircle(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.85f),
+                                    GlassPalette.cyan.copy(alpha = 0.60f),
+                                    GlassPalette.mint.copy(alpha = 0.65f),
+                                    GlassPalette.lavender.copy(alpha = 0.60f),
+                                    Color.White.copy(alpha = 0.70f),
+                                ),
+                                start = Offset(0f, 0f),
+                                end = Offset(size.width, size.height),
+                            ),
+                            radius = radius - 0.5f,
+                            center = center,
+                            style = Stroke(width = 1.2.dp.toPx()),
+                        )
+
+                        // Specular glint
+                        val glintCenter = center - Offset(radius * 0.35f, radius * 0.35f)
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(Color.White.copy(alpha = 0.88f), Color.Transparent),
+                                center = glintCenter,
+                                radius = radius * 0.42f,
+                            ),
+                            radius = radius * 0.42f,
+                            center = glintCenter,
+                        )
+                    }
+                }
             }
         }
     } else {
-        // Vertical Slider (as seen in video-v3)
+        // Vertical Slider
         Box(
             modifier = modifier
                 .width(thumbSize + 8.dp)
@@ -183,7 +240,7 @@ fun GlassDropletSlider(
                 }
             }
 
-            // Elastic Droplet Thumb
+            // Vertical Elastic Droplet Thumb
             Box(
                 Modifier
                     .fillMaxHeight()
@@ -227,5 +284,147 @@ fun GlassDropletSlider(
                 )
             }
         }
+    }
+}
+
+/** Draws the organic waist-pinched glass tube matching the mockup in liquid_player_lib_1789776612307.jpg. */
+private fun DrawScope.drawOrganicPinchedTrack(
+    w: Float,
+    h: Float,
+    fraction: Float,
+    enabled: Boolean,
+) {
+    val rEnd = h / 2f
+    val rWaist = h * 0.28f
+    val midX = w / 2f
+    val midY = h / 2f
+
+    val path = Path().apply {
+        // Start at top of left bulb
+        moveTo(rEnd, midY - rEnd)
+        // Curve inward to top of waist
+        cubicTo(
+            w * 0.25f, midY - rEnd,
+            w * 0.38f, midY - rWaist,
+            midX, midY - rWaist,
+        )
+        // Curve outward to top of right bulb
+        cubicTo(
+            w * 0.62f, midY - rWaist,
+            w * 0.75f, midY - rEnd,
+            w - rEnd, midY - rEnd,
+        )
+        // Right rounded cap arc
+        arcTo(
+            rect = androidx.compose.ui.geometry.Rect(w - h, 0f, w, h),
+            startAngleDegrees = -90f,
+            sweepAngleDegrees = 180f,
+            forceMoveTo = false,
+        )
+        // Bottom curve inward to bottom of waist
+        cubicTo(
+            w * 0.75f, midY + rEnd,
+            w * 0.62f, midY + rWaist,
+            midX, midY + rWaist,
+        )
+        // Bottom curve outward to bottom of left bulb
+        cubicTo(
+            w * 0.38f, midY + rWaist,
+            w * 0.25f, midY + rEnd,
+            rEnd, midY + rEnd,
+        )
+        // Left rounded cap arc
+        arcTo(
+            rect = androidx.compose.ui.geometry.Rect(0f, 0f, h, h),
+            startAngleDegrees = 90f,
+            sweepAngleDegrees = 180f,
+            forceMoveTo = false,
+        )
+        close()
+    }
+
+    // 1. Soft contact shadow beneath the glass tube
+    drawPath(
+        path = path,
+        color = GlassPalette.baseShadow.copy(alpha = 0.16f),
+    )
+
+    // 2. Translucent frosted glass body
+    drawPath(
+        path = path,
+        brush = Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.25f),
+                GlassPalette.glassFill.copy(alpha = 0.18f),
+                GlassPalette.cyan.copy(alpha = 0.08f),
+                GlassPalette.baseShadow.copy(alpha = 0.12f),
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(w, h),
+        ),
+    )
+
+    // 3. Subtle internal light glow along filled fraction
+    if (fraction > 0.01f) {
+        val filledW = (w * fraction).coerceIn(0f, w)
+        drawLine(
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    GlassPalette.cyan.copy(alpha = 0.65f),
+                    GlassPalette.mint.copy(alpha = 0.55f),
+                    GlassPalette.lavender.copy(alpha = 0.45f),
+                ),
+                endX = filledW,
+            ),
+            start = Offset(rEnd, midY),
+            end = Offset(filledW, midY),
+            strokeWidth = rWaist * 1.2f,
+            cap = StrokeCap.Round,
+        )
+    }
+
+    // 4. Thin iridescent rim stroke
+    drawPath(
+        path = path,
+        brush = Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.70f),
+                GlassPalette.cyan.copy(alpha = 0.50f),
+                GlassPalette.mint.copy(alpha = 0.45f),
+                GlassPalette.lavender.copy(alpha = 0.50f),
+                Color.White.copy(alpha = 0.65f),
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(w, h),
+        ),
+        style = Stroke(width = 1.2.dp.toPx()),
+    )
+}
+
+private fun DrawScope.drawStandardTrack(
+    w: Float,
+    h: Float,
+    fraction: Float,
+    enabled: Boolean,
+) {
+    val y = h / 2f
+    val filledWidth = w * fraction
+    if (filledWidth > 1f) {
+        drawLine(
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    GlassPalette.cyan,
+                    GlassPalette.mint,
+                    GlassPalette.gold,
+                    GlassPalette.coral,
+                ),
+                endX = filledWidth,
+            ),
+            start = Offset(0f, y),
+            end = Offset(filledWidth, y),
+            strokeWidth = h * 0.65f,
+            cap = StrokeCap.Round,
+            alpha = if (enabled) 0.80f else 0.35f,
+        )
     }
 }
