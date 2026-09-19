@@ -66,7 +66,18 @@ private class GlassTouchState {
 }
 
 private val inkArcColors =
-    listOf(GlassPalette.mint, GlassPalette.lavender, GlassPalette.peach, GlassPalette.pink, GlassPalette.sky)
+    listOf(
+        GlassPalette.lime,
+        GlassPalette.yellow,
+        GlassPalette.gold,
+        GlassPalette.coral,
+        GlassPalette.magenta,
+        GlassPalette.lavender,
+        GlassPalette.periwinkle,
+        GlassPalette.cerulean,
+        GlassPalette.cyan,
+        GlassPalette.mint,
+    )
 private val dyeCycle = inkArcColors
 
 /**

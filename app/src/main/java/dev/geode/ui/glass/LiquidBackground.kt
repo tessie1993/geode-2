@@ -106,7 +106,7 @@ fun LiquidBackground(
         // Reads frameTick so this draw block re-runs every time a new frame's caustics/dye land.
         frameTick.let { }
         drawBase(baseImage)
-        drawCausticLayer(causticImage, shader)
+        drawCausticLayer(causticImage, shader, tint)
         drawBubbles(bubbles, field, reducedMotion)
     }
 }
@@ -122,10 +122,11 @@ private fun DrawScope.drawBase(image: ImageBitmap) {
 private fun DrawScope.drawCausticLayer(
     image: ImageBitmap,
     shader: RuntimeShader?,
+    tint: Float,
 ) {
     val dst = IntSize(size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1))
     if (shader != null) {
-        drawRefractedCaustics(image, shader, dst)
+        drawRefractedCaustics(image, shader, dst, tint)
     } else {
         drawImage(image, dstSize = dst, filterQuality = FilterQuality.Low, alpha = 0.55f, blendMode = BlendMode.Screen)
     }
@@ -137,12 +138,16 @@ private fun DrawScope.drawRefractedCaustics(
     image: ImageBitmap,
     shader: RuntimeShader,
     dst: IntSize,
+    tint: Float,
 ) {
     val drewViaShader =
         runCatching {
             val bitmapShader =
                 BitmapShader(image.asAndroidBitmap(), Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
             shader.setInputShader("base", bitmapShader)
+            shader.setFloatUniform("resolution", size.width, size.height)
+            shader.setFloatUniform("time", (System.nanoTime() / 1_000_000_000f))
+            shader.setFloatUniform("tint", tint)
             drawRect(brush = ShaderBrush(shader))
         }.isSuccess
     if (!drewViaShader) {
@@ -165,11 +170,11 @@ private fun renderCausticFrame(
     tint: Float,
 ) {
     val grid = field.heightGrid()
-    val baseR = GlassPalette.baseLight.red
-    val baseG = GlassPalette.baseLight.green
-    val baseB = GlassPalette.baseLight.blue
-    val lx = 0.3f
-    val ly = 0.3f
+    val baseR = GlassPalette.base.red
+    val baseG = GlassPalette.base.green
+    val baseB = GlassPalette.base.blue
+    val lx = 0.35f
+    val ly = 0.45f
     for (y in 0 until hh) {
         for (x in 0 until hw) {
             val idx = y * hw + x
@@ -180,7 +185,7 @@ private fun renderCausticFrame(
             val nx = left - right
             val ny = up - down
             val dot = max(0f, nx * lx + ny * ly)
-            val bright = (0.55f + CAUSTIC_GAIN * dot * dot * (0.5f + tint)).coerceIn(0f, 1.4f)
+            val bright = (0.75f + CAUSTIC_GAIN * dot * dot * (0.5f + tint)).coerceIn(0.5f, 1.45f)
             val r = (baseR * bright).coerceIn(0f, 1f)
             val g = (baseG * bright).coerceIn(0f, 1f)
             val b = (baseB * bright).coerceIn(0f, 1f)
@@ -309,7 +314,41 @@ private const val CAUSTIC_GAIN = 3.2f
 private const val REFRACTION_AGSL =
     """
     uniform shader base;
+    uniform float2 resolution;
+    uniform float time;
+    uniform float tint;
+
     half4 main(float2 fragCoord) {
-        return base.eval(fragCoord);
+        float2 d = float2(2.5, 0.0);
+        half4 cL = base.eval(fragCoord - d.xy);
+        half4 cR = base.eval(fragCoord + d.xy);
+        half4 cU = base.eval(fragCoord - d.yx);
+        half4 cD = base.eval(fragCoord + d.yx);
+
+        // Water surface normal gradient from caustics/ripples
+        float nx = (cL.r + cL.g + cL.b) - (cR.r + cR.g + cR.b);
+        float ny = (cU.r + cU.g + cU.b) - (cD.r + cD.g + cD.b);
+        float2 norm = float2(nx, ny);
+
+        // Optical chromatic dispersion refraction
+        float dispersion = 2.4 * (0.8 + 0.4 * tint);
+        half4 colR = base.eval(fragCoord + norm * dispersion);
+        half4 colG = base.eval(fragCoord + norm * (dispersion * 0.65));
+        half4 colB = base.eval(fragCoord + norm * (dispersion * 0.3));
+
+        half4 color = half4(colR.r, colG.g, colB.b, 1.0);
+
+        // Soft velvet matte surface sheen from directional top-left light
+        float3 lightDir = normalize(float3(-0.35, -0.45, 0.82));
+        float3 surfaceNorm = normalize(float3(norm * 1.8, 1.0));
+        float diffuse = max(0.0, dot(surfaceNorm, lightDir));
+        float specular = pow(diffuse, 14.0) * 0.22;
+
+        // Wave trough ambient absorption for physical depth
+        float trough = clamp(1.0 - (nx + ny) * 0.2, 0.82, 1.08);
+
+        color.rgb = color.rgb * trough + half3(specular);
+        return color;
     }
     """
+

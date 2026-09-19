@@ -29,26 +29,39 @@ import dev.geode.ui.theme.MysteryQuestFamily
  * A single source of truth: every glass primitive reads these instead of hardcoding colour.
  */
 object GlassPalette {
-    val base = Color(0xFF9AA7C3) // Canonical Base Water Slate
-    val baseLight = Color(0xFFB5C1DC)
-    val baseShadow = Color(0xFF7582A0)
+    // Canonical Velvet Matte Slate Water Canvas (ref-05, ref-06, ref-10)
+    val base = Color(0xFF7A8799)
+    val baseLight = Color(0xFF96A3B6)
+    val baseShadow = Color(0xFF5E6A7C)
 
-    val lilac = Color(0xFFD8C5E8)
-    val mint = Color(0xFFCEE6D4)
-    val butter = Color(0xFFE7E5BA)
-    val rose = Color(0xFFE8C8D8)
-    val cyan = Color(0xFF8DDEF0)
-    val violet = Color(0xFFD6A9EA)
+    // Silky Fluid Dye Plume & Interaction Palette (ref-05, ref-06, ref-10)
+    val coral = Color(0xFFF7A38B)
+    val gold = Color(0xFFF5CF85)
+    val yellow = Color(0xFFE9EE9E)
+    val lime = Color(0xFFAEE4A2)
+    val mint = Color(0xFF9EE1C0)
+    val cyan = Color(0xFF7EE0DF)
+    val cerulean = Color(0xFF85C5F1)
+    val periwinkle = Color(0xFFA7A5E6)
+    val lavender = Color(0xFFBA9FE4)
+    val magenta = Color(0xFFE58DB9)
 
-    // Palette aliases for compatibility
-    val lavender = lilac
-    val peach = butter
-    val pink = rose
-    val sky = cyan
+    // Backward-compatible aliases
+    val lilac = lavender
+    val butter = gold
+    val peach = coral
+    val pink = magenta
+    val sky = cerulean
+    val violet = lavender
 
-    val glassFill: Color = Color(0x38FAFBFF)
-    val glassRim: Color = Color(0x8CFAFBFF)
-    val glassShadow: Color = baseShadow.copy(alpha = 0.32f)
+    // Droplet stretch gradient (ref-10: cyan base -> lime -> gold -> coral apex)
+    val dropletGradient = listOf(cyan, lime, gold, coral)
+
+    // Velvety Frosted Opaline Glass Body & Sheens
+    val glassFill: Color = Color(0x36FFFFFF)
+    val glassRim: Color = Color(0x7AFFFFFF)
+    val glassShadow: Color = Color(0x354E5A6B)
+    val glassHighlight: Color = Color(0x45FFFFFF)
 
     val textPrimary: Color = Color(0xFFFAFBFF)
     val textSecondary: Color = Color(0xBBFAFBFF)
@@ -61,6 +74,7 @@ object GlassShapes {
     val bubble: Shape = CircleShape
     val tile: Shape = RoundedCornerShape(28.dp)
     val sheet: Shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+    val teardrop: Shape = TeardropShape()
 
     /** M3 [Shapes] built from the same radii, so stock components read consistently too. */
     fun materialShapes(): Shapes =
@@ -81,6 +95,8 @@ object GlassMotion {
     const val HOLD_THRESHOLD_MS = 350L
     const val INK_DURATION_MS = 1600
     const val DROP_STRETCH_MAX = 1.35f
+    const val DROPLET_ELONGATION_MAX = 1.45f
+    const val REBOUND_DAMPING = Spring.DampingRatioMediumBouncy
     const val BUBBLE_DRIFT_PERIOD_MIN_MS = 12_000
     const val BUBBLE_DRIFT_PERIOD_MAX_MS = 20_000
 }

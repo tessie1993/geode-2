@@ -18,17 +18,19 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 
 /**
- * Draws the frosted-glass look shared by every primitive in `ui/glass`: a pastel-tinted soft
- * shadow under the shape, a translucent white body, a faint iridescent tint, a lighter rim and a
- * top-left specular highlight. Pure [drawWithCache] drawing (layered, decreasing-alpha shapes
- * standing in for a blurred shadow) so it works down to API 26 without
- * [android.graphics.RenderEffect]. Everything is drawn with [androidx.compose.ui.draw.drawWithCache]
- * `onDrawBehind`, so it never blurs or otherwise touches the element's own content (icon/text).
+ * Draws the high-end 3D liquid-glass material shared by every primitive in `ui/glass`:
+ * - Ambient and contact drop shadows cast onto the water surface
+ * - Convex volumetric glass body with internal depth and light refraction
+ * - Dual specular highlights (primary upper-left glint + secondary underside bounce reflection)
+ * - Thin-film iridescent rim with spectral color transition (cyan -> mint -> peach -> lavender)
+ * - Optional selected opaline wash and glow ring
  *
- * @param shape the outline to draw and clip to.
- * @param tint an accent colour mixed into the body and rim (e.g. mint for a selected pill).
- * @param selected draws a stronger tint wash, matching the "Home" pill in ref-05.
- * @param glow 0..1 strength of an outer glow ring (press/hold feedback layers this in).
+ * Runs down to API 26 via cached layered rendering without allocation in the draw loop.
+ *
+ * @param shape the geometric outline to draw and clip to.
+ * @param tint an accent colour mixed into the body and rim.
+ * @param selected draws a luminous active wash, matching the "Home" pill in ref-05.
+ * @param glow 0..1 strength of an outer glow ring.
  */
 fun Modifier.glassSurface(
     shape: Shape = GlassShapes.tile,
@@ -53,77 +55,201 @@ private fun DrawScope.drawGlass(
     selected: Boolean,
     glow: Float,
 ) {
-    drawGlassShadow(outline)
+    drawGlassShadows(outline)
     clipPath(path) {
         drawGlassBody(tint, selected)
-        drawGlassSpecular()
+        drawGlassInnerDepth()
+        drawGlassSpecularHighlights()
     }
-    drawGlassRim(outline, tint)
+    drawGlassIridescentRim(outline, tint)
     if (glow > 0.01f) drawGlassGlowRing(outline, tint, glow)
 }
 
 /**
- * Layered, decreasing-alpha copies of the shape offset downward: a shadow that reads as blurred
- * without an actual blur pass, so it looks right on API 26 too.
+ * Dual-tier drop shadow: a tight darker contact shadow plus a soft blurred ambient shadow,
+ * anchoring the glass element over the fluid water background.
  */
-private fun DrawScope.drawGlassShadow(outline: Outline) {
-    val maxOffset = GlassElevation.shadowBlur.toPx() * 0.6f
-    val layerCount = 4
-    for (i in layerCount downTo 1) {
-        val t = i / layerCount.toFloat()
-        val alpha = 0.10f * (1f - t + 0.25f)
+private fun DrawScope.drawGlassShadows(outline: Outline) {
+    val maxOffset = GlassElevation.shadowBlur.toPx() * 0.65f
+
+    // 1. Soft ambient shadow layers
+    val ambientLayers = 4
+    for (i in ambientLayers downTo 1) {
+        val t = i / ambientLayers.toFloat()
+        val alpha = 0.09f * (1f - t * 0.65f)
         translate(top = maxOffset * t) {
             drawOutline(outline, color = GlassPalette.glassShadow.copy(alpha = alpha))
         }
     }
+
+    // 2. Direct contact shadow (tighter and slightly deeper under the base)
+    val contactOffset = maxOffset * 0.28f
+    translate(top = contactOffset) {
+        drawOutline(outline, color = GlassPalette.baseShadow.copy(alpha = 0.16f))
+    }
 }
 
+/**
+ * The convex volumetric glass body: silky frosted opaline core with soft diffuse light transition
+ * matching ref-02 and ref-05.
+ */
 private fun DrawScope.drawGlassBody(
     tint: Color?,
     selected: Boolean,
 ) {
-    drawRect(GlassPalette.glassFill)
+    // Silky translucent frosted base
+    drawRect(GlassPalette.glassFill.copy(alpha = 0.26f))
+
+    // Soft diffuse volumetric wash (misty top-left light to velvety slate-periwinkle depth)
     drawRect(
         brush =
             Brush.linearGradient(
                 colors =
                     listOf(
-                        GlassPalette.mint.copy(alpha = 0.10f),
-                        GlassPalette.lavender.copy(alpha = 0.10f),
-                        GlassPalette.peach.copy(alpha = 0.10f),
+                        Color.White.copy(alpha = 0.14f),
+                        GlassPalette.mint.copy(alpha = 0.06f),
+                        GlassPalette.lavender.copy(alpha = 0.07f),
+                        GlassPalette.baseShadow.copy(alpha = 0.10f),
                     ),
                 start = Offset(0f, 0f),
                 end = Offset(size.width, size.height),
             ),
     )
+
+    // Internal matte scattering glow
+    drawRect(
+        brush =
+            Brush.radialGradient(
+                colors =
+                    listOf(
+                        Color.White.copy(alpha = 0.10f),
+                        Color.Transparent,
+                    ),
+                center = Offset(size.width * 0.40f, size.height * 0.35f),
+                radius = size.maxDimension * 0.65f,
+            ),
+    )
+
+    // Accent wash
     val wash = tint ?: GlassPalette.mint
     if (selected) {
-        drawRect(wash.copy(alpha = 0.34f))
+        drawRect(
+            brush =
+                Brush.radialGradient(
+                    colors = listOf(wash.copy(alpha = 0.30f), wash.copy(alpha = 0.16f)),
+                    center = Offset(size.width * 0.45f, size.height * 0.45f),
+                    radius = size.maxDimension * 0.7f,
+                ),
+        )
     } else if (tint != null) {
-        drawRect(wash.copy(alpha = 0.16f))
+        drawRect(wash.copy(alpha = 0.12f))
     }
 }
 
-private fun DrawScope.drawGlassRim(
-    outline: Outline,
-    tint: Color?,
-) {
-    val rimColor = if (tint != null) tint.copy(alpha = 0.7f) else GlassPalette.glassRim
-    drawOutline(outline, color = rimColor, style = Stroke(width = GlassElevation.rimWidth.toPx()))
+/**
+ * Inner thickness shadow along the opposite contour (bottom and right), giving the optical
+ * appearance of glass edge density where light undergoes internal reflection.
+ */
+private fun DrawScope.drawGlassInnerDepth() {
+    drawRect(
+        brush =
+            Brush.radialGradient(
+                colors =
+                    listOf(
+                        Color.Transparent,
+                        Color.Transparent,
+                        GlassPalette.baseShadow.copy(alpha = 0.12f),
+                    ),
+                center = Offset(size.width * 0.38f, size.height * 0.34f),
+                radius = size.maxDimension * 0.68f,
+            ),
+    )
 }
 
-private fun DrawScope.drawGlassSpecular() {
-    val radius = size.minDimension * 0.9f
-    val center = Offset(size.width * 0.22f, size.height * 0.18f)
+/**
+ * Matte diffuse specular highlights (ref-02 and ref-05):
+ * Velvety, broad satin sheen rather than harsh shiny reflections.
+ */
+private fun DrawScope.drawGlassSpecularHighlights() {
+    // 1. Broad diffuse satin sheen on the upper-left
+    val primaryRadius = size.minDimension * 0.90f
+    val primaryCenter = Offset(size.width * 0.30f, size.height * 0.26f)
     drawCircle(
         brush =
             Brush.radialGradient(
-                colors = listOf(Color.White.copy(alpha = GlassElevation.SPECULAR_ALPHA), Color.Transparent),
-                center = center,
-                radius = radius,
+                colors =
+                    listOf(
+                        Color.White.copy(alpha = 0.32f),
+                        Color.White.copy(alpha = 0.12f),
+                        Color.Transparent,
+                    ),
+                center = primaryCenter,
+                radius = primaryRadius,
             ),
-        radius = radius,
-        center = center,
+        radius = primaryRadius,
+        center = primaryCenter,
+    )
+
+    // 2. Soft underside ambient bounce sheen
+    val bounceRadius = size.minDimension * 0.75f
+    val bounceCenter = Offset(size.width * 0.72f, size.height * 0.78f)
+    drawCircle(
+        brush =
+            Brush.radialGradient(
+                colors =
+                    listOf(
+                        GlassPalette.cyan.copy(alpha = 0.09f),
+                        GlassPalette.lavender.copy(alpha = 0.05f),
+                        Color.Transparent,
+                    ),
+                center = bounceCenter,
+                radius = bounceRadius,
+            ),
+        radius = bounceRadius,
+        center = bounceCenter,
+    )
+}
+
+/**
+ * Iridescent spectral rim: soft, silky frosted stroke with delicate thin-film pastel transitions.
+ */
+private fun DrawScope.drawGlassIridescentRim(
+    outline: Outline,
+    tint: Color?,
+) {
+    val rimBrush =
+        if (tint != null) {
+            Brush.linearGradient(
+                colors =
+                    listOf(
+                        Color.White.copy(alpha = 0.65f),
+                        tint.copy(alpha = 0.55f),
+                        tint.copy(alpha = 0.30f),
+                    ),
+                start = Offset(0f, 0f),
+                end = Offset(size.width, size.height),
+            )
+        } else {
+            Brush.linearGradient(
+                colors =
+                    listOf(
+                        Color.White.copy(alpha = 0.65f),
+                        GlassPalette.cyan.copy(alpha = 0.45f),
+                        GlassPalette.mint.copy(alpha = 0.50f),
+                        GlassPalette.butter.copy(alpha = 0.45f),
+                        GlassPalette.rose.copy(alpha = 0.40f),
+                        GlassPalette.lilac.copy(alpha = 0.50f),
+                        Color.White.copy(alpha = 0.55f),
+                    ),
+                start = Offset(0f, 0f),
+                end = Offset(size.width, size.height),
+            )
+        }
+
+    drawOutline(
+        outline,
+        brush = rimBrush,
+        style = Stroke(width = GlassElevation.rimWidth.toPx()),
     )
 }
 
