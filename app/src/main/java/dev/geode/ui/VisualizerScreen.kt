@@ -55,8 +55,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,6 +71,7 @@ import dev.geode.render.scene.TouchTransform
 import dev.geode.ui.glass.GlassPlayButton
 import dev.geode.ui.glass.LiquidBackground
 import dev.geode.ui.glass.glassScrim
+import dev.geode.ui.glass.glassSurface
 import kotlin.math.PI
 import kotlin.math.abs
 
@@ -138,7 +141,7 @@ fun VisualizerScreen(
                     },
             )
         } else {
-            LiquidBackground(Modifier.fillMaxSize(), motion = gui.liquidMotion, reducedMotion = gui.reducedMotion)
+            LiquidBackground(Modifier.fillMaxSize(), motion = gui.liquidMotion, bubbleDensity = gui.bubbleDensity, tint = gui.glassTint)
             Column(
                 Modifier.align(Alignment.Center).padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -212,12 +215,10 @@ fun VisualizerScreen(
                         .navigationBarsPadding()
                         .padding(horizontal = 12.dp)
                         .padding(bottom = 16.dp)
-                        .crystalPanel(
-                            chromeAlpha,
-                            MaterialTheme.colorScheme.surface,
-                            MaterialTheme.colorScheme.primary,
-                            corner = 24.dp,
-                            glowStrength = 0.8f,
+                        .glassSurface(
+                            shape = RoundedCornerShape(24.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            glow = 0.5f,
                         ),
             ) {
                 Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
@@ -361,13 +362,10 @@ private fun VisualizerTopBar(
         Modifier
             .statusBarsPadding()
             .padding(12.dp)
-            .crystalPanel(
-                chromeAlpha,
-                MaterialTheme.colorScheme.surface,
-                MaterialTheme.colorScheme.primary,
-                corner = 12.dp,
-                glowStrength = 0.6f,
-                facets = 0.7f,
+            .glassSurface(
+                shape = RoundedCornerShape(12.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                glow = 0.4f,
             ).padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -456,13 +454,11 @@ private fun PanelChip(
 ) {
     Box(
         Modifier
-            .crystalPanel(
-                if (selected) 0.5f else 0.2f,
-                MaterialTheme.colorScheme.surfaceVariant,
-                MaterialTheme.colorScheme.primary,
-                corner = 14.dp,
-                glowStrength = if (selected) 1f else 0.35f,
-                prismatic = selected,
+            .glassSurface(
+                shape = RoundedCornerShape(14.dp),
+                tint = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else null,
+                selected = selected,
+                glow = if (selected) 0.8f else 0f,
             ).clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {

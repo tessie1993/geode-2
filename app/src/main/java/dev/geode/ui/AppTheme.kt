@@ -151,6 +151,13 @@ class ThemeStore(
 ) {
     /** Reads the morph length, converting a beat count saved by an older build. */
     private fun readPresetMorphSeconds(prefs: SharedPreferences): Float {
+        if (prefs.contains(KEY_PRESET_MORPH_SEC)) {
+            return prefs.getFloat(KEY_PRESET_MORPH_SEC, 2f).coerceIn(0f, PRESET_MORPH_SECONDS_MAX)
+        }
+        val beats = prefs.getInt(LEGACY_KEY_MORPH_BEATS, 4)
+        return (beats * 60f / LEGACY_MORPH_BPM).coerceIn(0f, PRESET_MORPH_SECONDS_MAX)
+    }
+
     fun loadGui(): GuiPrefs {
         val fontColor =
             when {

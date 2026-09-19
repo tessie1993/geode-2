@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -19,8 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.geode.R
 
 /** A pill button: frosted glass body, custom composable content, optional compact & filled styling. */
 @Composable
@@ -196,3 +201,23 @@ fun GlassPlayButton(
         )
     }
 }
+
+/** Play/pause toggle button with the big 88 dp play/pause bubble. */
+@Composable
+fun GlassPlayButton(
+    isPlaying: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow
+    val desc = stringResource(if (isPlaying) R.string.action_pause else R.string.action_play)
+    GlassPlayButton(
+        icon = icon,
+        contentDescription = desc,
+        onClick = onToggle,
+        modifier = modifier,
+        enabled = enabled,
+    )
+}
+
