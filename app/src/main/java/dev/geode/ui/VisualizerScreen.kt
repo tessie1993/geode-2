@@ -24,7 +24,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
@@ -241,8 +244,8 @@ fun VisualizerScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
                         IconButton(onClick = viewModel::toggleShuffle) {
-                            StoneIconArt(
-                                StoneIcon.SHUFFLE,
+                            Icon(
+                                Icons.Filled.Shuffle,
                                 stringResource(R.string.action_shuffle),
                                 tint =
                                     if (state.shuffle) {
@@ -415,8 +418,8 @@ private fun VisualizerTopBar(
         }
         if (state.hasMedia && !external.active) {
             IconButton(onClick = onToggleFavourite) {
-                StoneIconArt(
-                    StoneIcon.FAVORITE,
+                Icon(
+                    if (isFavourite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                     stringResource(
                         if (isFavourite) {
                             R.string.action_favourite_remove

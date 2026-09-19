@@ -258,7 +258,6 @@ class PlayerSession internal constructor(
 
     val userDataLoaded: StateFlow<Boolean> get() = container.userData.loaded
 
-    val theme: StateFlow<dev.geode.ui.theme.ThemePack> get() = settings.theme
 
     val guiPrefs: StateFlow<GuiPrefs> get() = settings.guiPrefs
 
@@ -268,7 +267,6 @@ class PlayerSession internal constructor(
 
     fun setGuiPrefs(prefs: GuiPrefs) = settings.setGuiPrefs(prefs)
 
-    fun setTheme(theme: dev.geode.ui.theme.ThemePack) = settings.setTheme(theme)
 
     fun setPlayerPrefs(prefs: PlayerPrefs) = settings.setPlayerPrefs(prefs)
 
