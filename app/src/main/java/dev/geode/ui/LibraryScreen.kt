@@ -70,6 +70,7 @@ import dev.geode.ui.glass.GlassHorizontalTabs
 import dev.geode.ui.glass.GlassIcons
 import dev.geode.ui.glass.GlassListRow
 import dev.geode.ui.glass.GlassPalette
+import dev.geode.ui.glass.GlassPearlMatrix
 import dev.geode.ui.glass.GlassSegmented
 import dev.geode.ui.glass.GlassSheet
 import dev.geode.ui.glass.GlassShapes
@@ -77,6 +78,8 @@ import dev.geode.ui.glass.GlassTextField
 import dev.geode.ui.glass.floatOnWater
 import dev.geode.ui.glass.glassSurface
 import dev.geode.ui.glass.waterScroll
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -114,44 +117,55 @@ fun LibraryScreen(onOpenSearch: () -> Unit) {
     // Already searched and sorted by the ViewModel — the screen draws what it is handed.
     val shown = state.tracks
 
-    Column(Modifier.fillMaxSize()) {
-        LibraryHeader(onOpenSearch)
-        if (!granted) {
-            LibraryPermissionGate(
-                permission = permission,
-                onGranted = permLauncher::launch,
-            )
-            return
-        }
-        GlassHorizontalTabs(
-            titles = tabs,
-            selected = tab,
-            onSelect = { tab = it },
-            modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
+    Box(Modifier.fillMaxSize()) {
+        // Decorative floating pearl matrix on water from the mockup
+        GlassPearlMatrix(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 8.dp, top = 80.dp),
+            beadSize = 14.dp,
+            spacing = 5.dp,
         )
-        // Search and sort belong to the track-shaped tabs. Playlists are ordered by hand, and
-        // re-sorting someone's running order out from under them would be a bug, not a feature.
-        if (tab != PLAYLISTS_TAB && tab != DUPLICATES_TAB) {
-            GlassTextField(
-                value = state.query,
-                onValueChange = libraryViewModel::setQuery,
-                placeholder = stringResource(R.string.library_search_hint),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+
+        Column(Modifier.fillMaxSize()) {
+            LibraryHeader(onOpenSearch)
+            if (!granted) {
+                LibraryPermissionGate(
+                    permission = permission,
+                    onGranted = permLauncher::launch,
+                )
+                return@Column
+            }
+            GlassHorizontalTabs(
+                titles = tabs,
+                selected = tab,
+                onSelect = { tab = it },
+                modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
             )
-            GlassSegmented(
-                options = LibrarySort.entries.map { stringResource(it.labelRes) },
-                selected = LibrarySort.entries.indexOf(state.sort),
-                onSelect = { libraryViewModel.setSort(LibrarySort.entries[it]) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-        }
-        when (tab) {
-            0 -> TrackList(shown, playerViewModel, state.isSearching)
-            1 -> GroupList(shown.groupBy { it.album }, playerViewModel)
-            2 -> GroupList(shown.groupBy { it.artist }, playerViewModel)
-            3 -> FoldersTab(shown.groupBy { it.folder }, playerViewModel)
-            PLAYLISTS_TAB -> PlaylistsTab(libraryViewModel)
-            DUPLICATES_TAB -> DuplicatesTab(state.tracks, playerViewModel, onDeleted = { reloadKey++ })
+            // Search and sort belong to the track-shaped tabs. Playlists are ordered by hand, and
+            // re-sorting someone's running order out from under them would be a bug, not a feature.
+            if (tab != PLAYLISTS_TAB && tab != DUPLICATES_TAB) {
+                GlassTextField(
+                    value = state.query,
+                    onValueChange = libraryViewModel::setQuery,
+                    placeholder = stringResource(R.string.library_search_hint),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+                GlassSegmented(
+                    options = LibrarySort.entries.map { stringResource(it.labelRes) },
+                    selected = LibrarySort.entries.indexOf(state.sort),
+                    onSelect = { libraryViewModel.setSort(LibrarySort.entries[it]) },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+            when (tab) {
+                0 -> TrackList(shown, playerViewModel, state.isSearching)
+                1 -> GroupList(shown.groupBy { it.album }, playerViewModel)
+                2 -> GroupList(shown.groupBy { it.artist }, playerViewModel)
+                3 -> FoldersTab(shown.groupBy { it.folder }, playerViewModel)
+                PLAYLISTS_TAB -> PlaylistsTab(libraryViewModel)
+                DUPLICATES_TAB -> DuplicatesTab(state.tracks, playerViewModel, onDeleted = { reloadKey++ })
+            }
         }
     }
 }
@@ -159,26 +173,29 @@ fun LibraryScreen(onOpenSearch: () -> Unit) {
 @Composable
 private fun LibraryHeader(onOpenSearch: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                stringResource(R.string.app_name),
-                style = MaterialTheme.typography.labelMedium,
-                color = GlassPalette.textSecondary,
-            )
-            Text(
-                stringResource(R.string.nav_library),
-                style = MaterialTheme.typography.headlineLarge,
-                color = GlassPalette.textPrimary,
-            )
-        }
+        GlassBubbleButton(
+            icon = GlassIcons.Close,
+            contentDescription = stringResource(R.string.action_dismiss),
+            onClick = onOpenSearch,
+            size = 40.dp,
+        )
+        Text(
+            stringResource(R.string.nav_library),
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = GlassPalette.textPrimary,
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.Center,
+        )
         GlassBubbleButton(
             icon = GlassIcons.Search,
             contentDescription = stringResource(R.string.action_search),
             onClick = onOpenSearch,
-            size = 44.dp,
+            size = 40.dp,
         )
     }
 }

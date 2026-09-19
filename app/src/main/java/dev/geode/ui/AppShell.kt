@@ -428,7 +428,11 @@ private fun AppShellCompact(
             }
         },
         bottomBar = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
+            ) {
                 if (gui.playerPosition == PlayerPosition.BOTTOM && !appState.onPlayer) miniPlayer()
                 GlassNavBar(
                     items = navEntries.map { it.item },
@@ -467,14 +471,15 @@ private fun AppShellExpanded(
     }
 }
 
-/** A floating glass pill with bubble transport buttons, matching ref-05's now-playing strip. */
+/** The floating liquid-glass now-playing dock matching the mockup in liquid_player_lib_1789776612307.jpg. */
 @Composable
 private fun MiniPlayer(
     title: String?,
+    artist: String?,
     isPlaying: Boolean,
     hasMedia: Boolean,
     progress: Float,
-    compact: Boolean,
+    onSeek: (Float) -> Unit,
     onExpand: () -> Unit,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
@@ -484,55 +489,50 @@ private fun MiniPlayer(
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .glassSurface(shape = GlassShapes.pill)
-            .floatOnWater(strength = 0.4f)
-            .glassTouch(onClick = onExpand)
-            .padding(horizontal = 16.dp, vertical = if (compact) 6.dp else 10.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .floatOnWater(strength = 0.3f),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+        // Track Title & Artist floating above the slider
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .glassTouch(onClick = onExpand)
+                .padding(horizontal = 6.dp),
         ) {
-            Icon(
-                GlassIcons.MusicNote,
-                null,
-                Modifier.size(if (compact) 18.dp else 24.dp),
-                tint = GlassPalette.textPrimary.copy(alpha = if (isPlaying) 1f else 0.5f),
-            )
             Text(
-                title ?: stringResource(R.string.mini_player_idle),
-                modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+                text = title ?: stringResource(R.string.mini_player_idle),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = GlassPalette.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium,
-                color = GlassPalette.textPrimary,
             )
-            GlassBubbleButton(
-                GlassIcons.Previous,
-                stringResource(R.string.action_previous),
-                onClick = onPrevious,
-                size = 32.dp,
-            )
-            Spacer(Modifier.width(4.dp))
-            GlassBubbleButton(
-                if (isPlaying) GlassIcons.Pause else GlassIcons.Play,
-                stringResource(R.string.action_play_pause),
-                onClick = onPlayPause,
-                size = 40.dp,
-                tint = GlassPalette.mint,
-            )
-            Spacer(Modifier.width(4.dp))
-            GlassBubbleButton(
-                GlassIcons.Next,
-                stringResource(R.string.action_next),
-                onClick = onNext,
-                size = 32.dp,
-            )
+            if (!artist.isNullOrBlank()) {
+                Text(
+                    text = artist,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GlassPalette.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
-        if (!compact) {
-            GlassLinearProgress(progress, Modifier.fillMaxWidth().padding(top = 8.dp))
-        }
+
+        // Organic pinched fluid slider with 3D pearl thumb
+        GlassDropletSlider(
+            value = progress,
+            onValueChange = onSeek,
+            modifier = Modifier.fillMaxWidth(),
+            pinchedTrack = true,
+        )
+
+        // 3D Iridescent Spherical Pearl Playback Controls Cluster
+        GlassTransportBar(
+            playing = isPlaying,
+            onPlayPause = onPlayPause,
+            onPrevious = onPrevious,
+            onNext = onNext,
+        )
     }
 }
 
