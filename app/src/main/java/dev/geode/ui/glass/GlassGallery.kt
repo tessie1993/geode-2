@@ -49,7 +49,21 @@ fun GlassGallery(modifier: Modifier = Modifier) {
             item { GallerySection(R.string.glass_gallery_section_text_field) { GalleryTextField() } }
             item { GallerySection(R.string.glass_gallery_section_dialog) { GalleryDialog() } }
             item { GallerySection(R.string.glass_gallery_section_transport_bar) { GalleryTransportBar() } }
+            item { GallerySectionTitle("Elastic Droplet Pod (Ref-06 / Ref-10)") { GalleryElasticDroplet() } }
+            item { GallerySectionTitle("Iridescent Pearl Matrix (Ref-05 / Ref-06 / Ref-10)") { GalleryPearlMatrix() } }
+            item { GallerySectionTitle("Droplet Fluid Slider (Ref-02 / Ref-10)") { GalleryDropletSlider() } }
         }
+    }
+}
+
+@Composable
+private fun GallerySectionTitle(
+    title: String,
+    content: @Composable () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = GlassPalette.textPrimary)
+        content()
     }
 }
 
@@ -193,3 +207,58 @@ private fun GalleryTransportBar() {
         onProfile = {},
     )
 }
+
+@Composable
+private fun GalleryElasticDroplet() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        InteractiveElasticDropletPod()
+    }
+}
+
+@Composable
+private fun GalleryPearlMatrix() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        GlassPearlMatrix()
+        GlassTeardropContainer(
+            modifier = Modifier.size(64.dp, 84.dp),
+            direction = TeardropDirection.UP,
+            tint = GlassPalette.cyan,
+        ) {
+            Icon(
+                GlassIcons.Play,
+                contentDescription = null,
+                tint = GlassPalette.textPrimary,
+            )
+        }
+        GlassTeardropContainer(
+            modifier = Modifier.size(64.dp, 84.dp),
+            direction = TeardropDirection.DOWN,
+            tint = GlassPalette.lime,
+        ) {
+            Icon(
+                GlassIcons.Heart,
+                contentDescription = null,
+                tint = GlassPalette.textPrimary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GalleryDropletSlider() {
+    var value by remember { mutableFloatStateOf(0.5f) }
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        GlassDropletSlider(
+            value = value,
+            onValueChange = { value = it },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+

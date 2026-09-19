@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -78,9 +79,10 @@ fun GlassDropletSlider(
                         drawLine(
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
+                                    GlassPalette.cyan,
                                     GlassPalette.mint,
-                                    GlassPalette.butter,
-                                    GlassPalette.lilac,
+                                    GlassPalette.gold,
+                                    GlassPalette.coral,
                                 ),
                                 endX = filledWidth,
                             ),
@@ -163,9 +165,10 @@ fun GlassDropletSlider(
                         drawLine(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    GlassPalette.lilac,
-                                    GlassPalette.butter,
+                                    GlassPalette.coral,
+                                    GlassPalette.gold,
                                     GlassPalette.mint,
+                                    GlassPalette.cyan,
                                 ),
                                 startY = size.height - filledHeight,
                                 endY = size.height,
