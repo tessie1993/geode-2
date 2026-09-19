@@ -22,6 +22,45 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+/** A pill button: frosted glass body, custom composable content, optional compact & filled styling. */
+@Composable
+fun GlassButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    compact: Boolean = false,
+    filled: Boolean = true,
+    selected: Boolean = false,
+    tint: Color? = null,
+    content: @Composable () -> Unit,
+) {
+    val alpha = if (enabled) 1f else 0.5f
+    val vPad = if (compact) 6.dp else 10.dp
+    val hPad = if (compact) 14.dp else 22.dp
+    val minHeight = if (compact) 36.dp else 48.dp
+    Row(
+        modifier
+            .defaultMinSize(minHeight = minHeight)
+            .glassSurface(
+                shape = GlassShapes.pill,
+                tint = if (filled) (tint ?: GlassPalette.mint.copy(alpha = 0.22f)) else tint,
+                selected = selected,
+            )
+            .floatOnWater()
+            .glassTouch(enabled = enabled, onClick = onClick)
+            .padding(horizontal = hPad, vertical = vPad),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val contentColor = GlassPalette.textPrimary.copy(alpha = alpha)
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            ProvideTextStyle(if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge) {
+                content()
+            }
+        }
+    }
+}
+
 /** A pill button: frosted glass body, optional leading icon, text content. */
 @Composable
 fun GlassButton(
@@ -33,25 +72,18 @@ fun GlassButton(
     selected: Boolean = false,
     tint: Color? = null,
 ) {
-    val alpha = if (enabled) 1f else 0.5f
-    Row(
-        modifier
-            .defaultMinSize(minHeight = 48.dp)
-            .glassSurface(shape = GlassShapes.pill, tint = tint, selected = selected)
-            .floatOnWater()
-            .glassTouch(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 22.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
+    GlassButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        selected = selected,
+        tint = tint,
     ) {
-        val content = GlassPalette.textPrimary.copy(alpha = alpha)
-        CompositionLocalProvider(LocalContentColor provides content) {
-            if (icon != null) {
-                Icon(icon, contentDescription = null, tint = content)
-                Spacer(Modifier.size(8.dp))
-            }
-            ProvideTextStyle(MaterialTheme.typography.labelLarge) { Text(text) }
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = LocalContentColor.current)
+            Spacer(Modifier.size(8.dp))
         }
+        Text(text)
     }
 }
 
