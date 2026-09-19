@@ -380,6 +380,7 @@ private fun DrawScope.drawOrganicPinchedTrack(
             end = Offset(filledW, midY),
             strokeWidth = rWaist * 1.2f,
             cap = StrokeCap.Round,
+            alpha = if (enabled) 0.80f else 0.35f,
         )
     }
 
