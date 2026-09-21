@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,7 +29,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -58,12 +65,14 @@ fun GlassDropletSlider(
     val stretchScale = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
     val waterField = LocalWaterField.current
+    val seek: (Float) -> Unit = { target -> currentOnChange.value(target.coerceIn(currentRange.value)) }
 
     if (orientation == Orientation.Horizontal) {
         Box(
             modifier = modifier
                 .fillMaxWidth()
                 .height(maxOf(thumbSize + 8.dp, trackThickness + 6.dp))
+                .dropletSliderControls(value, valueRange, enabled, Orientation.Horizontal, seek)
                 .floatOnWater(strength = 0.35f),
             contentAlignment = Alignment.CenterStart,
         ) {
@@ -204,6 +213,7 @@ fun GlassDropletSlider(
             modifier = modifier
                 .width(thumbSize + 8.dp)
                 .fillMaxHeight()
+                .dropletSliderControls(value, valueRange, enabled, Orientation.Vertical, seek)
                 .floatOnWater(strength = 0.35f),
             contentAlignment = Alignment.BottomCenter,
         ) {
@@ -286,6 +296,46 @@ fun GlassDropletSlider(
         }
     }
 }
+
+/**
+ * Slider semantics for the whole control, plus tap-to-seek on the track.
+ *
+ * The only gesture handler used to be `draggable` on the [GlassDropletSlider] thumb, a 26dp dot.
+ * That failed two groups of people at once: sighted users had to hit the dot precisely, because
+ * tapping the track - which is what most people try first - did nothing at all, and screen-reader
+ * users could not seek by any means, since there was no [Role.Slider], no reported position and no
+ * `setProgress` action to dispatch. Its sibling `GlassSlider` delegates to the Material slider and
+ * so was never affected.
+ */
+private fun Modifier.dropletSliderControls(
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    enabled: Boolean,
+    orientation: Orientation,
+    onSeek: (Float) -> Unit,
+): Modifier =
+    this
+        .progressSemantics(value, valueRange)
+        .semantics {
+            role = Role.Slider
+            if (enabled) {
+                setProgress { target ->
+                    onSeek(target)
+                    true
+                }
+            }
+        }.pointerInput(orientation, enabled) {
+            if (!enabled) return@pointerInput
+            detectTapGestures { offset ->
+                val horizontal = orientation == Orientation.Horizontal
+                val extent = if (horizontal) size.width else size.height
+                // A zero extent would make this NaN, and a NaN passes straight through coerceIn.
+                if (extent <= 0) return@detectTapGestures
+                val along = if (horizontal) offset.x / extent else 1f - offset.y / extent
+                val span = valueRange.endInclusive - valueRange.start
+                onSeek(valueRange.start + along.coerceIn(0f, 1f) * span)
+            }
+        }
 
 /** Draws the organic waist-pinched glass tube matching the mockup in liquid_player_lib_1789776612307.jpg. */
 private fun DrawScope.drawOrganicPinchedTrack(

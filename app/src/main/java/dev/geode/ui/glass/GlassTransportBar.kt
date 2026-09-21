@@ -27,7 +27,7 @@ fun GlassTransportBar(
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
     onLibrary: (() -> Unit)? = null,
-    onProfile: (() -> Unit)? = null,
+    onOpenQueue: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -78,11 +78,15 @@ fun GlassTransportBar(
         )
 
         // Flanking right accent bead or profile button
-        if (onProfile != null) {
+        // Named for what it does. This parameter used to be called `onProfile` and was
+        // labelled "Profile", while PlayerScreen wired it to onOpenQueuePanel - so a
+        // screen-reader user was told they were opening a profile and got the play queue.
+        // A confidently wrong label is worse than none: nothing suggests checking.
+        if (onOpenQueue != null) {
             GlassPearlSphereButton(
                 icon = GlassIcons.Profile,
-                contentDescription = stringResource(R.string.glass_profile),
-                onClick = onProfile,
+                contentDescription = stringResource(R.string.action_open_queue),
+                onClick = onOpenQueue,
                 size = 36.dp,
                 tint = GlassPalette.coral,
             )

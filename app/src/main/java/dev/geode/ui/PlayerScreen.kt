@@ -332,7 +332,7 @@ private fun TransportSection(
             onPrevious = { if (state.hasMedia) viewModel.previous() },
             onNext = { if (state.hasMedia) viewModel.next() },
             onLibrary = onOpenLibrary,
-            onProfile = onOpenQueuePanel,
+            onOpenQueue = onOpenQueuePanel,
         )
         Row(
             Modifier.fillMaxWidth(),

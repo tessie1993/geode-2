@@ -205,7 +205,7 @@ private fun GalleryTransportBar() {
         onPrevious = {},
         onNext = {},
         onLibrary = {},
-        onProfile = {},
+        onOpenQueue = {},
     )
 }
 

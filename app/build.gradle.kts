@@ -234,4 +234,8 @@ dependencies {
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    // Supplies the empty activity createComposeRule() launches into.
+    debugImplementation(libs.compose.ui.test.manifest)
 }

@@ -648,6 +648,9 @@
     <!-- Liquid-glass design system (ui/glass/). Only strings the gallery/preview itself renders;
          screen units add their own copy as they rewrite onto these primitives. -->
     <string name="glass_profile">Profile</string>
+    <!-- Spoken by a screen reader as a switch's state; not shown on screen. -->
+    <string name="glass_toggle_on">On</string>
+    <string name="glass_toggle_off">Off</string>
     <string name="glass_gallery_title">Liquid glass gallery</string>
     <string name="glass_gallery_section_buttons">Buttons</string>
     <string name="glass_gallery_section_slider">Slider</string>

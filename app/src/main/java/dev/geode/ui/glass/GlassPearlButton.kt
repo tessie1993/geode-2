@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
@@ -12,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -23,6 +25,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -51,10 +57,27 @@ fun GlassPearlSphereButton(
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     val pressScale = remember { Animatable(1f) }
+    val currentOnClick = rememberUpdatedState(onClick)
 
     Box(
         modifier = modifier
             .size(size)
+            // prev / play-pause / next / library / queue all come through here, so without an
+            // onClick semantics action the most-used surface in the app is announced by TalkBack
+            // and cannot be activated by it, by Switch Access, or by a keyboard.
+            //
+            // This repeats waterTouch's semantics rather than delegating to it: the press-scale
+            // spring below is this button's own, and waterTouch would replace it with ripples,
+            // glow and ink. That is a visual redesign of the transport bar, not an a11y fix.
+            .semantics {
+                role = Role.Button
+                if (enabled) {
+                    onClick {
+                        currentOnClick.value()
+                        true
+                    }
+                }
+            }.focusable(enabled)
             .floatOnWater(strength = 0.55f)
             .graphicsLayer {
                 scaleX = pressScale.value

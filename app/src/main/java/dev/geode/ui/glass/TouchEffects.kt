@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
@@ -39,6 +40,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -92,6 +98,8 @@ fun Modifier.waterTouch(
     onClick: (() -> Unit)? = null,
     onLongPress: (() -> Unit)? = null,
     drag: Boolean = false,
+    semanticRole: Role? = Role.Button,
+    onClickLabel: String? = null,
 ): Modifier =
     composed {
         if (!enabled) return@composed this
@@ -105,6 +113,26 @@ fun Modifier.waterTouch(
         var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
         this
+            // This modifier invokes onClick straight from pointerInput, which no assistive
+            // technology can reach: TalkBack's double-tap, Switch Access and keyboard/D-pad
+            // activation all dispatch the onClick *semantics action*, not a pointer event. Without
+            // these, every control built on the glass layer is announced and cannot be activated.
+            // GlassNavBar is the one component that got this right, via Modifier.selectable.
+            .semantics {
+                semanticRole?.let { role = it }
+                if (onClick != null) {
+                    onClick(label = onClickLabel) {
+                        currentOnClick.value?.invoke()
+                        true
+                    }
+                }
+                if (onLongPress != null) {
+                    onLongClick {
+                        currentOnLongPress.value?.invoke()
+                        true
+                    }
+                }
+            }.focusable()
             .onGloballyPositioned { coords = it }
             .pointerInput(drag, reducedMotion) {
                 awaitEachGesture {
@@ -145,7 +173,9 @@ fun Modifier.glassTouch(
     onClick: (() -> Unit)? = null,
     onLongPress: (() -> Unit)? = null,
     drag: Boolean = false,
-): Modifier = waterTouch(enabled, onClick, onLongPress, drag)
+    semanticRole: Role? = Role.Button,
+    onClickLabel: String? = null,
+): Modifier = waterTouch(enabled, onClick, onLongPress, drag, semanticRole, onClickLabel)
 
 private suspend fun splatWhileHeld(
     field: WaterField,

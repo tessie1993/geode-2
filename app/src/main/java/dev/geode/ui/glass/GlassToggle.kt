@@ -11,7 +11,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import dev.geode.R
 
 /** A glass pill with a pearl knob that slides, matching ref-03's "Toggle Switch". */
 @Composable
@@ -26,13 +31,18 @@ fun GlassToggle(
     val knobSize = 24.dp
     val travel = trackWidth - knobSize - 6.dp
     val offset by animateDpAsState(if (checked) travel else 0.dp, label = "glassToggleKnob")
+    val state = stringResource(if (checked) R.string.glass_toggle_on else R.string.glass_toggle_off)
     Box(
         modifier
             .width(trackWidth)
             .height(trackHeight)
             .glassSurface(shape = GlassShapes.pill, tint = if (checked) GlassPalette.mint else null, selected = checked)
             .floatOnWater(strength = 0.3f)
-            .glassTouch(enabled = enabled, onClick = { onCheckedChange(!checked) })
+            .glassTouch(enabled = enabled, onClick = { onCheckedChange(!checked) }, semanticRole = Role.Switch)
+            // Deliberately not Modifier.toggleable as well: two gesture detectors on one node
+            // conflict, and waterTouch's onClick semantics action plus this state description is
+            // what a screen reader needs, without giving up the glass touch feedback.
+            .semantics { stateDescription = state }
             .padding(3.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
