@@ -211,7 +211,11 @@ class StudioExporter(
      */
     suspend fun cancel() {
         cancelled = true
-        bestEffort(TAG, "transformer?.cancel()") { transformer?.cancel() }
+        bestEffort(TAG, "transformer?.cancel()") {
+            withContext(Dispatchers.Main) {
+                transformer?.cancel()
+            }
+        }
         completion.await()
     }
 

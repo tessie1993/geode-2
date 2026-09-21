@@ -26,6 +26,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 
 @OptIn(UnstableApi::class)
 class PlaybackSession internal constructor(
@@ -137,7 +139,11 @@ class PlaybackSession internal constructor(
                 player.playbackState != Player.STATE_ENDED
 
     internal fun release() {
-        analysis.close()
+        runBlocking {
+            withTimeoutOrNull(500L) {
+                analysis.closeAndJoin()
+            } ?: analysis.close()
+        }
         if (dev.geode.audio.AudioBus.onInterestChanged === interestHook) {
             dev.geode.audio.AudioBus.onInterestChanged = null
         }

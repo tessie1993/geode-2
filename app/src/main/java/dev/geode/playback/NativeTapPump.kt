@@ -6,6 +6,7 @@ import dev.geode.engine.audioandroid.SinkClockDriver
 import dev.geode.engine.bridge.GeodeNative
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import dev.geode.RingLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -13,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Drains the native mixer's tap into the same [PcmTap] the Media3 chain feeds, so analysis and the
@@ -35,7 +37,16 @@ class NativeTapPump(
     /** Returns once the thread has let go of the handle; call before the player is destroyed. */
     fun stop() {
         running = false
-        runBlocking { job?.join() }
+        runBlocking {
+            val done =
+                withTimeoutOrNull(500L) {
+                    job?.join()
+                    true
+                }
+            if (done == null) {
+                RingLog.note("NativeTapPump", "job join timed out after 500ms")
+            }
+        }
         job = null
     }
 

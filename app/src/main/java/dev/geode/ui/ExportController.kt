@@ -211,6 +211,7 @@ internal class ExportController(
         }
     }
 
+    @Volatile
     private var studioJob: Job? = null
 
     fun startExport(
