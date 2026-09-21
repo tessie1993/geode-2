@@ -28,7 +28,14 @@ class ExportService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        bestEffort(TAG, "startForegroundNotification(ExportRun.state.v...") { startForegroundNotification(ExportRun.state.value) }
+        try {
+            startForegroundNotification(ExportRun.state.value)
+        } catch (t: Throwable) {
+            RingLog.note(TAG, "startForeground failed; aborting export", t)
+            ExportRun.requestCancel()
+            stopSelf()
+            return
+        }
         watcher =
             scope.launch {
                 ExportRun.state.collectLatest { state ->
@@ -36,7 +43,11 @@ class ExportService : Service() {
                         stopSelf()
                         return@collectLatest
                     }
-                    bestEffort(TAG, "startForegroundNotification(state)") { startForegroundNotification(state) }
+                    try {
+                        startForegroundNotification(state)
+                    } catch (t: Throwable) {
+                        RingLog.note(TAG, "updating foreground notification failed", t)
+                    }
                 }
             }
     }

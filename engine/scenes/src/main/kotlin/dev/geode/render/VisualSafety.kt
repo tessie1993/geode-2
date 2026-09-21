@@ -132,6 +132,5 @@ object VisualSafety {
                 else -> false
             }
 
-    private fun Float.safeClamp(min: Float, max: Float): Float =
-        if (isFinite()) coerceIn(min, max) else min
+    private fun Float.safeClamp(min: Float, max: Float): Float = if (isFinite()) coerceIn(min, max) else min
 }

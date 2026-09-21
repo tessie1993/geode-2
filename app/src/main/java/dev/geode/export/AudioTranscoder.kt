@@ -6,6 +6,7 @@ import android.media.MediaCodecInfo
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import dev.geode.R
 import dev.geode.RingLog
 import dev.geode.audio.AiffPcm
 import dev.geode.util.bestEffort
@@ -597,7 +598,7 @@ class AudioTranscoder(
                 if (progressed) {
                     stallIterations = 0
                 } else if (++stallIterations > STALL_LIMIT) {
-                    throw IllegalStateException("Audio transcode stalled (codec made no progress)")
+                    throw ExportFailure(R.string.export_error_audio_transcode_stalled)
                 }
             }
             out.flush()

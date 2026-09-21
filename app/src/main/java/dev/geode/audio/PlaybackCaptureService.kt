@@ -43,7 +43,14 @@ class PlaybackCaptureService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        bestEffort(TAG, "startForegroundNotification()") { startForegroundNotification() }
+        try {
+            startForegroundNotification()
+        } catch (t: Throwable) {
+            RingLog.note(TAG, "startForeground failed; aborting capture", t)
+            MediaProjectionHolder.noteStartFailure()
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
         val data = intent?.let { IntentCompat.projectionData(it) }
         if (resultCode == 0 || data == null) {

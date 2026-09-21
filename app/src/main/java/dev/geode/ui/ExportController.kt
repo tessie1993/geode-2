@@ -12,6 +12,8 @@ import dev.geode.editor.AnimatableParams
 import dev.geode.editor.KeyframeSheet
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
+import dev.geode.export.ExportFailure
+import dev.geode.export.ExportPhase
 import dev.geode.export.ExportRange
 import dev.geode.export.ExportRun
 import dev.geode.export.ExportService
@@ -791,16 +793,20 @@ internal class ExportController(
             return msg
         }
         return when (t) {
+            is ExportFailure ->
+                application.getString(t.stringResId)
             is android.media.MediaCodec.CodecException ->
                 application.getString(dev.geode.R.string.export_error_codec)
             is java.io.IOException ->
                 application.getString(dev.geode.R.string.export_error_io)
-            is IllegalArgumentException, is IllegalStateException ->
+            is IllegalArgumentException ->
                 if (kind == ExportRun.Kind.Project || kind == ExportRun.Kind.Studio) {
                     application.getString(dev.geode.R.string.export_error_invalid_project)
                 } else {
                     application.getString(dev.geode.R.string.export_error_generic)
                 }
+            is IllegalStateException ->
+                application.getString(dev.geode.R.string.export_error_generic)
             is OutOfMemoryError ->
                 application.getString(dev.geode.R.string.export_error_out_of_memory)
             else ->
