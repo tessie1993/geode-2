@@ -85,7 +85,7 @@ class PresetLinkTest {
         val preset = dev.geode.data.PresetStore.fromJson(hostile)
         assertTrue(preset.attack.isFinite())
         assertTrue(preset.decay.isFinite())
-        for (prop in dev.geode.engine.bridge.SceneParams::class.java.declaredFields) {
+        for (prop in dev.geode.render.scene.SceneParams::class.java.declaredFields) {
             if (prop.type == java.lang.Float.TYPE) {
                 prop.isAccessible = true
                 val v = prop.getFloat(preset.params)

@@ -1,6 +1,6 @@
 package dev.geode.render
 
-import dev.geode.engine.bridge.SceneParams
+import dev.geode.render.scene.SceneParams
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
