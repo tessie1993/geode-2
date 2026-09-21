@@ -11,7 +11,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import dev.geode.R
 
 /** A glass pill with a pearl knob that slides, matching ref-03's "Toggle Switch". */
 @Composable
@@ -26,13 +31,20 @@ fun GlassToggle(
     val knobSize = 24.dp
     val travel = trackWidth - knobSize - 6.dp
     val offset by animateDpAsState(if (checked) travel else 0.dp, label = "glassToggleKnob")
+    val onLabel = stringResource(R.string.state_on)
+    val offLabel = stringResource(R.string.state_off)
     Box(
         modifier
             .width(trackWidth)
             .height(trackHeight)
             .glassSurface(shape = GlassShapes.pill, tint = if (checked) GlassPalette.mint else null, selected = checked)
             .floatOnWater(strength = 0.3f)
-            .glassTouch(enabled = enabled, onClick = { onCheckedChange(!checked) })
+            .glassTouch(
+                enabled = enabled,
+                onClick = { onCheckedChange(!checked) },
+                semanticRole = Role.Switch,
+            )
+            .semantics { stateDescription = if (checked) onLabel else offLabel }
             .padding(3.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
