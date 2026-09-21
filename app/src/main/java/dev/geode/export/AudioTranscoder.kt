@@ -568,7 +568,7 @@ class AudioTranscoder(
                 }
                 while (true) {
                     val enc = encoder ?: break
-                    val outIndex = enc.dequeueOutputBuffer(encInfo, 0)
+                    val outIndex = enc.dequeueOutputBuffer(encInfo, if (eosSent) 10_000 else 0)
                     if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         outFormat = enc.outputFormat
                         progressed = true

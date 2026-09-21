@@ -382,21 +382,39 @@ internal class MusicLibraryController(
         }
     }
 
-    fun createMusicPlaylist(name: String) {
+    fun createMusicPlaylist(
+        name: String,
+        uris: List<String> = emptyList(),
+    ) {
         if (name.isBlank()) return
-        musicPlaylists.save(MusicPlaylist(name.trim()))
-        _library.update { it.copy(playlists = musicPlaylists.list()) }
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    musicPlaylists.save(MusicPlaylist(name.trim()))
+                    if (uris.isNotEmpty()) {
+                        musicPlaylists.addTracks(name.trim(), uris)
+                    }
+                    musicPlaylists.list()
+                }
+            _library.update { it.copy(playlists = fresh) }
+        }
     }
 
     fun renameMusicPlaylist(
         oldName: String,
         newName: String,
     ): Boolean {
-        val renamed = musicPlaylists.rename(oldName, newName.trim())
-        if (renamed) {
-            _library.update { it.copy(playlists = musicPlaylists.list()) }
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    val renamed = musicPlaylists.rename(oldName, newName.trim())
+                    if (renamed) musicPlaylists.list() else null
+                }
+            if (fresh != null) {
+                _library.update { it.copy(playlists = fresh) }
+            }
         }
-        return renamed
+        return true
     }
 
     fun moveMusicPlaylistTrack(
@@ -404,39 +422,75 @@ internal class MusicLibraryController(
         from: Int,
         to: Int,
     ) {
-        musicPlaylists.move(name, from, to)
-        _library.update { it.copy(playlists = musicPlaylists.list()) }
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    musicPlaylists.move(name, from, to)
+                    musicPlaylists.list()
+                }
+            _library.update { it.copy(playlists = fresh) }
+        }
     }
 
     fun deleteMusicPlaylist(name: String) {
-        musicPlaylists.delete(name)
-        _library.update { it.copy(playlists = musicPlaylists.list()) }
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    musicPlaylists.delete(name)
+                    musicPlaylists.list()
+                }
+            _library.update { it.copy(playlists = fresh) }
+        }
     }
 
     fun addTrackToPlaylist(
         playlist: String,
         uri: String,
     ) {
-        musicPlaylists.addTrack(playlist, uri)
-        _library.update { it.copy(playlists = musicPlaylists.list()) }
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    musicPlaylists.addTrack(playlist, uri)
+                    musicPlaylists.list()
+                }
+            _library.update { it.copy(playlists = fresh) }
+        }
     }
 
     fun removeTrackFromPlaylist(
         playlist: String,
         uri: String,
     ) {
-        musicPlaylists.removeTrack(playlist, uri)
-        _library.update { it.copy(playlists = musicPlaylists.list()) }
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    musicPlaylists.removeTrack(playlist, uri)
+                    musicPlaylists.list()
+                }
+            _library.update { it.copy(playlists = fresh) }
+        }
     }
 
     fun saveSmartPlaylist(playlist: SmartPlaylist) {
-        smartPlaylists.save(playlist)
-        _library.update { it.copy(smartPlaylists = smartPlaylists.list()) }
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    smartPlaylists.save(playlist)
+                    smartPlaylists.list()
+                }
+            _library.update { it.copy(smartPlaylists = fresh) }
+        }
     }
 
     fun deleteSmartPlaylist(name: String) {
-        smartPlaylists.delete(name)
-        _library.update { it.copy(smartPlaylists = smartPlaylists.list()) }
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    smartPlaylists.delete(name)
+                    smartPlaylists.list()
+                }
+            _library.update { it.copy(smartPlaylists = fresh) }
+        }
     }
 
     /**

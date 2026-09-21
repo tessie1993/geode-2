@@ -102,6 +102,7 @@ class NativeDspProcessor : BaseAudioProcessor() {
         if (h != 0L) GeodeNative.dspProcess(h, scratch, frames)
         val output = replaceOutputBuffer(samples * bytesPerSample)
         floats.position(0)
+        floats.limit(samples)
         if (format.encoding == C.ENCODING_PCM_FLOAT) {
             output.asFloatBuffer().put(floats)
         } else {

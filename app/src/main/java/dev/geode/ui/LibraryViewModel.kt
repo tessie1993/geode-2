@@ -145,7 +145,10 @@ class LibraryViewModel
             comment: String,
         ): TagWriteOutcome = session.writeTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
 
-        fun createMusicPlaylist(name: String) = session.createMusicPlaylist(name)
+        fun createMusicPlaylist(
+            name: String,
+            uris: List<String> = emptyList(),
+        ) = session.createMusicPlaylist(name, uris)
 
         suspend fun importPlaylistFile(uri: Uri): PlaylistImportResult = session.importPlaylistFile(uri)
 
