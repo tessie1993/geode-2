@@ -31,18 +31,20 @@ fun GlassToggle(
     val knobSize = 24.dp
     val travel = trackWidth - knobSize - 6.dp
     val offset by animateDpAsState(if (checked) travel else 0.dp, label = "glassToggleKnob")
-    val state = stringResource(if (checked) R.string.glass_toggle_on else R.string.glass_toggle_off)
+    val onLabel = stringResource(R.string.state_on)
+    val offLabel = stringResource(R.string.state_off)
     Box(
         modifier
             .width(trackWidth)
             .height(trackHeight)
             .glassSurface(shape = GlassShapes.pill, tint = if (checked) GlassPalette.mint else null, selected = checked)
             .floatOnWater(strength = 0.3f)
-            .glassTouch(enabled = enabled, onClick = { onCheckedChange(!checked) }, semanticRole = Role.Switch)
-            // Deliberately not Modifier.toggleable as well: two gesture detectors on one node
-            // conflict, and waterTouch's onClick semantics action plus this state description is
-            // what a screen reader needs, without giving up the glass touch feedback.
-            .semantics { stateDescription = state }
+            .glassTouch(
+                enabled = enabled,
+                onClick = { onCheckedChange(!checked) },
+                semanticRole = Role.Switch,
+            )
+            .semantics { stateDescription = if (checked) onLabel else offLabel }
             .padding(3.dp),
         contentAlignment = Alignment.CenterStart,
     ) {

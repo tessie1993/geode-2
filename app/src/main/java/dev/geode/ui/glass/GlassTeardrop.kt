@@ -42,96 +42,144 @@ class TeardropShape(
                 path.moveTo(w * 0.5f, 0f)
                 // Down right flank
                 path.cubicTo(
-                    w * 0.55f, h * 0.15f,
-                    w, h * 0.38f,
-                    w, h * 0.65f,
+                    w * 0.55f,
+                    h * 0.15f,
+                    w,
+                    h * 0.38f,
+                    w,
+                    h * 0.65f,
                 )
                 // Bottom right to bottom center
                 path.cubicTo(
-                    w, h * 0.95f,
-                    w * 0.78f, h,
-                    w * 0.5f, h,
+                    w,
+                    h * 0.95f,
+                    w * 0.78f,
+                    h,
+                    w * 0.5f,
+                    h,
                 )
                 // Bottom center to bottom left
                 path.cubicTo(
-                    w * 0.22f, h,
-                    0f, h * 0.95f,
-                    0f, h * 0.65f,
+                    w * 0.22f,
+                    h,
+                    0f,
+                    h * 0.95f,
+                    0f,
+                    h * 0.65f,
                 )
                 // Up left flank to apex
                 path.cubicTo(
-                    0f, h * 0.38f,
-                    w * 0.45f, h * 0.15f,
-                    w * 0.5f, 0f,
+                    0f,
+                    h * 0.38f,
+                    w * 0.45f,
+                    h * 0.15f,
+                    w * 0.5f,
+                    0f,
                 )
             }
             TeardropOrientation.DOWN -> {
                 path.moveTo(w * 0.5f, h)
                 path.cubicTo(
-                    w * 0.55f, h * 0.85f,
-                    w, h * 0.62f,
-                    w, h * 0.35f,
+                    w * 0.55f,
+                    h * 0.85f,
+                    w,
+                    h * 0.62f,
+                    w,
+                    h * 0.35f,
                 )
                 path.cubicTo(
-                    w, h * 0.05f,
-                    w * 0.78f, 0f,
-                    w * 0.5f, 0f,
+                    w,
+                    h * 0.05f,
+                    w * 0.78f,
+                    0f,
+                    w * 0.5f,
+                    0f,
                 )
                 path.cubicTo(
-                    w * 0.22f, 0f,
-                    0f, h * 0.05f,
-                    0f, h * 0.35f,
+                    w * 0.22f,
+                    0f,
+                    0f,
+                    h * 0.05f,
+                    0f,
+                    h * 0.35f,
                 )
                 path.cubicTo(
-                    0f, h * 0.62f,
-                    w * 0.45f, h * 0.85f,
-                    w * 0.5f, h,
+                    0f,
+                    h * 0.62f,
+                    w * 0.45f,
+                    h * 0.85f,
+                    w * 0.5f,
+                    h,
                 )
             }
             TeardropOrientation.LEFT -> {
                 path.moveTo(0f, h * 0.5f)
                 path.cubicTo(
-                    w * 0.15f, h * 0.45f,
-                    w * 0.38f, 0f,
-                    w * 0.65f, 0f,
+                    w * 0.15f,
+                    h * 0.45f,
+                    w * 0.38f,
+                    0f,
+                    w * 0.65f,
+                    0f,
                 )
                 path.cubicTo(
-                    w * 0.95f, 0f,
-                    w, h * 0.22f,
-                    w, h * 0.5f,
+                    w * 0.95f,
+                    0f,
+                    w,
+                    h * 0.22f,
+                    w,
+                    h * 0.5f,
                 )
                 path.cubicTo(
-                    w, h * 0.78f,
-                    w * 0.95f, h,
-                    w * 0.65f, h,
+                    w,
+                    h * 0.78f,
+                    w * 0.95f,
+                    h,
+                    w * 0.65f,
+                    h,
                 )
                 path.cubicTo(
-                    w * 0.38f, h,
-                    w * 0.15f, h * 0.55f,
-                    0f, h * 0.5f,
+                    w * 0.38f,
+                    h,
+                    w * 0.15f,
+                    h * 0.55f,
+                    0f,
+                    h * 0.5f,
                 )
             }
             TeardropOrientation.RIGHT -> {
                 path.moveTo(w, h * 0.5f)
                 path.cubicTo(
-                    w * 0.85f, h * 0.45f,
-                    w * 0.62f, 0f,
-                    w * 0.35f, 0f,
+                    w * 0.85f,
+                    h * 0.45f,
+                    w * 0.62f,
+                    0f,
+                    w * 0.35f,
+                    0f,
                 )
                 path.cubicTo(
-                    w * 0.05f, 0f,
-                    0f, h * 0.22f,
-                    0f, h * 0.5f,
+                    w * 0.05f,
+                    0f,
+                    0f,
+                    h * 0.22f,
+                    0f,
+                    h * 0.5f,
                 )
                 path.cubicTo(
-                    0f, h * 0.78f,
-                    w * 0.05f, h,
-                    w * 0.35f, h,
+                    0f,
+                    h * 0.78f,
+                    w * 0.05f,
+                    h,
+                    w * 0.35f,
+                    h,
                 )
                 path.cubicTo(
-                    w * 0.62f, h,
-                    w * 0.85f, h * 0.55f,
-                    w, h * 0.5f,
+                    w * 0.62f,
+                    h,
+                    w * 0.85f,
+                    h * 0.55f,
+                    w,
+                    h * 0.5f,
                 )
             }
         }
@@ -155,9 +203,10 @@ fun GlassTeardropContainer(
 ) {
     val shape = TeardropShape(orientation)
     Box(
-        modifier = modifier
-            .glassSurface(shape = shape, tint = tint, selected = selected)
-            .floatOnWater(strength = 0.8f),
+        modifier =
+            modifier
+                .glassSurface(shape = shape, tint = tint, selected = selected)
+                .floatOnWater(strength = 0.8f),
         contentAlignment = contentAlignment,
         content = content,
     )

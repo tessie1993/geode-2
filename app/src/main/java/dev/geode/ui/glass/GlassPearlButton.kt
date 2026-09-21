@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -60,55 +61,50 @@ fun GlassPearlSphereButton(
     val currentOnClick = rememberUpdatedState(onClick)
 
     Box(
-        modifier = modifier
-            .size(size)
-            // prev / play-pause / next / library / queue all come through here, so without an
-            // onClick semantics action the most-used surface in the app is announced by TalkBack
-            // and cannot be activated by it, by Switch Access, or by a keyboard.
-            //
-            // This repeats waterTouch's semantics rather than delegating to it: the press-scale
-            // spring below is this button's own, and waterTouch would replace it with ripples,
-            // glow and ink. That is a visual redesign of the transport bar, not an a11y fix.
-            .semantics {
-                role = Role.Button
-                if (enabled) {
-                    onClick {
-                        currentOnClick.value()
-                        true
+        modifier =
+            modifier
+                .size(size)
+                .floatOnWater(strength = 0.55f)
+                .semantics {
+                    role = Role.Button
+                    contentDescription?.let { this.contentDescription = it }
+                    if (enabled) {
+                        onClick {
+                            onClick()
+                            true
+                        }
                     }
                 }
-            }.focusable(enabled)
-            .floatOnWater(strength = 0.55f)
-            .graphicsLayer {
-                scaleX = pressScale.value
-                scaleY = pressScale.value
-            }
-            .pointerInput(enabled) {
-                if (!enabled) return@pointerInput
-                detectTapGestures(
-                    onPress = { offset ->
-                        view.performGlassHaptic(GlassHapticCue.TAP)
-                        field?.tap(offset.x, offset.y, 2.5f)
-                        scope.launch {
-                            pressScale.animateTo(
-                                0.90f,
-                                spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
-                            )
-                        }
-                        val success = tryAwaitRelease()
-                        scope.launch {
-                            pressScale.animateTo(
-                                1f,
-                                spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
-                            )
-                        }
-                        if (success) {
-                            field?.tap(offset.x, offset.y, 1.5f)
-                            onClick()
-                        }
-                    },
-                )
-            },
+                .focusable(enabled)
+                .graphicsLayer {
+                    scaleX = pressScale.value
+                    scaleY = pressScale.value
+                }.pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+                    detectTapGestures(
+                        onPress = { offset ->
+                            view.performGlassHaptic(GlassHapticCue.TAP)
+                            field?.tap(offset.x, offset.y, 2.5f)
+                            scope.launch {
+                                pressScale.animateTo(
+                                    0.90f,
+                                    spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
+                                )
+                            }
+                            val success = tryAwaitRelease()
+                            scope.launch {
+                                pressScale.animateTo(
+                                    1f,
+                                    spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
+                                )
+                            }
+                            if (success) {
+                                field?.tap(offset.x, offset.y, 1.5f)
+                                onClick()
+                            }
+                        },
+                    )
+                },
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.matchParentSize()) {
@@ -118,15 +114,17 @@ fun GlassPearlSphereButton(
             // 1. Contact shadow on water surface
             val shadowOffset = radius * 0.35f
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        GlassPalette.baseShadow.copy(alpha = 0.42f),
-                        GlassPalette.glassShadow.copy(alpha = 0.22f),
-                        Color.Transparent,
+                brush =
+                    Brush.radialGradient(
+                        colors =
+                            listOf(
+                                GlassPalette.baseShadow.copy(alpha = 0.42f),
+                                GlassPalette.glassShadow.copy(alpha = 0.22f),
+                                Color.Transparent,
+                            ),
+                        center = center + Offset(0f, shadowOffset),
+                        radius = radius * 1.15f,
                     ),
-                    center = center + Offset(0f, shadowOffset),
-                    radius = radius * 1.15f,
-                ),
                 radius = radius * 1.15f,
                 center = center + Offset(0f, shadowOffset),
             )
@@ -134,14 +132,16 @@ fun GlassPearlSphereButton(
             // 2. Outer luminous glow ring if requested
             if (glow > 0.05f) {
                 drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            (tint ?: GlassPalette.mint).copy(alpha = 0.45f * glow),
-                            Color.Transparent,
+                    brush =
+                        Brush.radialGradient(
+                            colors =
+                                listOf(
+                                    (tint ?: GlassPalette.mint).copy(alpha = 0.45f * glow),
+                                    Color.Transparent,
+                                ),
+                            center = center,
+                            radius = radius * 1.35f,
                         ),
-                        center = center,
-                        radius = radius * 1.35f,
-                    ),
                     radius = radius * 1.35f,
                     center = center,
                     blendMode = BlendMode.Plus,
@@ -150,30 +150,32 @@ fun GlassPearlSphereButton(
 
             // 3. Volumetric 3D pearl sphere body with iridescent pastel refraction
             val lightCenter = center - Offset(radius * 0.25f, radius * 0.28f)
-            val pearlColors = if (tint != null) {
-                listOf(
-                    Color.White.copy(alpha = 0.90f),
-                    Color.White.copy(alpha = 0.65f),
-                    tint.copy(alpha = 0.45f),
-                    tint.copy(alpha = 0.25f),
-                    GlassPalette.baseShadow.copy(alpha = 0.20f),
-                )
-            } else {
-                listOf(
-                    Color.White.copy(alpha = 0.92f),
-                    Color.White.copy(alpha = 0.70f),
-                    GlassPalette.mint.copy(alpha = 0.40f),
-                    GlassPalette.cyan.copy(alpha = 0.35f),
-                    GlassPalette.lavender.copy(alpha = 0.30f),
-                    GlassPalette.baseShadow.copy(alpha = 0.22f),
-                )
-            }
+            val pearlColors =
+                if (tint != null) {
+                    listOf(
+                        Color.White.copy(alpha = 0.90f),
+                        Color.White.copy(alpha = 0.65f),
+                        tint.copy(alpha = 0.45f),
+                        tint.copy(alpha = 0.25f),
+                        GlassPalette.baseShadow.copy(alpha = 0.20f),
+                    )
+                } else {
+                    listOf(
+                        Color.White.copy(alpha = 0.92f),
+                        Color.White.copy(alpha = 0.70f),
+                        GlassPalette.mint.copy(alpha = 0.40f),
+                        GlassPalette.cyan.copy(alpha = 0.35f),
+                        GlassPalette.lavender.copy(alpha = 0.30f),
+                        GlassPalette.baseShadow.copy(alpha = 0.22f),
+                    )
+                }
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = pearlColors,
-                    center = lightCenter,
-                    radius = radius * 1.05f,
-                ),
+                brush =
+                    Brush.radialGradient(
+                        colors = pearlColors,
+                        center = lightCenter,
+                        radius = radius * 1.05f,
+                    ),
                 radius = radius,
                 center = center,
             )
@@ -181,33 +183,37 @@ fun GlassPearlSphereButton(
             // 4. Underside bounce reflection (soft cyan/lavender glow)
             val bounceCenter = center + Offset(radius * 0.32f, radius * 0.36f)
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        GlassPalette.cyan.copy(alpha = 0.28f),
-                        GlassPalette.lavender.copy(alpha = 0.15f),
-                        Color.Transparent,
+                brush =
+                    Brush.radialGradient(
+                        colors =
+                            listOf(
+                                GlassPalette.cyan.copy(alpha = 0.28f),
+                                GlassPalette.lavender.copy(alpha = 0.15f),
+                                Color.Transparent,
+                            ),
+                        center = bounceCenter,
+                        radius = radius * 0.75f,
                     ),
-                    center = bounceCenter,
-                    radius = radius * 0.75f,
-                ),
                 radius = radius * 0.75f,
                 center = bounceCenter,
             )
 
             // 5. Thin-film iridescent rim
-            val rimBrush = Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.85f),
-                    GlassPalette.cyan.copy(alpha = 0.60f),
-                    GlassPalette.mint.copy(alpha = 0.65f),
-                    GlassPalette.gold.copy(alpha = 0.55f),
-                    GlassPalette.coral.copy(alpha = 0.50f),
-                    GlassPalette.lavender.copy(alpha = 0.60f),
-                    Color.White.copy(alpha = 0.75f),
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(size.toPx(), size.toPx()),
-            )
+            val rimBrush =
+                Brush.linearGradient(
+                    colors =
+                        listOf(
+                            Color.White.copy(alpha = 0.85f),
+                            GlassPalette.cyan.copy(alpha = 0.60f),
+                            GlassPalette.mint.copy(alpha = 0.65f),
+                            GlassPalette.gold.copy(alpha = 0.55f),
+                            GlassPalette.coral.copy(alpha = 0.50f),
+                            GlassPalette.lavender.copy(alpha = 0.60f),
+                            Color.White.copy(alpha = 0.75f),
+                        ),
+                    start = Offset(0f, 0f),
+                    end = Offset(size.toPx(), size.toPx()),
+                )
             drawCircle(
                 brush = rimBrush,
                 radius = radius - 0.5f,
@@ -219,15 +225,17 @@ fun GlassPearlSphereButton(
             val glintCenter = center - Offset(radius * 0.36f, radius * 0.38f)
             val glintRadius = radius * 0.44f
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.88f),
-                        Color.White.copy(alpha = 0.35f),
-                        Color.Transparent,
+                brush =
+                    Brush.radialGradient(
+                        colors =
+                            listOf(
+                                Color.White.copy(alpha = 0.88f),
+                                Color.White.copy(alpha = 0.35f),
+                                Color.Transparent,
+                            ),
+                        center = glintCenter,
+                        radius = glintRadius,
                     ),
-                    center = glintCenter,
-                    radius = glintRadius,
-                ),
                 radius = glintRadius,
                 center = glintCenter,
             )
@@ -240,9 +248,10 @@ fun GlassPearlSphereButton(
             icon,
             contentDescription = null,
             tint = GlassPalette.baseShadow.copy(alpha = 0.35f),
-            modifier = Modifier
-                .size(iconSize)
-                .offset(y = 1.dp),
+            modifier =
+                Modifier
+                    .size(iconSize)
+                    .offset(y = 1.dp),
         )
         Icon(
             icon,
@@ -269,25 +278,31 @@ fun GlassPearlAccentBead(
     val pressScale = remember { Animatable(1f) }
 
     Box(
-        modifier = modifier
-            .size(size)
-            .floatOnWater(strength = 0.7f)
-            .graphicsLayer {
-                scaleX = pressScale.value
-                scaleY = pressScale.value
-            }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { offset ->
-                        view.performGlassHaptic(GlassHapticCue.SLIDER_TICK)
-                        field?.tap(offset.x, offset.y, 1.8f)
-                        scope.launch {
-                            pressScale.animateTo(1.2f, spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioHighBouncy))
-                            pressScale.animateTo(1f, spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy))
-                        }
-                    },
-                )
-            },
+        modifier =
+            modifier
+                .size(size)
+                .floatOnWater(strength = 0.7f)
+                .graphicsLayer {
+                    scaleX = pressScale.value
+                    scaleY = pressScale.value
+                }.pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { offset ->
+                            view.performGlassHaptic(GlassHapticCue.SLIDER_TICK)
+                            field?.tap(offset.x, offset.y, 1.8f)
+                            scope.launch {
+                                pressScale.animateTo(
+                                    1.2f,
+                                    spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioHighBouncy),
+                                )
+                                pressScale.animateTo(
+                                    1f,
+                                    spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
+                                )
+                            }
+                        },
+                    )
+                },
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.matchParentSize()) {
@@ -296,11 +311,12 @@ fun GlassPearlAccentBead(
 
             // Contact shadow
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(GlassPalette.baseShadow.copy(alpha = 0.35f), Color.Transparent),
-                    center = center + Offset(0f, radius * 0.35f),
-                    radius = radius * 1.15f,
-                ),
+                brush =
+                    Brush.radialGradient(
+                        colors = listOf(GlassPalette.baseShadow.copy(alpha = 0.35f), Color.Transparent),
+                        center = center + Offset(0f, radius * 0.35f),
+                        radius = radius * 1.15f,
+                    ),
                 radius = radius * 1.15f,
                 center = center + Offset(0f, radius * 0.35f),
             )
@@ -308,17 +324,19 @@ fun GlassPearlAccentBead(
             // Iridescent pearl body
             val lightCenter = center - Offset(radius * 0.28f, radius * 0.28f)
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.90f),
-                        Color.White.copy(alpha = 0.60f),
-                        tint.copy(alpha = 0.50f),
-                        GlassPalette.lavender.copy(alpha = 0.35f),
-                        GlassPalette.baseShadow.copy(alpha = 0.18f),
+                brush =
+                    Brush.radialGradient(
+                        colors =
+                            listOf(
+                                Color.White.copy(alpha = 0.90f),
+                                Color.White.copy(alpha = 0.60f),
+                                tint.copy(alpha = 0.50f),
+                                GlassPalette.lavender.copy(alpha = 0.35f),
+                                GlassPalette.baseShadow.copy(alpha = 0.18f),
+                            ),
+                        center = lightCenter,
+                        radius = radius * 1.05f,
                     ),
-                    center = lightCenter,
-                    radius = radius * 1.05f,
-                ),
                 radius = radius,
                 center = center,
             )
@@ -334,11 +352,12 @@ fun GlassPearlAccentBead(
             // Specular glint
             val glintCenter = center - Offset(radius * 0.35f, radius * 0.35f)
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.85f), Color.Transparent),
-                    center = glintCenter,
-                    radius = radius * 0.45f,
-                ),
+                brush =
+                    Brush.radialGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.85f), Color.Transparent),
+                        center = glintCenter,
+                        radius = radius * 0.45f,
+                    ),
                 radius = radius * 0.45f,
                 center = glintCenter,
             )

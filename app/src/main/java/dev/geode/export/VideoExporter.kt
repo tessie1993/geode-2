@@ -24,6 +24,7 @@ import dev.geode.viz.BackgroundExportSpec
 import dev.geode.viz.BackgroundImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.nio.ByteBuffer
 import java.io.File
 import java.io.FileOutputStream
@@ -271,15 +272,12 @@ class VideoExporter(
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
     ): Result {
-        // Render into a scratch file rather than straight into the user's document.
-        //
-        // The SAF create-document picker lets the user point at a file that already exists, so
-        // "delete the destination on failure" — which is what this did on both the cancel and the
-        // exception path — could destroy content the export never owned. Reachable in practice,
-        // because a spurious encoder stall fails an export whose output is otherwise complete.
-        // Writing the destination only once the render has succeeded also makes a cancel a no-op
-        // on the user's storage.
-        val scratch = File(context.cacheDir, "geode_video_${System.currentTimeMillis()}.mp4")
+        val scratchFile = File.createTempFile("geode_export_", ".mp4", context.cacheDir)
+        val pfd =
+            ParcelFileDescriptor.open(
+                scratchFile,
+                ParcelFileDescriptor.MODE_READ_WRITE,
+            ) ?: return failed(R.string.export_error_destination_write)
         return try {
             ParcelFileDescriptor
                 .open(
@@ -310,13 +308,18 @@ class VideoExporter(
                     isCancelled,
                 )
             }
-            when {
-                isCancelled() -> Result.Cancelled
-                !publishScratch(scratch, destination) -> failed(R.string.export_error_destination_write)
-                else -> Result.Saved(destination, measureLoudness(destination, loudnessTarget))
+            if (isCancelled()) {
+                Result.Cancelled
+            } else {
+                val wrote = runCatching { publishScratch(scratchFile, destination) }.getOrDefault(false)
+                if (!wrote) {
+                    failed(R.string.export_error_destination_write)
+                } else {
+                    Result.Saved(destination, measureLoudness(destination, loudnessTarget))
+                }
             }
         } finally {
-            bestEffort(TAG, "scratch.delete()") { scratch.delete() }
+            bestEffort(TAG, "scratchFile.delete()") { scratchFile.delete() }
         }
     }
 
@@ -341,7 +344,7 @@ class VideoExporter(
      * codec has entered an error state, which is a failed export, not an empty frame to skip.
      */
     private fun MediaCodec.requireOutputBuffer(index: Int): ByteBuffer =
-        getOutputBuffer(index) ?: throw context.exportFailure(R.string.export_error_encoder_buffer_null)
+        getOutputBuffer(index) ?: throw ExportFailure(R.string.export_error_encoder_buffer_null)
 
     /**
      * Measures the audio Geode just muxed into [uri] and, if it decoded, turns that measurement
@@ -553,8 +556,12 @@ class VideoExporter(
                     else -> flushAttempts++
                 }
             }
-            if (!muxerStarted && !isCancelled()) throw context.exportFailure(R.string.export_error_encoder_no_output)
-            if (!sawEos && !isCancelled()) throw context.exportFailure(R.string.export_error_encoder_stalled)
+            if (!muxerStarted && !isCancelled()) {
+                throw ExportFailure(R.string.export_error_encoder_no_output)
+            }
+            if (!sawEos && !isCancelled()) {
+                throw ExportFailure(R.string.export_error_encoder_stalled)
+            }
             if (muxerStarted && !isCancelled() && audioTrack >= 0) {
                 val feed =
                     audioFeedRef ?: AudioFeed(muxer, audioTrack, aac, exportDurationUs).also { audioFeedRef = it }

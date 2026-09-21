@@ -332,8 +332,8 @@ class PresetStore(
             return Preset(
                 name = o.getString("name"),
                 sceneId = o.getString("sceneId"),
-                attack = o.finiteDouble("attack").toFloat(),
-                decay = o.finiteDouble("decay").toFloat(),
+                attack = o.finiteRequiredDouble("attack", 0.05).toFloat(),
+                decay = o.finiteRequiredDouble("decay", 0.2).toFloat(),
                 customShader = if (o.has("customShader")) o.getString("customShader") else null,
                 milkPreset = if (o.has("milkPreset")) o.getString("milkPreset") else null,
                 params =

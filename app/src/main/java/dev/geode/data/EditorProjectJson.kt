@@ -285,13 +285,17 @@ internal object EditorProjectJson {
 
     private fun value(o: JSONObject): ParamValue =
         when (val kind = o.getString("kind")) {
-            "scalar" -> ParamValue.Scalar(o.finiteDouble("value").toFloat())
-            "vector2" -> ParamValue.Vector2(o.finiteDouble("x").toFloat(), o.finiteDouble("y").toFloat())
+            "scalar" -> ParamValue.Scalar(o.finiteRequiredDouble("value", 0.0).toFloat())
+            "vector2" ->
+                ParamValue.Vector2(
+                    o.finiteRequiredDouble("x", 0.0).toFloat(),
+                    o.finiteRequiredDouble("y", 0.0).toFloat(),
+                )
             "colour" ->
                 ParamValue.Colour(
-                    o.finiteDouble("r").toFloat(),
-                    o.finiteDouble("g").toFloat(),
-                    o.finiteDouble("b").toFloat(),
+                    o.finiteRequiredDouble("r", 0.0).toFloat(),
+                    o.finiteRequiredDouble("g", 0.0).toFloat(),
+                    o.finiteRequiredDouble("b", 0.0).toFloat(),
                     o.finiteDouble("a", 1.0).toFloat(),
                 )
             "toggle" -> ParamValue.Toggle(o.getBoolean("on"))
@@ -321,10 +325,10 @@ internal object EditorProjectJson {
             "custom" ->
                 Interpolation.Custom(
                     BezierCurve(
-                        o.finiteDouble("c1x").toFloat(),
-                        o.finiteDouble("c1y").toFloat(),
-                        o.finiteDouble("c2x").toFloat(),
-                        o.finiteDouble("c2y").toFloat(),
+                        o.finiteRequiredDouble("c1x", 0.0).toFloat(),
+                        o.finiteRequiredDouble("c1y", 0.0).toFloat(),
+                        o.finiteRequiredDouble("c2x", 1.0).toFloat(),
+                        o.finiteRequiredDouble("c2y", 1.0).toFloat(),
                     ),
                 )
             else -> throw IllegalArgumentException("unknown interpolation: $type")

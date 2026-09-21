@@ -41,20 +41,22 @@ fun GlassListRow(
     onClick: (() -> Unit)? = null,
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .glassSurface(shape = RowCardShape, selected = selected, glow = if (selected) 0.35f else 0f)
-            .floatOnWater(strength = 0.22f)
-            .then(if (onClick != null) Modifier.glassTouch(onClick = onClick) else Modifier)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .glassSurface(shape = RowCardShape, selected = selected, glow = if (selected) 0.35f else 0f)
+                .floatOnWater(strength = 0.22f)
+                .then(if (onClick != null) Modifier.glassTouch(onClick = onClick) else Modifier)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         if (leading != null) {
             Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .glassSurface(shape = RoundedCornerShape(16.dp)),
+                modifier =
+                    Modifier
+                        .size(46.dp)
+                        .glassSurface(shape = RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 leading()

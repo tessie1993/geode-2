@@ -4,6 +4,7 @@ import dev.geode.data.finiteDouble
 
 import android.content.Context
 import dev.geode.data.AtomicWrite
+import dev.geode.data.finiteDouble
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File

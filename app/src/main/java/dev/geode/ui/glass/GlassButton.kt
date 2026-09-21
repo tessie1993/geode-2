@@ -51,8 +51,7 @@ fun GlassButton(
                 shape = GlassShapes.pill,
                 tint = if (filled) (tint ?: GlassPalette.mint.copy(alpha = 0.22f)) else tint,
                 selected = selected,
-            )
-            .floatOnWater()
+            ).floatOnWater()
             .glassTouch(enabled = enabled, onClick = onClick)
             .padding(horizontal = hPad, vertical = vPad),
         horizontalArrangement = Arrangement.Center,
@@ -225,4 +224,3 @@ fun GlassPlayButton(
         enabled = enabled,
     )
 }
-

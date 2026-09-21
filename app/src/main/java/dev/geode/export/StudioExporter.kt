@@ -4,7 +4,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.os.Build
-import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.annotation.StringRes
 import androidx.media3.common.MediaItem
@@ -276,16 +275,10 @@ class StudioExporter(
             val wrote =
                 resolver.openOutputStream(destination)?.use { out -> file.inputStream().use { it.copyTo(out) } } != null
             if (!wrote) {
-                bestEffort(TAG, "DocumentsContract.deleteDocument(resolver, de...") {
-                    DocumentsContract.deleteDocument(resolver, destination)
-                }
                 return failed(R.string.export_error_destination_write)
             }
             Result.Saved(destination, outputDurationMs)
         }.getOrElse { e ->
-            bestEffort(TAG, "DocumentsContract.deleteDocument(resolver, de...") {
-                DocumentsContract.deleteDocument(context.contentResolver, destination)
-            }
             RingLog.note(TAG, "destination write failed", e)
             failed(R.string.export_error_destination_save)
         }

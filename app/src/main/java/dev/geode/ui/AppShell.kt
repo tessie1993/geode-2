@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -49,6 +48,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -66,7 +66,6 @@ import dev.geode.ui.glass.GlassButton
 import dev.geode.ui.glass.GlassDialog
 import dev.geode.ui.glass.GlassDropletSlider
 import dev.geode.ui.glass.GlassIcons
-import dev.geode.ui.glass.GlassLinearProgress
 import dev.geode.ui.glass.GlassListRow
 import dev.geode.ui.glass.GlassMaterialTheme
 import dev.geode.ui.glass.GlassNavBar
@@ -84,7 +83,6 @@ import dev.geode.ui.glass.glassSurface
 import dev.geode.ui.glass.glassTouch
 import dev.geode.ui.glass.rememberWaterField
 import dev.geode.ui.glass.waterScroll
-import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -425,9 +423,10 @@ private fun AppShellCompact(
         },
         bottomBar = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
             ) {
                 if (gui.playerPosition == PlayerPosition.BOTTOM && !appState.onPlayer) miniPlayer()
                 GlassNavBar(
@@ -453,7 +452,13 @@ private fun AppShellExpanded(
     miniPlayer: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    Row(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
+    Row(
+        Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(16.dp),
+    ) {
         GlassVerticalTabs(
             titles = navEntries.map { it.item.label },
             selected = navEntries.indexOfFirst { it.destination == appState.dest }.coerceAtLeast(0),

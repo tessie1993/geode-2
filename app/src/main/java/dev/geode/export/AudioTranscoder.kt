@@ -328,7 +328,7 @@ class AudioTranscoder(
                 if (progressed) {
                     stallIterations = 0
                 } else if (++stallIterations > STALL_LIMIT) {
-                    throw context.exportFailure(R.string.export_error_audio_stalled)
+                    throw ExportFailure(R.string.export_error_audio_transcode_stalled)
                 }
             }
             out.flush()
@@ -569,12 +569,7 @@ class AudioTranscoder(
                 }
                 while (true) {
                     val enc = encoder ?: break
-                    // Once EOS is sent every other branch of this loop is skipped, so a
-                    // non-blocking dequeue leaves nothing that can make progress: the stall
-                    // counter then runs out its 1000 iterations in well under a millisecond
-                    // and fails an export whose file is already fully transcoded. Block
-                    // while draining, as the AIFF path above already does.
-                    val outIndex = enc.dequeueOutputBuffer(encInfo, if (eosSent) DRAIN_TIMEOUT_US else 0L)
+                    val outIndex = enc.dequeueOutputBuffer(encInfo, if (eosSent) 10_000 else 0)
                     if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         outFormat = enc.outputFormat
                         progressed = true
@@ -603,7 +598,7 @@ class AudioTranscoder(
                 if (progressed) {
                     stallIterations = 0
                 } else if (++stallIterations > STALL_LIMIT) {
-                    throw context.exportFailure(R.string.export_error_audio_stalled)
+                    throw ExportFailure(R.string.export_error_audio_transcode_stalled)
                 }
             }
             out.flush()

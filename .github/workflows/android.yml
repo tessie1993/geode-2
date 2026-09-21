@@ -11,6 +11,10 @@ on:
     paths:
       - "app/**"
       - "engine/**"
+      - "core/**"
+      - "CMakeLists.txt"
+      - "third_party/**"
+      - "config/**"
       - "build-logic/**"
       - "gradle/**"
       - "*.gradle.kts"
@@ -78,7 +82,7 @@ jobs:
       # class of bug is caught at PR time instead of the next audit.
       - name: detekt
         working-directory: ${{ env.PROJECT_DIR }}
-        run: ./gradlew :app:detekt --stacktrace --no-daemon
+        run: ./gradlew detekt --stacktrace --no-daemon
 
       # detekt prints only "Analysis failed with N weighted issues" and a stack
       # trace; the findings themselves go to a report file. Without this, reading
@@ -152,7 +156,7 @@ jobs:
       # still available from the workflow run for device testing.
       - name: Run unit tests
         working-directory: ${{ env.PROJECT_DIR }}
-        run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
+        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon
 
       - name: Run Android lint
         working-directory: ${{ env.PROJECT_DIR }}

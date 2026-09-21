@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PictureInPictureAlt
@@ -47,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
@@ -55,7 +57,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -148,7 +149,11 @@ fun VisualizerScreen(
             ) {
                 Text(
                     stringResource(R.string.second_screen_showing_on).uppercase(),
-                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.6.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
+                    style =
+                        MaterialTheme.typography.labelSmall.copy(
+                            letterSpacing = 2.6.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                        ),
                     color = accentTextColor().copy(alpha = 0.9f),
                 )
                 Text(
@@ -360,6 +365,7 @@ private fun VisualizerTopBar(
 ) {
     Row(
         Modifier
+            .graphicsLayer { alpha = chromeAlpha }
             .statusBarsPadding()
             .padding(12.dp)
             .glassSurface(

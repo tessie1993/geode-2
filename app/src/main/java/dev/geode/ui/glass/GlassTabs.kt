@@ -41,8 +41,9 @@ fun GlassHorizontalTabs(
     modifier: Modifier = Modifier,
     scrollable: Boolean = false,
 ) {
-    val rowModifier = if (scrollable) modifier.horizontalScroll(rememberScrollState()) else modifier
-    Row(rowModifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    val baseModifier = if (scrollable) modifier.horizontalScroll(rememberScrollState()) else modifier
+    val rowModifier = baseModifier.selectableGroup()
+    Row(rowModifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         titles.forEachIndexed { i, title -> GlassTabPill(title, i == selected) { onSelect(i) } }
     }
 }
@@ -56,7 +57,6 @@ fun GlassTabs(
     modifier: Modifier = Modifier,
     scrollable: Boolean = false,
 ) = GlassHorizontalTabs(titles, selected, onSelect, modifier, scrollable)
-
 
 @Composable
 private fun GlassTabPill(

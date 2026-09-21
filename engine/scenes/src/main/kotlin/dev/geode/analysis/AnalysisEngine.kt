@@ -119,57 +119,65 @@ class AnalysisEngine(
         private val arrival = PulseHold()
 
         fun reset() {
-            analyzer.reset()
-            listOf(beat, beatStrength, transient, kick, snare, hat, downbeat, sectionBoundary, drop, arrival)
-                .forEach(PulseHold::reset)
+            synchronized(analysisLock) {
+                if (closed) return
+                analyzer.reset()
+                listOf(beat, beatStrength, transient, kick, snare, hat, downbeat, sectionBoundary, drop, arrival)
+                    .forEach(PulseHold::reset)
+            }
         }
 
         fun tick(): Boolean {
-            if (!window.refresh()) return false
-            analyzer.analyze(window.mid, window.side, DT_SECONDS)
+            synchronized(analysisLock) {
+                if (closed) return false
+                if (!window.refresh()) return false
+                analyzer.analyze(window.mid, window.side, DT_SECONDS)
 
-            _features.value =
-                AudioFeatures(
-                    bands = analyzer.bands.copyOf(),
-                    waveform = analyzer.waveform.copyOf(),
-                    rms = analyzer.rms,
-                    bass = analyzer.bass,
-                    mid = analyzer.mid,
-                    treble = analyzer.treble,
-                    onset = analyzer.onset,
-                    beat = beat.step(if (analyzer.beat) 1f else 0f) > 0f,
-                    bpm = analyzer.bpm,
-                    centroid = analyzer.centroid,
-                    flux = analyzer.fluxValue,
-                    beatStrength = beatStrength.step(analyzer.beatStrength),
-                    transient = transient.step(analyzer.transient),
-                    beatPhase = analyzer.beatPhase,
-                    pulseConfidence = analyzer.pulseConfidence,
-                    macroEnergy = analyzer.macroEnergy,
-                    kick = kick.step(analyzer.kick),
-                    snare = snare.step(analyzer.snare),
-                    hat = hat.step(analyzer.hat),
-                    chroma = analyzer.chroma.copyOf(),
-                    chromaConfidence = analyzer.chromaConfidence,
-                    stereoWidth = analyzer.stereoWidth,
-                    stereoCorrelation = analyzer.stereoCorrelation,
-                    stereoPan = analyzer.stereoPan,
-                    tempoStability = analyzer.tempoStability,
-                    barPhase = analyzer.barPhase,
-                    beatInBar = analyzer.beatInBar,
-                    downbeat = downbeat.step(if (analyzer.downbeat) 1f else 0f) > 0f,
-                    downbeatConfidence = analyzer.downbeatConfidence,
-                    novelty = analyzer.novelty,
-                    sectionBoundary = sectionBoundary.step(if (analyzer.sectionBoundary) 1f else 0f) > 0f,
-                    buildup = analyzer.buildup,
-                    drop = drop.step(if (analyzer.drop) 1f else 0f) > 0f,
-                    arrival = arrival.step(if (analyzer.arrival) 1f else 0f) > 0f,
-                    harmonicity = analyzer.harmonicity,
-                    warmup = analyzer.warmup,
-                )
-            return true
+                _features.value =
+                    AudioFeatures(
+                        bands = analyzer.bands.copyOf(),
+                        waveform = analyzer.waveform.copyOf(),
+                        rms = analyzer.rms,
+                        bass = analyzer.bass,
+                        mid = analyzer.mid,
+                        treble = analyzer.treble,
+                        onset = analyzer.onset,
+                        beat = beat.step(if (analyzer.beat) 1f else 0f) > 0f,
+                        bpm = analyzer.bpm,
+                        centroid = analyzer.centroid,
+                        flux = analyzer.fluxValue,
+                        beatStrength = beatStrength.step(analyzer.beatStrength),
+                        transient = transient.step(analyzer.transient),
+                        beatPhase = analyzer.beatPhase,
+                        pulseConfidence = analyzer.pulseConfidence,
+                        macroEnergy = analyzer.macroEnergy,
+                        kick = kick.step(analyzer.kick),
+                        snare = snare.step(analyzer.snare),
+                        hat = hat.step(analyzer.hat),
+                        chroma = analyzer.chroma.copyOf(),
+                        chromaConfidence = analyzer.chromaConfidence,
+                        stereoWidth = analyzer.stereoWidth,
+                        stereoCorrelation = analyzer.stereoCorrelation,
+                        stereoPan = analyzer.stereoPan,
+                        tempoStability = analyzer.tempoStability,
+                        barPhase = analyzer.barPhase,
+                        beatInBar = analyzer.beatInBar,
+                        downbeat = downbeat.step(if (analyzer.downbeat) 1f else 0f) > 0f,
+                        downbeatConfidence = analyzer.downbeatConfidence,
+                        novelty = analyzer.novelty,
+                        sectionBoundary = sectionBoundary.step(if (analyzer.sectionBoundary) 1f else 0f) > 0f,
+                        buildup = analyzer.buildup,
+                        drop = drop.step(if (analyzer.drop) 1f else 0f) > 0f,
+                        arrival = arrival.step(if (analyzer.arrival) 1f else 0f) > 0f,
+                        harmonicity = analyzer.harmonicity,
+                        warmup = analyzer.warmup,
+                    )
+                return true
+            }
         }
     }
+
+    private val analysisLock = Any()
 
     // job is mutated from AudioBus.onInterestChanged, which can fire on whatever thread calls
     // AudioBus.addConsumer()/removeConsumer() - not necessarily the analysis scope's thread -
@@ -230,13 +238,10 @@ class AnalysisEngine(
      */
     fun close() {
         closed = true
-        val current = synchronized(jobLock) { job.also { job = null } }
-        if (current == null) {
+        stop()
+        synchronized(analysisLock) {
             analyzer.close()
-            return
         }
-        current.invokeOnCompletion { analyzer.close() }
-        current.cancel()
     }
 
     /** Cancels the loop and waits for it to actually stop before destroying the native handle, so no in-flight native call can race the destroy. */
@@ -244,7 +249,9 @@ class AnalysisEngine(
         closed = true
         val current = synchronized(jobLock) { job.also { job = null } }
         current?.cancelAndJoin()
-        analyzer.close()
+        synchronized(analysisLock) {
+            analyzer.close()
+        }
     }
 
     companion object {

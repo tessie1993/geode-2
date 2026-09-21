@@ -293,7 +293,11 @@ bool SceneParams::set(std::string_view name, float value) {
         {"motionHue", &SceneParams::motionHue},
     };
     for (const auto& f : kAllFloats) {
-        if (name == f.name) { this->*f.member = value; return true; }
+        if (name == f.name) {
+            if (!std::isfinite(value)) return false;
+            this->*f.member = value;
+            return true;
+        }
     }
     for (const auto& f : kInts) {
         if (name == f.name) { this->*f.member = static_cast<int>(std::lround(value)); return true; }

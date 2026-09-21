@@ -12,6 +12,8 @@ import dev.geode.editor.AnimatableParams
 import dev.geode.editor.KeyframeSheet
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
+import dev.geode.export.ExportFailure
+import dev.geode.export.ExportPhase
 import dev.geode.export.ExportRange
 import dev.geode.export.ExportRun
 import dev.geode.export.ExportService
@@ -329,7 +331,7 @@ internal class ExportController(
                     } else if (ExportRun.cancelRequested) {
                         _exportState.value = ExportUiState(phase = cancelledPhase())
                     } else {
-                        val message = describeExportFailure(t)
+                        val message = describeExportFailure(t, ExportRun.Kind.Visualizer)
                         _exportState.value = ExportUiState(phase = ExportPhase.Failed(message))
                         runResult = ExportRun.Result.Failed(message)
                     }
@@ -506,7 +508,7 @@ internal class ExportController(
                         _studio.update { it.copy(phase = cancelledPhase()) }
                         throw t
                     } else {
-                        val message = describeExportFailure(t)
+                        val message = describeExportFailure(t, ExportRun.Kind.Studio)
                         _studio.update { it.copy(phase = ExportPhase.Failed(message)) }
                         runResult = ExportRun.Result.Failed(message)
                     }
@@ -561,6 +563,7 @@ internal class ExportController(
                                 describeExportFailure(
                                     built.exceptionOrNull()
                                         ?: IllegalStateException("ProjectComposition.build returned no outcome and no exception"),
+                                    ExportRun.Kind.Project,
                                 )
                             _studio.update { it.copy(phase = ExportPhase.Failed(message)) }
                             runResult = ExportRun.Result.Failed(message)
@@ -589,7 +592,7 @@ internal class ExportController(
                         _studio.update { it.copy(phase = cancelledPhase()) }
                         throw t
                     } else {
-                        val message = describeExportFailure(t)
+                        val message = describeExportFailure(t, ExportRun.Kind.Project)
                         _studio.update { it.copy(phase = ExportPhase.Failed(message)) }
                         runResult = ExportRun.Result.Failed(message)
                     }
@@ -702,7 +705,7 @@ internal class ExportController(
                     } else if (ExportRun.cancelRequested) {
                         _loopState.value = LoopUiState(phase = cancelledPhase())
                     } else {
-                        val message = describeExportFailure(t)
+                        val message = describeExportFailure(t, ExportRun.Kind.Loop)
                         _loopState.value = LoopUiState(phase = ExportPhase.Failed(message))
                         runResult = ExportRun.Result.Failed(message)
                     }
@@ -792,18 +795,35 @@ internal class ExportController(
      */
     private fun cancelledPhase(): ExportPhase = ExportRun.abortReason?.let { ExportPhase.Failed(it) } ?: ExportPhase.Idle
 
-    private fun describeExportFailure(t: Throwable): String {
+    private fun describeExportFailure(
+        t: Throwable,
+        kind: ExportRun.Kind? = null,
+    ): String {
         dev.geode.RingLog.note(TAG, "export failed", t)
+        val msg = t.message
+        if (!msg.isNullOrBlank() &&
+            (t is IllegalStateException || t is IllegalArgumentException) &&
+            !msg.contains("Exception") &&
+            !msg.contains("@") &&
+            msg.length < 200
+        ) {
+            return msg
+        }
         return when (t) {
-            // Before the IllegalStateException branch below, which ExportFailure extends: the
-            // exporter already diagnosed this one precisely, so its own string wins.
-            is dev.geode.export.ExportFailure -> t.describe(application)
+            is ExportFailure ->
+                application.getString(t.stringResId)
             is android.media.MediaCodec.CodecException ->
                 application.getString(dev.geode.R.string.export_error_codec)
             is java.io.IOException ->
                 application.getString(dev.geode.R.string.export_error_io)
-            is IllegalArgumentException, is IllegalStateException ->
-                application.getString(dev.geode.R.string.export_error_invalid_project)
+            is IllegalArgumentException ->
+                if (kind == ExportRun.Kind.Project || kind == ExportRun.Kind.Studio) {
+                    application.getString(dev.geode.R.string.export_error_invalid_project)
+                } else {
+                    application.getString(dev.geode.R.string.export_error_generic)
+                }
+            is IllegalStateException ->
+                application.getString(dev.geode.R.string.export_error_generic)
             is OutOfMemoryError ->
                 application.getString(dev.geode.R.string.export_error_out_of_memory)
             else ->

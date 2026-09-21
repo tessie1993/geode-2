@@ -155,22 +155,19 @@ class NativePlayer(
         // Cancel any in-flight open/queue task instead of letting it run to completion against a
         // handle we're about to destroy; the worker bodies also bail out early once released.
         worker.shutdownNow()
-        // shutdownNow() cannot interrupt a worker that is inside the JNI playerOpen — that call is
-        // not interruptible — so the drain result decides whether the handle is ours to free. If a
-        // task is still holding it, leaking one handle at process teardown is strictly better than
-        // freeing it under a live user and crashing in native code.
         val drained =
-            runCatching { worker.awaitTermination(WORKER_DRAIN_MS, TimeUnit.MILLISECONDS) }
-                .getOrElse {
-                    RingLog.note(TAG, "awaiting worker shutdown failed", it)
-                    false
-                }
+            try {
+                worker.awaitTermination(500, TimeUnit.MILLISECONDS)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                false
+            }
         tap.stop()
         dsp.release()
         if (drained) {
             GeodeNative.playerDestroy(handle)
         } else {
-            RingLog.note(TAG, "worker did not drain in ${WORKER_DRAIN_MS}ms; leaking native player rather than freeing it in use")
+            RingLog.note(TAG, "worker did not terminate; skipping playerDestroy to avoid use-after-free")
         }
         return done()
     }
@@ -327,11 +324,8 @@ class NativePlayer(
                     }
                     return@Callable
                 }
-                // openFd DETACHES the descriptor, so from here we own it: if release landed while
-                // we were opening, the handle may already be gone and nothing else will ever close
-                // this fd. Re-check rather than relying on the check above, which was only a hint.
                 if (released) {
-                    bestEffort(TAG, "close orphaned fd") { ParcelFileDescriptor.adoptFd(fd.first).close() }
+                    bestEffort(TAG, "close fd after release") { ParcelFileDescriptor.adoptFd(fd.first).close() }
                     return@Callable
                 }
                 GeodeNative.playerOpen(handle, fd.first, 0L, fd.second, id)
@@ -364,6 +358,10 @@ class NativePlayer(
             // Same race as openCurrent(): don't call into the native handle once released.
             if (released) return@execute
             val fd = openFd(entry.item) ?: return@execute
+            if (released) {
+                bestEffort(TAG, "close fd after release") { ParcelFileDescriptor.adoptFd(fd.first).close() }
+                return@execute
+            }
             GeodeNative.playerSetNext(handle, fd.first, 0L, fd.second, id)
         }
     }

@@ -278,4 +278,3 @@ fun Modifier.glassScrim(
             1f to color.copy(alpha = maxAlpha.coerceIn(0f, 1f)),
         ),
     )
-

@@ -36,19 +36,24 @@ fun GlassTopBar(
         Box(modifier = Modifier.align(Alignment.Center)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.40f),
-                    shadow = androidx.compose.ui.graphics.Shadow(
-                        color = GlassPalette.cyan.copy(alpha = 0.55f),
-                        blurRadius = 16f,
+                style =
+                    MaterialTheme.typography.headlineMedium.copy(
+                        color =
+                            androidx.compose.ui.graphics.Color.White
+                                .copy(alpha = 0.40f),
+                        shadow =
+                            androidx.compose.ui.graphics.Shadow(
+                                color = GlassPalette.cyan.copy(alpha = 0.55f),
+                                blurRadius = 16f,
+                            ),
                     ),
-                ),
             )
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    color = GlassPalette.textPrimary,
-                ),
+                style =
+                    MaterialTheme.typography.headlineMedium.copy(
+                        color = GlassPalette.textPrimary,
+                    ),
             )
         }
         if (onMenu != null) {

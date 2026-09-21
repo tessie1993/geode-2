@@ -382,86 +382,122 @@ internal class MusicLibraryController(
         }
     }
 
-    /**
-     * Runs a playlist mutation off the main thread, then republishes the list exactly once.
-     *
-     * Every mutator here used to do its disk write *and* a full-directory reparse inline, on
-     * whatever thread called it — which for a Compose click handler is Main. `AtomicWrite` fsyncs
-     * and [MusicPlaylistStore.list] re-reads and re-parses every playlist file, so a mutation was
-     * never as cheap as it looked. The reparse also sat inside the `update {}` lambda, which
-     * `MutableStateFlow` may re-invoke on CAS contention, redoing the disk read. Same shape as
-     * [refresh] above: read on IO, publish on Main.
-     */
-    private fun mutatePlaylists(block: () -> Unit) {
-        scope.launch(Dispatchers.IO) {
-            block()
-            val playlists = musicPlaylists.list()
-            withContext(Dispatchers.Main) { _library.update { it.copy(playlists = playlists) } }
-        }
-    }
-
-    /** [mutatePlaylists] for the smart-playlist half of the state. */
-    private fun mutateSmartPlaylists(block: () -> Unit) {
-        scope.launch(Dispatchers.IO) {
-            block()
-            val smart = smartPlaylists.list()
-            withContext(Dispatchers.Main) { _library.update { it.copy(smartPlaylists = smart) } }
-        }
-    }
-
-    /**
-     * Creates a playlist, optionally with its whole track list in the same write.
-     *
-     * [uris] exists so "save this queue as a playlist" is one read-modify-write rather than one
-     * per track: the caller used to create the playlist and then loop `addTrackToPlaylist` over
-     * the queue, which on a 300-track queue was 300 fsyncs and 300 full-directory reparses.
-     */
     fun createMusicPlaylist(
         name: String,
         uris: List<String> = emptyList(),
     ) {
         if (name.isBlank()) return
-        val trimmed = name.trim()
-        val tracks = uris.distinct()
-        mutatePlaylists { musicPlaylists.save(MusicPlaylist(trimmed, tracks)) }
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    musicPlaylists.save(MusicPlaylist(name.trim()))
+                    if (uris.isNotEmpty()) {
+                        musicPlaylists.addTracks(name.trim(), uris)
+                    }
+                    musicPlaylists.list()
+                }
+            _library.update { it.copy(playlists = fresh) }
+        }
     }
 
     /**
      * Renames, asynchronously.
      *
-     * This used to return whether the rename succeeded, but the only caller discarded it, and
-     * keeping it meant doing two `list()` passes and a write on the main thread to produce an
-     * answer nobody read.
+     * The returned flag reports only that the rename was *scheduled*: the store call happens on
+     * [Dispatchers.IO] after this has returned, so it cannot say whether the rename succeeded.
      */
     fun renameMusicPlaylist(
         oldName: String,
         newName: String,
-    ) {
-        val trimmed = newName.trim()
-        mutatePlaylists { musicPlaylists.rename(oldName, trimmed) }
+    ): Boolean {
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    val renamed = musicPlaylists.rename(oldName, newName.trim())
+                    if (renamed) musicPlaylists.list() else null
+                }
+            if (fresh != null) {
+                _library.update { it.copy(playlists = fresh) }
+            }
+        }
+        return true
     }
 
     fun moveMusicPlaylistTrack(
         name: String,
         from: Int,
         to: Int,
-    ) = mutatePlaylists { musicPlaylists.move(name, from, to) }
+    ) {
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    musicPlaylists.move(name, from, to)
+                    musicPlaylists.list()
+                }
+            _library.update { it.copy(playlists = fresh) }
+        }
+    }
 
-    fun deleteMusicPlaylist(name: String) = mutatePlaylists { musicPlaylists.delete(name) }
+    fun deleteMusicPlaylist(name: String) {
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    musicPlaylists.delete(name)
+                    musicPlaylists.list()
+                }
+            _library.update { it.copy(playlists = fresh) }
+        }
+    }
 
     fun addTrackToPlaylist(
         playlist: String,
         uri: String,
-    ) = mutatePlaylists { musicPlaylists.addTrack(playlist, uri) }
+    ) {
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    musicPlaylists.addTrack(playlist, uri)
+                    musicPlaylists.list()
+                }
+            _library.update { it.copy(playlists = fresh) }
+        }
+    }
 
     fun removeTrackFromPlaylist(
         playlist: String,
         uri: String,
-    ) = mutatePlaylists { musicPlaylists.removeTrack(playlist, uri) }
+    ) {
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    musicPlaylists.removeTrack(playlist, uri)
+                    musicPlaylists.list()
+                }
+            _library.update { it.copy(playlists = fresh) }
+        }
+    }
 
-    fun saveSmartPlaylist(playlist: SmartPlaylist) = mutateSmartPlaylists { smartPlaylists.save(playlist) }
+    fun saveSmartPlaylist(playlist: SmartPlaylist) {
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    smartPlaylists.save(playlist)
+                    smartPlaylists.list()
+                }
+            _library.update { it.copy(smartPlaylists = fresh) }
+        }
+    }
 
-    fun deleteSmartPlaylist(name: String) = mutateSmartPlaylists { smartPlaylists.delete(name) }
+    fun deleteSmartPlaylist(name: String) {
+        scope.launch {
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    smartPlaylists.delete(name)
+                    smartPlaylists.list()
+                }
+            _library.update { it.copy(smartPlaylists = fresh) }
+        }
+    }
 
     /**
      * Reads an M3U/PLS/XSPF file the user picked, resolves its entries against the imported

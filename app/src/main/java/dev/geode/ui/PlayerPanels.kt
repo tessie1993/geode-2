@@ -353,7 +353,9 @@ fun QueuePanel(
                 // One write for the whole queue. This used to create the playlist and then loop
                 // addTrackToPlaylist over every track, each doing an fsync plus a full reparse of
                 // the playlist directory, synchronously on this click handler's thread.
-                onName = { name -> viewModel.createMusicPlaylist(name, queue.tracks.map { it.uri }) },
+                onName = { name ->
+                    viewModel.createMusicPlaylist(name, queue.tracks.map { it.uri })
+                },
                 onDismiss = { saving = false },
             )
         }
@@ -420,7 +422,8 @@ internal fun PlaylistNameDialog(
                 horizontalArrangement = Arrangement.End,
             ) {
                 GlassButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
-                androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
+                androidx.compose.foundation.layout
+                    .Spacer(Modifier.size(12.dp))
                 GlassButton(
                     text = confirmLabel,
                     enabled = playlistNameAccepted(name, taken),

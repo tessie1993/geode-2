@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -26,18 +27,17 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import dev.geode.R
+import kotlinx.coroutines.isActive
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
-import kotlinx.coroutines.isActive
 
 private data class Bubble(
     val baseX: Float,
@@ -73,9 +73,10 @@ fun LiquidBackground(
     val bubbles = remember(bubbleDensity) { generateBubbles(bubbleDensity) }
 
     val context = LocalContext.current
-    val baseImage = remember {
-        ImageBitmap.imageResource(context.resources, R.drawable.tp_opaline_ambient_portrait)
-    }
+    val baseImage =
+        remember {
+            ImageBitmap.imageResource(context.resources, R.drawable.tp_opaline_ambient_portrait)
+        }
 
     val (hw, hh) = field.heightGridSize
     val causticBitmap = remember(hw, hh) { Bitmap.createBitmap(hw, hh, Bitmap.Config.ARGB_8888) }
@@ -252,8 +253,10 @@ private fun generateBubbles(density: Float): List<Bubble> {
             radiusDp = if (i % 3 == 0) random.nextFloat() * 10f + 14f else random.nextFloat() * 6f + 5f,
             phase = random.nextFloat() * TWO_PI,
             periodMs =
-                (GlassMotion.BUBBLE_DRIFT_PERIOD_MIN_MS + random.nextFloat() *
-                    (GlassMotion.BUBBLE_DRIFT_PERIOD_MAX_MS - GlassMotion.BUBBLE_DRIFT_PERIOD_MIN_MS)),
+                (
+                    GlassMotion.BUBBLE_DRIFT_PERIOD_MIN_MS + random.nextFloat() *
+                        (GlassMotion.BUBBLE_DRIFT_PERIOD_MAX_MS - GlassMotion.BUBBLE_DRIFT_PERIOD_MIN_MS)
+                ),
             clear = i % 4 == 0,
         )
     }
@@ -351,4 +354,3 @@ private const val REFRACTION_AGSL =
         return color;
     }
     """
-

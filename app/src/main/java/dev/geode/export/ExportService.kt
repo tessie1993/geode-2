@@ -27,7 +27,16 @@ class ExportService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        if (!promoteToForeground(ExportRun.state.value)) return
+        try {
+            startForegroundNotification(ExportRun.state.value)
+        } catch (t: Throwable) {
+            RingLog.note(TAG, "startForeground failed; aborting export", t)
+            // abort, not requestCancel: a render only ever learns that it was cancelled, so a
+            // plain cancel would report one the user never asked for and explain nothing.
+            ExportRun.abort(getString(dev.geode.R.string.export_error_foreground_denied))
+            stopSelf()
+            return
+        }
         watcher =
             scope.launch {
                 ExportRun.state.collectLatest { state ->
@@ -35,42 +44,13 @@ class ExportService : Service() {
                         stopSelf()
                         return@collectLatest
                     }
-                    promoteToForeground(state)
+                    try {
+                        startForegroundNotification(state)
+                    } catch (t: Throwable) {
+                        RingLog.note(TAG, "updating foreground notification failed", t)
+                    }
                 }
             }
-    }
-
-    /**
-     * Puts the service in the foreground for [state], returning false if the platform refused.
-     *
-     * Both calls used to go through `bestEffort`, whose own contract says not to use it "where the
-     * failure changes what the user sees". It changes everything the user sees. [start] promotes us
-     * with `startForegroundService`, so the platform kills the process if `startForeground` has not
-     * landed within five seconds — while the render carries on over on [ExportRun.scope], which
-     * outlives this service, with no notification, no progress, no cancel button and no way for the
-     * user to find out that the export they walked away from is not coming back. Giving up the
-     * render and saying so is the only honest outcome.
-     *
-     * Every documented refusal arrives as an [IllegalStateException] — `ServiceStartNotAllowed`,
-     * and on API 34+ the missing/invalid foreground-service-type pair, all extend it — or as a
-     * [SecurityException] when a permission the requested type needs is not held.
-     */
-    private fun promoteToForeground(state: ExportRun.State): Boolean =
-        try {
-            startForegroundNotification(state)
-            true
-        } catch (e: IllegalStateException) {
-            abandonRender(e)
-            false
-        } catch (e: SecurityException) {
-            abandonRender(e)
-            false
-        }
-
-    private fun abandonRender(cause: Exception) {
-        RingLog.note(TAG, "startForeground was refused; abandoning the render", cause)
-        ExportRun.abort(getString(dev.geode.R.string.export_error_foreground_denied))
-        stopSelf()
     }
 
     override fun onStartCommand(
@@ -160,6 +140,8 @@ class ExportService : Service() {
                 } else {
                     context.startService(intent)
                 }
+            }.onFailure {
+                RingLog.note(TAG, "start foreground service failed", it)
             }
         }
     }

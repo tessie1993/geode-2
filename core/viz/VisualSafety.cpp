@@ -20,6 +20,12 @@ BlendMode blendModeFromOrdinal(int i) {
     return (i >= 0 && i <= static_cast<int>(BlendMode::Darken)) ? static_cast<BlendMode>(i) : BlendMode::Screen;
 }
 
+namespace {
+inline float safeClamp(float v, float lo, float hi) {
+    return std::isfinite(v) ? std::clamp(v, lo, hi) : lo;
+}
+}  // namespace
+
 namespace safety {
 
 namespace {

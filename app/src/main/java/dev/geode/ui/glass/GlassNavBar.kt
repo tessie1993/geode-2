@@ -1,11 +1,8 @@
 package dev.geode.ui.glass
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,20 +50,22 @@ fun GlassNavBar(
     val view = LocalView.current
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .alpha(opacity.coerceIn(0f, 1f))
-            .glassSurface(shape = GlassShapes.pill)
-            .floatOnWater(strength = 0.2f),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .alpha(opacity.coerceIn(0f, 1f))
+                .glassSurface(shape = GlassShapes.pill)
+                .floatOnWater(strength = 0.2f),
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .padding(horizontal = 8.dp, vertical = 6.dp)
-                .selectableGroup(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .selectableGroup(),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -79,31 +78,32 @@ fun GlassNavBar(
                 )
 
                 Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .selectable(
-                            selected = sel,
-                            role = Role.Tab,
-                            onClick = {
-                                if (!sel) {
-                                    view.performGlassHaptic(GlassHapticCue.SLIDER_TICK)
-                                    field?.tap(0f, 0f, 1.2f)
-                                    onSelect(i)
-                                }
-                            },
-                        ),
+                    modifier =
+                        Modifier
+                            .fillMaxHeight()
+                            .selectable(
+                                selected = sel,
+                                role = Role.Tab,
+                                onClick = {
+                                    if (!sel) {
+                                        view.performGlassHaptic(GlassHapticCue.SLIDER_TICK)
+                                        field?.tap(0f, 0f, 1.2f)
+                                        onSelect(i)
+                                    }
+                                },
+                            ),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (sel) {
                         // Luminous Active Teal Pill Chip matching ref mockup
                         Row(
-                            modifier = Modifier
-                                .glassSurface(
-                                    shape = GlassShapes.pill,
-                                    tint = GlassPalette.cyan,
-                                    glow = 0.55f,
-                                )
-                                .padding(horizontal = 18.dp, vertical = 8.dp),
+                            modifier =
+                                Modifier
+                                    .glassSurface(
+                                        shape = GlassShapes.pill,
+                                        tint = GlassPalette.cyan,
+                                        glow = 0.55f,
+                                    ).padding(horizontal = 18.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
                         ) {

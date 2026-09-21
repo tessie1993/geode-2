@@ -9,7 +9,12 @@ import dev.geode.data.PresetStore
 import dev.geode.render.VisualizerRenderer
 import dev.geode.render.VisualizerView
 import dev.geode.ui.ThemeStore
-import dev.geode.util.bestEffort
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * The visualizer as a screensaver (Daydream): the same renderer [VisualizerWallpaperService]
@@ -27,7 +32,8 @@ class VisualizerDreamService : DreamService() {
     private var visualizerView: VisualizerView? = null
     private val idle = IdleFeatures()
     private var lastFrameMs = 0L
-    private var feeder: Thread? = null
+    private var feeder: Job? = null
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     @Volatile
     private var running = false
@@ -103,27 +109,23 @@ class VisualizerDreamService : DreamService() {
         running = true
         lastFrameMs = android.os.SystemClock.elapsedRealtime()
         feeder =
-            Thread {
+            scope.launch {
                 while (running && feedGeneration == generation) {
                     val now = android.os.SystemClock.elapsedRealtime()
                     val dt = ((now - lastFrameMs).coerceIn(1, 100)) / 1000f
                     lastFrameMs = now
                     engine.features = AudioBus.features() ?: idle.tick(dt)
-                    Thread.sleep(FEED_INTERVAL_MS)
+                    delay(FEED_INTERVAL_MS)
                 }
-            }.apply {
-                isDaemon = true
-                name = "geode-dream-audio"
-                start()
             }
     }
 
     private fun stopFeeding() {
-        val thread = feeder ?: return
+        val job = feeder ?: return
         running = false
         feedGeneration++
         AudioBus.removeConsumer()
-        bestEffort(TAG, "await feeder") { thread.join(FEEDER_JOIN_MS) }
+        job.cancel()
         feeder = null
     }
 

@@ -1,10 +1,19 @@
 package dev.geode.playback
 
 import androidx.media3.common.C
+import dev.geode.RingLog
 import dev.geode.engine.audioandroid.PcmTap
 import dev.geode.engine.audioandroid.SinkClockDriver
 import dev.geode.RingLog
 import dev.geode.engine.bridge.GeodeNative
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -18,15 +27,12 @@ class NativeTapPump(
 ) {
     @Volatile
     private var running = false
-    private var thread: Thread? = null
+    private var job: Job? = null
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     fun start(handle: Long) {
         running = true
-        thread =
-            Thread({ loop(handle) }, "geode-native-tap").apply {
-                isDaemon = true
-                start()
-            }
+        job = scope.launch { loop(handle) }
     }
 
     /**
@@ -41,14 +47,20 @@ class NativeTapPump(
      */
     fun stop() {
         running = false
-        thread?.let { t ->
-            t.join(JOIN_TIMEOUT_MS)
-            if (t.isAlive) RingLog.note(TAG, "native tap did not stop within ${JOIN_TIMEOUT_MS}ms")
+        runBlocking {
+            val done =
+                withTimeoutOrNull(JOIN_TIMEOUT_MS) {
+                    job?.join()
+                    true
+                }
+            if (done == null) {
+                RingLog.note(TAG, "tap pump did not stop within ${JOIN_TIMEOUT_MS}ms")
+            }
         }
-        thread = null
+        job = null
     }
 
-    private fun loop(handle: Long) {
+    private suspend fun loop(handle: Long) {
         val buffer = ByteBuffer.allocateDirect(FRAMES * CHANNELS * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
         var rate = 0
         clock.attachSkippedFrames { 0L }
@@ -67,17 +79,14 @@ class NativeTapPump(
                 buffer.position(0)
                 tap.handleBuffer(buffer)
             } else {
-                Thread.sleep(IDLE_SLEEP_MS)
+                delay(IDLE_SLEEP_MS)
             }
         }
     }
 
     private companion object {
         const val TAG = "NativeTapPump"
-
-        /** Matches the bound the rest of the codebase uses for a teardown join. */
         const val JOIN_TIMEOUT_MS = 500L
-
         const val FRAMES = 2048
         const val CHANNELS = 2
         const val IDLE_SLEEP_MS = 10L

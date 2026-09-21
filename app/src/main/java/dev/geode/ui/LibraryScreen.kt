@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -55,6 +55,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -72,14 +74,12 @@ import dev.geode.ui.glass.GlassListRow
 import dev.geode.ui.glass.GlassPalette
 import dev.geode.ui.glass.GlassPearlMatrix
 import dev.geode.ui.glass.GlassSegmented
-import dev.geode.ui.glass.GlassSheet
 import dev.geode.ui.glass.GlassShapes
+import dev.geode.ui.glass.GlassSheet
 import dev.geode.ui.glass.GlassTextField
 import dev.geode.ui.glass.floatOnWater
 import dev.geode.ui.glass.glassSurface
 import dev.geode.ui.glass.waterScroll
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -101,10 +101,10 @@ fun LibraryScreen(onOpenSearch: () -> Unit) {
     }
     val permLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
-    var reloadKey by remember { mutableStateOf(0) }
+    var reloadKey by remember { mutableIntStateOf(0) }
     val state by libraryViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(granted, reloadKey) { if (granted) libraryViewModel.refreshDeviceTracks() }
-    var tab by rememberSaveable { mutableStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     val tabs =
         listOf(
             stringResource(R.string.library_tab_tracks),
@@ -120,9 +120,10 @@ fun LibraryScreen(onOpenSearch: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         // Decorative floating pearl matrix on water from the mockup
         GlassPearlMatrix(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 8.dp, top = 80.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 8.dp, top = 80.dp),
             beadSize = 14.dp,
             spacing = 5.dp,
         )
@@ -298,7 +299,12 @@ private fun TrackRow(
     var addingToPlaylist by remember { mutableStateOf(false) }
     val current = currentUri == t.uri
     val scale by animateFloatAsState(if (current) 1.03f else 1f, label = "libraryRowScale")
-    Box(Modifier.graphicsLayer { scaleX = scale; scaleY = scale }) {
+    Box(
+        Modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        },
+    ) {
         GlassListRow(
             title = title,
             subtitle = subtitle.ifBlank { null },
@@ -657,11 +663,19 @@ private fun RenamePlaylistSheet(
     onDismiss: () -> Unit,
 ) {
     val proposed = renameText.trim()
-    val otherNames = library.playlists.map { it.name }.filterNot { it == old }.toSet()
+    val otherNames =
+        library.playlists
+            .map { it.name }
+            .filterNot { it == old }
+            .toSet()
     val nameOk = playlistNameAccepted(proposed, otherNames)
     GlassSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(R.string.playlist_rename_title), style = MaterialTheme.typography.titleLarge, color = GlassPalette.textPrimary)
+            Text(
+                stringResource(R.string.playlist_rename_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = GlassPalette.textPrimary,
+            )
             GlassTextField(value = renameText, onValueChange = onRenameTextChange, modifier = Modifier.fillMaxWidth())
             if (!nameOk) {
                 Text(

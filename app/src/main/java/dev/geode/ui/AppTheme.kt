@@ -8,7 +8,6 @@ import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import dev.geode.R
@@ -288,7 +287,6 @@ class ThemeStore(
         /** Read-only now: the old three-way answer, kept solely to migrate existing installs. */
         const val KEY_SAFETY_CHOICE = "gui_safety_choice"
         const val LEGACY_CHOICE_REDUCED_MOTION = "REDUCED_MOTION"
-
 
         const val KEY_POS = "gui_player_pos"
         const val KEY_CORNER = "gui_corner"
