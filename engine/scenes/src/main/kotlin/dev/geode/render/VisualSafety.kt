@@ -44,13 +44,13 @@ object VisualSafety {
     ): SceneParams {
         var out =
             p.copy(
-                strobe = p.strobe.coerceIn(0f, MAX_FLASH_DEPTH / STROBE_SHADER_DEPTH),
-                flash = p.flash.coerceIn(0f, MAX_FLASH_DEPTH / FLASH_SHADER_DEPTH),
-                glitch = p.glitch.coerceAtMost(MAX_FLASH_DEPTH),
-                bloom = p.bloom.coerceAtMost(MAX_FLASH_DEPTH),
-                brightness = p.brightness.coerceIn(0f, 1f + MAX_FLASH_DEPTH),
-                intensity = p.intensity.coerceIn(0f, 1f + MAX_FLASH_DEPTH),
-                contrast = p.contrast.coerceIn(0f, 1f + MAX_FLASH_DEPTH),
+                strobe = p.strobe.safeClamp(0f, MAX_FLASH_DEPTH / STROBE_SHADER_DEPTH),
+                flash = p.flash.safeClamp(0f, MAX_FLASH_DEPTH / FLASH_SHADER_DEPTH),
+                glitch = p.glitch.safeClamp(0f, MAX_FLASH_DEPTH),
+                bloom = p.bloom.safeClamp(0f, MAX_FLASH_DEPTH),
+                brightness = p.brightness.safeClamp(0f, 1f + MAX_FLASH_DEPTH),
+                intensity = p.intensity.safeClamp(0f, 1f + MAX_FLASH_DEPTH),
+                contrast = p.contrast.safeClamp(0f, 1f + MAX_FLASH_DEPTH),
             )
         if (reducedMotion) {
             out =
@@ -131,4 +131,7 @@ object VisualSafety {
                 -> true
                 else -> false
             }
+
+    private fun Float.safeClamp(min: Float, max: Float): Float =
+        if (isFinite()) coerceIn(min, max) else min
 }

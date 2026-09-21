@@ -1,6 +1,7 @@
 #include "viz/VisualSafety.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace geode::viz {
 
@@ -19,17 +20,23 @@ BlendMode blendModeFromOrdinal(int i) {
     return (i >= 0 && i <= static_cast<int>(BlendMode::Darken)) ? static_cast<BlendMode>(i) : BlendMode::Screen;
 }
 
+namespace {
+inline float safeClamp(float v, float lo, float hi) {
+    return std::isfinite(v) ? std::clamp(v, lo, hi) : lo;
+}
+}  // namespace
+
 namespace safety {
 
 SceneParams apply(const SceneParams& p, bool reducedMotion) {
     SceneParams out = p;
-    out.strobe = std::clamp(p.strobe, 0.0f, kMaxFlashDepth / kStrobeShaderDepth);
-    out.flash = std::clamp(p.flash, 0.0f, kMaxFlashDepth / kFlashShaderDepth);
-    out.glitch = std::min(p.glitch, kMaxFlashDepth);
-    out.bloom = std::min(p.bloom, kMaxFlashDepth);
-    out.brightness = std::clamp(p.brightness, 0.0f, 1.0f + kMaxFlashDepth);
-    out.intensity = std::clamp(p.intensity, 0.0f, 1.0f + kMaxFlashDepth);
-    out.contrast = std::clamp(p.contrast, 0.0f, 1.0f + kMaxFlashDepth);
+    out.strobe = safeClamp(p.strobe, 0.0f, kMaxFlashDepth / kStrobeShaderDepth);
+    out.flash = safeClamp(p.flash, 0.0f, kMaxFlashDepth / kFlashShaderDepth);
+    out.glitch = safeClamp(p.glitch, 0.0f, kMaxFlashDepth);
+    out.bloom = safeClamp(p.bloom, 0.0f, kMaxFlashDepth);
+    out.brightness = safeClamp(p.brightness, 0.0f, 1.0f + kMaxFlashDepth);
+    out.intensity = safeClamp(p.intensity, 0.0f, 1.0f + kMaxFlashDepth);
+    out.contrast = safeClamp(p.contrast, 0.0f, 1.0f + kMaxFlashDepth);
     if (reducedMotion) {
         out.speed *= kReducedMotionScale;
         out.shake *= kReducedMotionScale;
