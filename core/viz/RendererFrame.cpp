@@ -83,7 +83,8 @@ SceneParams Renderer::resolveParams(float dt) {
             morph = 0.0f;
         }
     }
-    const float fade = std::max(requested.paramFadeSec, morph);
+    float fade = std::max(requested.paramFadeSec, morph);
+    if (!std::isfinite(fade)) fade = 0.0f;
     displayedParams_ = fade <= 0.01f ? requested : lerpParams(displayedParams_, requested, std::clamp(dt / fade, 0.0f, 1.0f));
     const auto& envValues = adsr_.tick(dt, frameFeatures_);
     AdsrEngine::lfoOffsets(adsr_.configs, envValues, envRate_, envDepth_);

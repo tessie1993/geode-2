@@ -67,4 +67,30 @@ class PresetLinkTest {
     fun `text with no link in it yields null`() {
         assertNull(PresetLink.findIn("no link here"))
     }
+
+    @Test
+    fun `preset decode sanitises nan and infinity to finite numbers`() {
+        val hostile =
+            """
+            {
+                "name": "Hostile",
+                "sceneId": "acid",
+                "attack": "NaN",
+                "decay": "NaN",
+                "strobe": "NaN",
+                "paramFadeSec": "NaN",
+                "zoom": "Infinity"
+            }
+            """.trimIndent()
+        val preset = dev.geode.data.PresetStore.fromJson(hostile)
+        assertTrue(preset.attack.isFinite())
+        assertTrue(preset.decay.isFinite())
+        for (prop in dev.geode.engine.bridge.SceneParams::class.java.declaredFields) {
+            if (prop.type == java.lang.Float.TYPE) {
+                prop.isAccessible = true
+                val v = prop.getFloat(preset.params)
+                assertTrue("SceneParams.${prop.name} should be finite, was $v", v.isFinite())
+            }
+        }
+    }
 }
