@@ -123,7 +123,7 @@ class PlaybackCaptureService : Service() {
             android.app.PendingIntent.getActivity(
                 this,
                 0,
-                Intent(this, dev.geode.ui.MainActivity::class.java),
+                Intent(this, dev.geode.MainActivity::class.java),
                 android.app.PendingIntent.FLAG_IMMUTABLE,
             )
         val stop =

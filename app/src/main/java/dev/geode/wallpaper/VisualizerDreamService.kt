@@ -4,11 +4,11 @@ import android.service.dreams.DreamService
 import android.view.ViewGroup
 import dev.geode.audio.AudioBus
 import dev.geode.data.GeodePrefsFiles
+import dev.geode.data.MotionPrefs
 import dev.geode.data.PlayerPrefsStore
 import dev.geode.data.PresetStore
 import dev.geode.render.VisualizerRenderer
 import dev.geode.render.VisualizerView
-import dev.geode.ui.ThemeStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  * its own scene teardown on `onDetachedFromWindow`, all apply completely unmodified — nothing
  * here re-implements them. Only the audio feed — [AudioBus.features] when something is playing,
  * an idle drift otherwise — has to be supplied, for the same reason [VisualizerWallpaperService]
- * supplies it too: a Dream, like a wallpaper, has no `PlayerViewModel` of its own to read it from.
+ * supplies it too: a Dream, like a wallpaper, has no player state of its own to read it from.
  */
 class VisualizerDreamService : DreamService() {
     private var visualizerView: VisualizerView? = null
@@ -99,7 +99,7 @@ class VisualizerDreamService : DreamService() {
         prefs.getString("milk_path", null)?.let { path ->
             if (java.io.File(path).isFile) engine.loadMilkPreset(path)
         }
-        engine.reducedMotion = ThemeStore(prefsFiles.general).loadGui().reducedMotion
+        engine.reducedMotion = MotionPrefs.reducedMotion(prefsFiles.general)
     }
 
     private fun startFeeding(engine: VisualizerRenderer) {
