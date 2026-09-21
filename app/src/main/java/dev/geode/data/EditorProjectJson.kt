@@ -229,8 +229,8 @@ internal object EditorProjectJson {
                         "tapped" -> MarkerOrigin.TappedIn(o.getLong("rawAtMs"), o.getLong("latencyMs"))
                         "detected" ->
                             MarkerOrigin.Detected(
-                                o.optDouble("confidence", 0.0).toFloat(),
-                                o.optDouble("strength", 0.0).toFloat(),
+                                o.finiteDouble("confidence", 0.0).toFloat(),
+                                o.finiteDouble("strength", 0.0).toFloat(),
                             )
                         else -> throw IllegalArgumentException("unknown marker origin: $type")
                     }
@@ -285,14 +285,18 @@ internal object EditorProjectJson {
 
     private fun value(o: JSONObject): ParamValue =
         when (val kind = o.getString("kind")) {
-            "scalar" -> ParamValue.Scalar(o.getDouble("value").toFloat())
-            "vector2" -> ParamValue.Vector2(o.getDouble("x").toFloat(), o.getDouble("y").toFloat())
+            "scalar" -> ParamValue.Scalar(o.finiteRequiredDouble("value", 0.0).toFloat())
+            "vector2" ->
+                ParamValue.Vector2(
+                    o.finiteRequiredDouble("x", 0.0).toFloat(),
+                    o.finiteRequiredDouble("y", 0.0).toFloat(),
+                )
             "colour" ->
                 ParamValue.Colour(
-                    o.getDouble("r").toFloat(),
-                    o.getDouble("g").toFloat(),
-                    o.getDouble("b").toFloat(),
-                    o.optDouble("a", 1.0).toFloat(),
+                    o.finiteRequiredDouble("r", 0.0).toFloat(),
+                    o.finiteRequiredDouble("g", 0.0).toFloat(),
+                    o.finiteRequiredDouble("b", 0.0).toFloat(),
+                    o.finiteDouble("a", 1.0).toFloat(),
                 )
             "toggle" -> ParamValue.Toggle(o.getBoolean("on"))
             "choice" -> ParamValue.Choice(o.getInt("index"))
@@ -321,10 +325,10 @@ internal object EditorProjectJson {
             "custom" ->
                 Interpolation.Custom(
                     BezierCurve(
-                        o.getDouble("c1x").toFloat(),
-                        o.getDouble("c1y").toFloat(),
-                        o.getDouble("c2x").toFloat(),
-                        o.getDouble("c2y").toFloat(),
+                        o.finiteRequiredDouble("c1x", 0.0).toFloat(),
+                        o.finiteRequiredDouble("c1y", 0.0).toFloat(),
+                        o.finiteRequiredDouble("c2x", 1.0).toFloat(),
+                        o.finiteRequiredDouble("c2y", 1.0).toFloat(),
                     ),
                 )
             else -> throw IllegalArgumentException("unknown interpolation: $type")
