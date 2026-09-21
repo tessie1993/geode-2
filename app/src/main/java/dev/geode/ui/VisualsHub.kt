@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Casino
@@ -27,6 +28,13 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LayersClear
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.StopCircle
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -63,14 +71,6 @@ import dev.geode.render.scene.CustomizeTab
 import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.VisualStyleCatalog
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Share
 import dev.geode.ui.glass.GlassButton
 import dev.geode.ui.glass.GlassHorizontalTabs
 import dev.geode.ui.glass.GlassPalette
@@ -129,12 +129,14 @@ fun VisualsHub(
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            (when {
-                                takes.recording -> "● Recording  ${formatTakeTime(takes.recordedMs)}"
-                                takes.replaying != null -> "▶ ${takes.replaying}"
-                                liveBackdrop -> "Live overlay"
-                                else -> "Geode"
-                            }).uppercase(),
+                            (
+                                when {
+                                    takes.recording -> "● Recording  ${formatTakeTime(takes.recordedMs)}"
+                                    takes.replaying != null -> "▶ ${takes.replaying}"
+                                    liveBackdrop -> "Live overlay"
+                                    else -> "Geode"
+                                }
+                            ).uppercase(),
                             style =
                                 MaterialTheme.typography.labelSmall.copy(
                                     letterSpacing = 2.6.sp,

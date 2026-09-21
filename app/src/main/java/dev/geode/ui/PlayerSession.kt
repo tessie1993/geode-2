@@ -258,7 +258,6 @@ class PlayerSession internal constructor(
 
     val userDataLoaded: StateFlow<Boolean> get() = container.userData.loaded
 
-
     val guiPrefs: StateFlow<GuiPrefs> get() = settings.guiPrefs
 
     val playerPrefs: StateFlow<PlayerPrefs> get() = settings.playerPrefs
@@ -266,7 +265,6 @@ class PlayerSession internal constructor(
     val audioFx: StateFlow<AudioFxState> get() = settings.audioFxState
 
     fun setGuiPrefs(prefs: GuiPrefs) = settings.setGuiPrefs(prefs)
-
 
     fun setPlayerPrefs(prefs: PlayerPrefs) = settings.setPlayerPrefs(prefs)
 

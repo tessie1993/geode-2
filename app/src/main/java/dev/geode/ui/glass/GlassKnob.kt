@@ -3,7 +3,6 @@ package dev.geode.ui.glass
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberUpdatedState
@@ -47,24 +46,25 @@ fun GlassKnob(
     val currentRange = rememberUpdatedState(valueRange)
 
     Box(
-        modifier = modifier
-            .size(knobSize)
-            .floatOnWater(strength = 0.35f)
-            .then(
-                if (enabled) {
-                    Modifier.pointerInput(Unit) {
-                        var accumulated = fraction
-                        detectDragGestures { _, dragAmount ->
-                            val delta = -dragAmount.y * DRAG_DEGREES_PER_PX / SWEEP_TOTAL_DEG
-                            accumulated = (accumulated + delta).coerceIn(0f, 1f)
-                            val r = currentRange.value
-                            currentOnChange.value(r.start + accumulated * (r.endInclusive - r.start))
+        modifier =
+            modifier
+                .size(knobSize)
+                .floatOnWater(strength = 0.35f)
+                .then(
+                    if (enabled) {
+                        Modifier.pointerInput(Unit) {
+                            var accumulated = fraction
+                            detectDragGestures { _, dragAmount ->
+                                val delta = -dragAmount.y * DRAG_DEGREES_PER_PX / SWEEP_TOTAL_DEG
+                                accumulated = (accumulated + delta).coerceIn(0f, 1f)
+                                val r = currentRange.value
+                                currentOnChange.value(r.start + accumulated * (r.endInclusive - r.start))
+                            }
                         }
-                    }
-                } else {
-                    Modifier
-                },
-            ),
+                    } else {
+                        Modifier
+                    },
+                ),
         contentAlignment = Alignment.Center,
     ) {
         // 1. Outer Arc & Ticks Layer
@@ -92,10 +92,11 @@ fun GlassKnob(
             for (i in 0 until tickCount) {
                 val tickFraction = i / (tickCount - 1).toFloat()
                 val tickAngleRad = Math.toRadians((SWEEP_START_DEG + SWEEP_TOTAL_DEG * tickFraction).toDouble())
-                val dotCenter = Offset(
-                    center.x + (radius + 4.dp.toPx()) * cos(tickAngleRad).toFloat(),
-                    center.y + (radius + 4.dp.toPx()) * sin(tickAngleRad).toFloat(),
-                )
+                val dotCenter =
+                    Offset(
+                        center.x + (radius + 4.dp.toPx()) * cos(tickAngleRad).toFloat(),
+                        center.y + (radius + 4.dp.toPx()) * sin(tickAngleRad).toFloat(),
+                    )
                 val dotAlpha = if (tickFraction <= fraction) 0.55f else 0.20f
                 drawCircle(
                     color = GlassPalette.textPrimary.copy(alpha = dotAlpha),
@@ -107,15 +108,17 @@ fun GlassKnob(
             // Glowing pastel active progress arc
             if (fraction > 0.01f) {
                 drawArc(
-                    brush = Brush.sweepGradient(
-                        colors = listOf(
-                            GlassPalette.mint,
-                            GlassPalette.peach,
-                            GlassPalette.lavender,
-                            GlassPalette.mint,
+                    brush =
+                        Brush.sweepGradient(
+                            colors =
+                                listOf(
+                                    GlassPalette.mint,
+                                    GlassPalette.peach,
+                                    GlassPalette.lavender,
+                                    GlassPalette.mint,
+                                ),
+                            center = center,
                         ),
-                        center = center,
-                    ),
                     startAngle = SWEEP_START_DEG,
                     sweepAngle = SWEEP_TOTAL_DEG * fraction,
                     useCenter = false,
@@ -129,9 +132,10 @@ fun GlassKnob(
         // 2. Inner Floating Matte Frosted Dome
         val innerSize = knobSize - 16.dp
         Box(
-            modifier = Modifier
-                .size(innerSize)
-                .glassSurface(shape = GlassShapes.bubble),
+            modifier =
+                Modifier
+                    .size(innerSize)
+                    .glassSurface(shape = GlassShapes.bubble),
             contentAlignment = Alignment.Center,
         ) {
             Canvas(Modifier.size(innerSize)) {
@@ -140,15 +144,17 @@ fun GlassKnob(
 
                 // Subtle center matte dimple
                 drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.12f),
-                            GlassPalette.baseShadow.copy(alpha = 0.10f),
-                            Color.Transparent,
+                    brush =
+                        Brush.radialGradient(
+                            colors =
+                                listOf(
+                                    Color.White.copy(alpha = 0.12f),
+                                    GlassPalette.baseShadow.copy(alpha = 0.10f),
+                                    Color.Transparent,
+                                ),
+                            center = center,
+                            radius = dialRadius * 0.45f,
                         ),
-                        center = center,
-                        radius = dialRadius * 0.45f,
-                    ),
                     radius = dialRadius * 0.45f,
                     center = center,
                 )
@@ -156,10 +162,11 @@ fun GlassKnob(
                 // Rotating pearl indicator pip (ref-02)
                 val currentAngleRad = Math.toRadians((SWEEP_START_DEG + SWEEP_TOTAL_DEG * fraction).toDouble())
                 val pipDistance = dialRadius - 6.dp.toPx()
-                val pipCenter = Offset(
-                    center.x + pipDistance * cos(currentAngleRad).toFloat(),
-                    center.y + pipDistance * sin(currentAngleRad).toFloat(),
-                )
+                val pipCenter =
+                    Offset(
+                        center.x + pipDistance * cos(currentAngleRad).toFloat(),
+                        center.y + pipDistance * sin(currentAngleRad).toFloat(),
+                    )
 
                 // Pip contact shadow
                 drawCircle(
@@ -169,14 +176,16 @@ fun GlassKnob(
                 )
                 // Pip pearl body with diffuse highlight
                 drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.90f),
-                            GlassPalette.mint.copy(alpha = 0.70f),
+                    brush =
+                        Brush.radialGradient(
+                            colors =
+                                listOf(
+                                    Color.White.copy(alpha = 0.90f),
+                                    GlassPalette.mint.copy(alpha = 0.70f),
+                                ),
+                            center = pipCenter - Offset(1.dp.toPx(), 1.dp.toPx()),
+                            radius = 2.5.dp.toPx(),
                         ),
-                        center = pipCenter - Offset(1.dp.toPx(), 1.dp.toPx()),
-                        radius = 2.5.dp.toPx(),
-                    ),
                     radius = 2.5.dp.toPx(),
                     center = pipCenter,
                 )

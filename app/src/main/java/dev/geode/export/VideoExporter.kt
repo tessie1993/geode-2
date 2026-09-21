@@ -9,7 +9,6 @@ import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
-import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.annotation.StringRes
 import dev.geode.R

@@ -1,12 +1,10 @@
 package dev.geode.playback
 
 import androidx.media3.common.C
+import dev.geode.RingLog
 import dev.geode.engine.audioandroid.PcmTap
 import dev.geode.engine.audioandroid.SinkClockDriver
 import dev.geode.engine.bridge.GeodeNative
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import dev.geode.RingLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,6 +13,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * Drains the native mixer's tap into the same [PcmTap] the Media3 chain feeds, so analysis and the

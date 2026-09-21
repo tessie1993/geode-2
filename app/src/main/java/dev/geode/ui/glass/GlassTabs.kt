@@ -53,7 +53,6 @@ fun GlassTabs(
     scrollable: Boolean = false,
 ) = GlassHorizontalTabs(titles, selected, onSelect, modifier, scrollable)
 
-
 @Composable
 private fun GlassTabPill(
     title: String,

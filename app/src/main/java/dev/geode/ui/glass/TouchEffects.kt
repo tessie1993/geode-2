@@ -6,7 +6,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -40,15 +39,17 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import kotlin.math.abs
-import kotlin.math.hypot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.hypot
 
 /** One expanding ripple ring, alive from press or release until its animation finishes. */
-private class GlassRipple(val origin: Offset) {
+private class GlassRipple(
+    val origin: Offset,
+) {
     val progress = Animatable(0f)
 }
 
@@ -131,12 +132,10 @@ fun Modifier.waterTouch(
                         currentOnClick.value?.invoke()
                     }
                 }
-            }
-            .graphicsLayer {
+            }.graphicsLayer {
                 scaleX = state.dragScaleX.value
                 scaleY = state.dragScaleY.value
-            }
-            .drawWithContent { drawGlassTouch(state) }
+            }.drawWithContent { drawGlassTouch(state) }
     }
 
 /** Kept as the name screens call: identical to [waterTouch], the design the addendum supersedes. */

@@ -81,9 +81,10 @@ class PresetLinkTest {
                 "paramFadeSec": "NaN",
                 "zoom": "Infinity"
             }
-            """
-                .trimIndent()
-        val preset = dev.geode.data.PresetStore.fromJson(hostile)
+            """.trimIndent()
+        val preset =
+            dev.geode.data.PresetStore
+                .fromJson(hostile)
         assertTrue(preset.attack.isFinite())
         assertTrue(preset.decay.isFinite())
         for (prop in dev.geode.render.scene.SceneParams::class.java.declaredFields) {

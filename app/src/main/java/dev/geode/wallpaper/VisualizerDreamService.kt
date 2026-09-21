@@ -9,7 +9,6 @@ import dev.geode.data.PresetStore
 import dev.geode.render.VisualizerRenderer
 import dev.geode.render.VisualizerView
 import dev.geode.ui.ThemeStore
-import dev.geode.util.bestEffort
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -109,15 +108,16 @@ class VisualizerDreamService : DreamService() {
         val generation = ++feedGeneration
         running = true
         lastFrameMs = android.os.SystemClock.elapsedRealtime()
-        feeder = scope.launch {
-            while (running && feedGeneration == generation) {
-                val now = android.os.SystemClock.elapsedRealtime()
-                val dt = ((now - lastFrameMs).coerceIn(1, 100)) / 1000f
-                lastFrameMs = now
-                engine.features = AudioBus.features() ?: idle.tick(dt)
-                delay(FEED_INTERVAL_MS)
+        feeder =
+            scope.launch {
+                while (running && feedGeneration == generation) {
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    val dt = ((now - lastFrameMs).coerceIn(1, 100)) / 1000f
+                    lastFrameMs = now
+                    engine.features = AudioBus.features() ?: idle.tick(dt)
+                    delay(FEED_INTERVAL_MS)
+                }
             }
-        }
     }
 
     private fun stopFeeding() {

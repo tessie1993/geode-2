@@ -121,15 +121,16 @@ class VisualizerWallpaperService : WallpaperService() {
             val generation = ++feedGeneration
             running = true
             lastFrameMs = android.os.SystemClock.elapsedRealtime()
-            feeder = scope.launch {
-                while (running && feedGeneration == generation) {
-                    val now = android.os.SystemClock.elapsedRealtime()
-                    val dt = ((now - lastFrameMs).coerceIn(1, 100)) / 1000f
-                    lastFrameMs = now
-                    engine.features = AudioBus.features() ?: idle.tick(dt)
-                    delay(FEED_INTERVAL_MS)
+            feeder =
+                scope.launch {
+                    while (running && feedGeneration == generation) {
+                        val now = android.os.SystemClock.elapsedRealtime()
+                        val dt = ((now - lastFrameMs).coerceIn(1, 100)) / 1000f
+                        lastFrameMs = now
+                        engine.features = AudioBus.features() ?: idle.tick(dt)
+                        delay(FEED_INTERVAL_MS)
+                    }
                 }
-            }
         }
 
         private fun stopFeeding() {
