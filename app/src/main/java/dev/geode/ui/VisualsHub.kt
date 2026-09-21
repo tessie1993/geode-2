@@ -40,6 +40,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -88,7 +89,7 @@ fun VisualsHub(
 ) {
     val settingsViewModel: SettingsViewModel = geodeViewModel()
     val studioViewModel: StudioViewModel = geodeViewModel()
-    var tab by rememberSaveable { mutableStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf("Presets", "Styles", "Customize", "Textures", "Takes")
     val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
     val takes by studioViewModel.takeState.collectAsStateWithLifecycle()
@@ -588,7 +589,7 @@ private fun StylesTab(
     visualizerView: VisualizerView,
     onOpenTextures: () -> Unit,
 ) {
-    var sub by rememberSaveable { mutableStateOf(0) }
+    var sub by rememberSaveable { mutableIntStateOf(0) }
     val viz by viewModel.vizState.collectAsStateWithLifecycle()
     val pickScene: (String) -> Unit = { viewModel.selectScene(it) }
     Column(Modifier.fillMaxSize()) {
@@ -671,7 +672,7 @@ private fun MilkDropTab(
     onOpenTextures: () -> Unit,
 ) {
     val visualsViewModel: VisualsViewModel = geodeViewModel()
-    var refresh by remember { mutableStateOf(0) }
+    var refresh by remember { mutableIntStateOf(0) }
     val viz by viewModel.vizState.collectAsStateWithLifecycle()
     // Off the main thread: userMilkPresets() runs MilkStarterPack.install() - a marker read, an
     // assets.list, an exists() per asset and up to six asset->file copies on first run - then
@@ -684,7 +685,7 @@ private fun MilkDropTab(
     val loaded by viewModel.activeMilkPath.collectAsStateWithLifecycle()
     var packReport by remember { mutableStateOf<dev.geode.data.MilkPackImporter.Report?>(null) }
     val importedTextures by visualsViewModel.textures.collectAsStateWithLifecycle()
-    var linkRefresh by remember { mutableStateOf(0) }
+    var linkRefresh by remember { mutableIntStateOf(0) }
     // What the linker decided for the preset on screen, kept live so a texture import or a
     // manual choice is visible without leaving the tab.
     // Also disk-bound: resolutionFor() stats the preset and its .links/<stem> record, so it belongs
@@ -906,7 +907,7 @@ internal fun CustomizePanel(
 ) {
     val visualsViewModel: VisualsViewModel = geodeViewModel()
     val viz by viewModel.vizState.collectAsStateWithLifecycle()
-    var sub by rememberSaveable { mutableStateOf(0) }
+    var sub by rememberSaveable { mutableIntStateOf(0) }
     var query by rememberSaveable { mutableStateOf("") }
     val isShader = SceneCapabilities.hasShaderLook(viz.sceneId)
     val tabs: List<CustomizeTab?> =

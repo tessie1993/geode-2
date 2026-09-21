@@ -6,6 +6,13 @@ import dev.geode.engine.audioandroid.SinkClockDriver
 import dev.geode.engine.bridge.GeodeNative
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Drains the native mixer's tap into the same [PcmTap] the Media3 chain feeds, so analysis and the
@@ -17,25 +24,22 @@ class NativeTapPump(
 ) {
     @Volatile
     private var running = false
-    private var thread: Thread? = null
+    private var job: Job? = null
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     fun start(handle: Long) {
         running = true
-        thread =
-            Thread({ loop(handle) }, "geode-native-tap").apply {
-                isDaemon = true
-                start()
-            }
+        job = scope.launch { loop(handle) }
     }
 
     /** Returns once the thread has let go of the handle; call before the player is destroyed. */
     fun stop() {
         running = false
-        thread?.join()
-        thread = null
+        runBlocking { job?.join() }
+        job = null
     }
 
-    private fun loop(handle: Long) {
+    private suspend fun loop(handle: Long) {
         val buffer = ByteBuffer.allocateDirect(FRAMES * CHANNELS * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
         var rate = 0
         clock.attachSkippedFrames { 0L }
@@ -54,7 +58,7 @@ class NativeTapPump(
                 buffer.position(0)
                 tap.handleBuffer(buffer)
             } else {
-                Thread.sleep(IDLE_SLEEP_MS)
+                delay(IDLE_SLEEP_MS)
             }
         }
     }

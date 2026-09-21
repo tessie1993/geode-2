@@ -1,5 +1,6 @@
 package dev.geode.playback
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -149,6 +150,7 @@ class PlaybackSession internal constructor(
     }
 }
 
+@SuppressLint("StaticFieldLeak")
 object PlaybackEngine {
     private var app: Context? = null
     private var session: PlaybackSession? = null
