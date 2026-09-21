@@ -5,21 +5,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VisualSafetyTest {
-
     @Test
     fun safetyClampsEliminateNanInfinityAndNegativeValues() {
         val nonFinites = listOf(Float.NaN, Float.POSITIVE_INFINITY, -1e30f)
 
         for (bad in nonFinites) {
-            val badParams = SceneParams(
-                strobe = bad,
-                flash = bad,
-                glitch = bad,
-                bloom = bad,
-                brightness = bad,
-                intensity = bad,
-                contrast = bad,
-            )
+            val badParams =
+                SceneParams(
+                    strobe = bad,
+                    flash = bad,
+                    glitch = bad,
+                    bloom = bad,
+                    brightness = bad,
+                    intensity = bad,
+                    contrast = bad,
+                )
 
             val safe = VisualSafety.apply(badParams)
 

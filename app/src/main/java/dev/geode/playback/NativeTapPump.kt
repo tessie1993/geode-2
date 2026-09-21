@@ -39,12 +39,12 @@ class NativeTapPump(
         running = false
         runBlocking {
             val done =
-                withTimeoutOrNull(500L) {
+                withTimeoutOrNull(JOIN_TIMEOUT_MS) {
                     job?.join()
                     true
                 }
             if (done == null) {
-                RingLog.note("NativeTapPump", "job join timed out after 500ms")
+                RingLog.note(TAG, "tap pump did not stop within ${JOIN_TIMEOUT_MS}ms")
             }
         }
         job = null
@@ -75,6 +75,8 @@ class NativeTapPump(
     }
 
     private companion object {
+        const val TAG = "NativeTapPump"
+        const val JOIN_TIMEOUT_MS = 500L
         const val FRAMES = 2048
         const val CHANNELS = 2
         const val IDLE_SLEEP_MS = 10L

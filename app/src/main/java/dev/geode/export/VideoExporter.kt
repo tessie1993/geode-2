@@ -274,42 +274,33 @@ class VideoExporter(
         val pfd =
             resolver.openFileDescriptor(destination, "w")
                 ?: return failed(R.string.export_error_destination_write)
-        return try {
-            pfd.use {
-                encodeInto(
-                    it,
-                    audioUri,
-                    timeline,
-                    sceneFactory,
-                    aspect,
-                    sceneParams,
-                    lfoConfigs,
-                    adsrConfigs,
-                    reducedMotion,
-                    requestedFps,
-                    paramsAt,
-                    loopSafe,
-                    range,
-                    codec,
-                    loudnessTarget,
-                    overlay,
-                    underlay,
-                    onProgress,
-                    isCancelled,
-                )
-            }
+        return pfd.use {
+            encodeInto(
+                it,
+                audioUri,
+                timeline,
+                sceneFactory,
+                aspect,
+                sceneParams,
+                lfoConfigs,
+                adsrConfigs,
+                reducedMotion,
+                requestedFps,
+                paramsAt,
+                loopSafe,
+                range,
+                codec,
+                loudnessTarget,
+                overlay,
+                underlay,
+                onProgress,
+                isCancelled,
+            )
             if (isCancelled()) {
-                bestEffort(
-                    TAG,
-                    "DocumentsContract.deleteDocument(resolver, de...",
-                ) { DocumentsContract.deleteDocument(resolver, destination) }
                 Result.Cancelled
             } else {
                 Result.Saved(destination, measureLoudness(destination, loudnessTarget))
             }
-        } catch (e: Exception) {
-            bestEffort(TAG, "DocumentsContract.deleteDocument(resolver, de...") { DocumentsContract.deleteDocument(resolver, destination) }
-            throw e
         }
     }
 
