@@ -325,7 +325,7 @@ class NativePlayer(
                     return@Callable
                 }
                 if (released) {
-                    try { ParcelFileDescriptor.adoptFd(fd.first).close() } catch (_: Throwable) {}
+                    bestEffort(TAG, "close fd after release") { ParcelFileDescriptor.adoptFd(fd.first).close() }
                     return@Callable
                 }
                 GeodeNative.playerOpen(handle, fd.first, 0L, fd.second, id)
@@ -359,7 +359,7 @@ class NativePlayer(
             if (released) return@execute
             val fd = openFd(entry.item) ?: return@execute
             if (released) {
-                try { ParcelFileDescriptor.adoptFd(fd.first).close() } catch (_: Throwable) {}
+                bestEffort(TAG, "close fd after release") { ParcelFileDescriptor.adoptFd(fd.first).close() }
                 return@execute
             }
             GeodeNative.playerSetNext(handle, fd.first, 0L, fd.second, id)

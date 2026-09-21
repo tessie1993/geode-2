@@ -211,10 +211,9 @@ class StudioExporter(
      */
     suspend fun cancel() {
         cancelled = true
-        bestEffort(TAG, "transformer?.cancel()") {
-            withContext(Dispatchers.Main) {
-                transformer?.cancel()
-            }
+        withContext(Dispatchers.Main) {
+            runCatching { transformer?.cancel() }
+                .onFailure { RingLog.note(TAG, "transformer cancel failed: ${it.message}") }
         }
         completion.await()
     }

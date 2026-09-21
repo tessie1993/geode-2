@@ -325,7 +325,7 @@ internal class ExportController(
                     } else if (ExportRun.cancelRequested) {
                         _exportState.value = ExportUiState()
                     } else {
-                        val message = describeExportFailure(t)
+                        val message = describeExportFailure(t, ExportRun.Kind.Visualizer)
                         _exportState.value = ExportUiState(phase = ExportPhase.Failed(message))
                         runResult = ExportRun.Result.Failed(message)
                     }
@@ -775,15 +775,31 @@ internal class ExportController(
      * text used to go straight into the UI as `"${simpleName}: ${message}"`, which is not
      * something most people can do anything with.
      */
-    private fun describeExportFailure(t: Throwable): String {
+    private fun describeExportFailure(
+        t: Throwable,
+        kind: ExportRun.Kind? = null,
+    ): String {
         dev.geode.RingLog.note(TAG, "export failed", t)
+        val msg = t.message
+        if (!msg.isNullOrBlank() &&
+            (t is IllegalStateException || t is IllegalArgumentException) &&
+            !msg.contains("Exception") &&
+            !msg.contains("@") &&
+            msg.length < 200
+        ) {
+            return msg
+        }
         return when (t) {
             is android.media.MediaCodec.CodecException ->
                 application.getString(dev.geode.R.string.export_error_codec)
             is java.io.IOException ->
                 application.getString(dev.geode.R.string.export_error_io)
             is IllegalArgumentException, is IllegalStateException ->
-                application.getString(dev.geode.R.string.export_error_invalid_project)
+                if (kind == ExportRun.Kind.Project || kind == ExportRun.Kind.Studio) {
+                    application.getString(dev.geode.R.string.export_error_invalid_project)
+                } else {
+                    application.getString(dev.geode.R.string.export_error_generic)
+                }
             is OutOfMemoryError ->
                 application.getString(dev.geode.R.string.export_error_out_of_memory)
             else ->
