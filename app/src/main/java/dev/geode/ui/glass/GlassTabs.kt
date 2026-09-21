@@ -7,11 +7,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -23,7 +27,7 @@ fun GlassVerticalTabs(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         titles.forEachIndexed { i, title -> GlassTabPill(title, i == selected) { onSelect(i) } }
     }
 }
@@ -37,7 +41,8 @@ fun GlassHorizontalTabs(
     modifier: Modifier = Modifier,
     scrollable: Boolean = false,
 ) {
-    val rowModifier = if (scrollable) modifier.horizontalScroll(rememberScrollState()) else modifier
+    val baseModifier = if (scrollable) modifier.horizontalScroll(rememberScrollState()) else modifier
+    val rowModifier = baseModifier.selectableGroup()
     Row(rowModifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         titles.forEachIndexed { i, title -> GlassTabPill(title, i == selected) { onSelect(i) } }
     }
@@ -63,7 +68,8 @@ private fun GlassTabPill(
         Modifier
             .glassSurface(shape = GlassShapes.pill, tint = if (selected) GlassPalette.mint else null, selected = selected)
             .floatOnWater(strength = 0.3f)
-            .glassTouch(onClick = onClick)
+            .glassTouch(onClick = onClick, semanticRole = Role.Tab)
+            .semantics { this.selected = selected }
             .padding(horizontal = 18.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {

@@ -651,6 +651,8 @@
     <string name="glass_gallery_section_buttons">Buttons</string>
     <string name="glass_gallery_section_slider">Slider</string>
     <string name="glass_gallery_section_toggle">Toggle</string>
+    <string name="state_on">On</string>
+    <string name="state_off">Off</string>
     <string name="glass_gallery_section_knob">Knob</string>
     <string name="glass_gallery_section_progress">Progress</string>
     <string name="glass_gallery_section_list_row">List row</string>
