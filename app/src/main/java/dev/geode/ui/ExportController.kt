@@ -502,7 +502,7 @@ internal class ExportController(
                         _studio.update { it.copy(phase = ExportPhase.Idle) }
                         throw t
                     } else {
-                        val message = describeExportFailure(t)
+                        val message = describeExportFailure(t, ExportRun.Kind.Studio)
                         _studio.update { it.copy(phase = ExportPhase.Failed(message)) }
                         runResult = ExportRun.Result.Failed(message)
                     }
@@ -557,6 +557,7 @@ internal class ExportController(
                                 describeExportFailure(
                                     built.exceptionOrNull()
                                         ?: IllegalStateException("ProjectComposition.build returned no outcome and no exception"),
+                                    ExportRun.Kind.Project,
                                 )
                             _studio.update { it.copy(phase = ExportPhase.Failed(message)) }
                             runResult = ExportRun.Result.Failed(message)
@@ -585,7 +586,7 @@ internal class ExportController(
                         _studio.update { it.copy(phase = ExportPhase.Idle) }
                         throw t
                     } else {
-                        val message = describeExportFailure(t)
+                        val message = describeExportFailure(t, ExportRun.Kind.Project)
                         _studio.update { it.copy(phase = ExportPhase.Failed(message)) }
                         runResult = ExportRun.Result.Failed(message)
                     }
@@ -698,7 +699,7 @@ internal class ExportController(
                     } else if (ExportRun.cancelRequested) {
                         _loopState.value = LoopUiState()
                     } else {
-                        val message = describeExportFailure(t)
+                        val message = describeExportFailure(t, ExportRun.Kind.Loop)
                         _loopState.value = LoopUiState(phase = ExportPhase.Failed(message))
                         runResult = ExportRun.Result.Failed(message)
                     }

@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import dev.geode.RingLog
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -153,7 +154,11 @@ class PlaybackCaptureService : Service() {
                 Intent(context, PlaybackCaptureService::class.java)
                     .putExtra(EXTRA_RESULT_CODE, resultCode)
                     .putExtra(EXTRA_RESULT_DATA, data)
-            context.startForegroundService(intent)
+            runCatching {
+                context.startForegroundService(intent)
+            }.onFailure {
+                RingLog.note("PlaybackCaptureService", "startForegroundService failed", it)
+            }
         }
 
         fun stop(context: Context) {
