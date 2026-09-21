@@ -7,12 +7,12 @@ import android.view.MotionEvent
 import android.view.SurfaceHolder
 import dev.geode.audio.AudioBus
 import dev.geode.data.GeodePrefsFiles
+import dev.geode.data.MotionPrefs
 import dev.geode.data.PresetStore
 import dev.geode.render.FramePacer
 import dev.geode.render.FrameRatePolicy
 import dev.geode.render.TouchField
 import dev.geode.render.VisualizerRenderer
-import dev.geode.ui.ThemeStore
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -112,7 +112,7 @@ class VisualizerWallpaperService : WallpaperService() {
             prefs.getString("milk_path", null)?.let { path ->
                 if (java.io.File(path).isFile) engine.loadMilkPreset(path)
             }
-            engine.reducedMotion = ThemeStore(prefsFiles.general).loadGui().reducedMotion
+            engine.reducedMotion = MotionPrefs.reducedMotion(prefsFiles.general)
         }
 
         private fun startFeeding(engine: VisualizerRenderer) {

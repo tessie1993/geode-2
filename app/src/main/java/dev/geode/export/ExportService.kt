@@ -107,7 +107,7 @@ class ExportService : Service() {
             PendingIntent.getActivity(
                 this,
                 0,
-                Intent(this, dev.geode.ui.MainActivity::class.java),
+                Intent(this, dev.geode.MainActivity::class.java),
                 PendingIntent.FLAG_IMMUTABLE,
             )
         val builder =
