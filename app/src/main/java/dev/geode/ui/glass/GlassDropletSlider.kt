@@ -31,8 +31,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.Dp
@@ -313,7 +311,7 @@ fun GlassDropletSlider(
  * The only gesture handler used to be `draggable` on the [GlassDropletSlider] thumb, a 26dp dot.
  * That failed two groups of people at once: sighted users had to hit the dot precisely, because
  * tapping the track - which is what most people try first - did nothing at all, and screen-reader
- * users could not seek by any means, since there was no [Role.Slider], no reported position and no
+ * users could not seek by any means, since there was no reported position and no
  * `setProgress` action to dispatch. Its sibling `GlassSlider` delegates to the Material slider and
  * so was never affected.
  */
@@ -327,7 +325,6 @@ private fun Modifier.dropletSliderControls(
     this
         .progressSemantics(value, valueRange)
         .semantics {
-            role = Role.Slider
             if (enabled) {
                 setProgress { target ->
                     onSeek(target)

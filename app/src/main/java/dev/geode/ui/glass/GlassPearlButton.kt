@@ -13,7 +13,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -58,7 +57,6 @@ fun GlassPearlSphereButton(
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     val pressScale = remember { Animatable(1f) }
-    val currentOnClick = rememberUpdatedState(onClick)
 
     Box(
         modifier =
@@ -74,8 +72,7 @@ fun GlassPearlSphereButton(
                             true
                         }
                     }
-                }
-                .focusable(enabled)
+                }.focusable(enabled)
                 .graphicsLayer {
                     scaleX = pressScale.value
                     scaleY = pressScale.value

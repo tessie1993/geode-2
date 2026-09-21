@@ -25,9 +25,8 @@ import dev.geode.viz.BackgroundImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.nio.ByteBuffer
-import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
 
 enum class ExportCodec(
     val mimeType: String,
@@ -279,13 +278,7 @@ class VideoExporter(
                 ParcelFileDescriptor.MODE_READ_WRITE,
             ) ?: return failed(R.string.export_error_destination_write)
         return try {
-            ParcelFileDescriptor
-                .open(
-                    scratch,
-                    ParcelFileDescriptor.MODE_CREATE or
-                        ParcelFileDescriptor.MODE_READ_WRITE or
-                        ParcelFileDescriptor.MODE_TRUNCATE,
-                ).use {
+            pfd.use {
                 encodeInto(
                     it,
                     audioUri,

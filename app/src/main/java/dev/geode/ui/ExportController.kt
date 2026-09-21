@@ -13,7 +13,6 @@ import dev.geode.editor.KeyframeSheet
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportFailure
-import dev.geode.export.ExportPhase
 import dev.geode.export.ExportRange
 import dev.geode.export.ExportRun
 import dev.geode.export.ExportService
@@ -777,12 +776,6 @@ internal class ExportController(
     }
 
     /**
-     * Turns an unexpected export failure into a sentence a user can act on, logging the raw
-     * exception (class, message, stack) to [dev.geode.RingLog] for support/debugging — that raw
-     * text used to go straight into the UI as `"${simpleName}: ${message}"`, which is not
-     * something most people can do anything with.
-     */
-    /**
      * The phase a cancelled run should leave on screen. A cancel the user asked for just clears the
      * dialog, which is why these branches blank the state. An *abort* — [ExportRun.abort], i.e.
      * something outside the render made it impossible to continue, such as the foreground service
@@ -795,20 +788,34 @@ internal class ExportController(
      */
     private fun cancelledPhase(): ExportPhase = ExportRun.abortReason?.let { ExportPhase.Failed(it) } ?: ExportPhase.Idle
 
+    /**
+     * Whether [t]'s own message is fit to put in front of someone.
+     *
+     * The exporters raise plenty of `IllegalState`/`IllegalArgument` failures whose message is a
+     * precise, readable sentence, and those beat any generic string this class could substitute.
+     * The guards reject the ones that are not: a blank message, one that reads like a `toString()`
+     * or a stack frame rather than prose - which is where "Exception" and "@" turn up - and
+     * anything too long to take in from a dialog.
+     */
+    private fun hasPresentableMessage(t: Throwable): Boolean {
+        if (t !is IllegalStateException && t !is IllegalArgumentException) return false
+        val msg = t.message.orEmpty()
+        val readsLikeATrace = msg.contains("Exception") || msg.contains("@")
+        return msg.isNotBlank() && !readsLikeATrace && msg.length < MAX_PRESENTABLE_MESSAGE_CHARS
+    }
+
+    /**
+     * Turns an unexpected export failure into a sentence a user can act on, logging the raw
+     * exception (class, message, stack) to [dev.geode.RingLog] for support/debugging — that raw
+     * text used to go straight into the UI as `"${simpleName}: ${message}"`, which is not
+     * something most people can do anything with.
+     */
     private fun describeExportFailure(
         t: Throwable,
         kind: ExportRun.Kind? = null,
     ): String {
         dev.geode.RingLog.note(TAG, "export failed", t)
-        val msg = t.message
-        if (!msg.isNullOrBlank() &&
-            (t is IllegalStateException || t is IllegalArgumentException) &&
-            !msg.contains("Exception") &&
-            !msg.contains("@") &&
-            msg.length < 200
-        ) {
-            return msg
-        }
+        if (hasPresentableMessage(t)) return t.message.orEmpty()
         return when (t) {
             is ExportFailure ->
                 application.getString(t.stringResId)
@@ -833,6 +840,9 @@ internal class ExportController(
 
     private companion object {
         private const val TAG = "ExportController"
+
+        /** Longer than this and a failure message is a dump, not a sentence someone can read. */
+        private const val MAX_PRESENTABLE_MESSAGE_CHARS = 200
 
         // Analysing the track is quick against the render itself; extending mostly copies
         // already-encoded samples, so it gets less of the bar than the GPU render does.

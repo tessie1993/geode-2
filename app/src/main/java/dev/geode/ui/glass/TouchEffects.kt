@@ -133,8 +133,7 @@ fun Modifier.waterTouch(
                         true
                     }
                 }
-            }
-            .focusable()
+            }.focusable()
             .onGloballyPositioned { coords = it }
             .pointerInput(drag, reducedMotion) {
                 awaitEachGesture {

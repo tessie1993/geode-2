@@ -43,8 +43,7 @@ fun GlassToggle(
                 enabled = enabled,
                 onClick = { onCheckedChange(!checked) },
                 semanticRole = Role.Switch,
-            )
-            .semantics { stateDescription = if (checked) onLabel else offLabel }
+            ).semantics { stateDescription = if (checked) onLabel else offLabel }
             .padding(3.dp),
         contentAlignment = Alignment.CenterStart,
     ) {

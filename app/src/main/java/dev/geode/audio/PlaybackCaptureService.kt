@@ -45,10 +45,11 @@ class PlaybackCaptureService : Service() {
         }
         try {
             startForegroundNotification()
-        } catch (t: Throwable) {
-            RingLog.note(TAG, "startForeground failed; aborting capture", t)
-            MediaProjectionHolder.noteStartFailure()
-            stopSelf()
+        } catch (e: IllegalStateException) {
+            abandonCapture(e)
+            return START_NOT_STICKY
+        } catch (e: SecurityException) {
+            abandonCapture(e)
             return START_NOT_STICKY
         }
         val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
@@ -74,6 +75,24 @@ class PlaybackCaptureService : Service() {
         projection = mp
         MediaProjectionHolder.publish(mp)
         return START_NOT_STICKY
+    }
+
+    /**
+     * Refuses to start the capture, through the same path the rest of [onStartCommand] uses.
+     *
+     * Carrying on regardless would mean acquiring a [MediaProjection] - the most privileged thing
+     * this app does - on a service the platform is about to take down for missing the five-second
+     * `startForeground` contract, and with no visible notification telling the user their audio is
+     * being captured.
+     *
+     * Every documented refusal is an [IllegalStateException] (`ServiceStartNotAllowedException`,
+     * and on API 34+ the missing/invalid foreground-service-type pair, all extend it) or a
+     * [SecurityException] when a permission the requested type needs is not held.
+     */
+    private fun abandonCapture(cause: Exception) {
+        RingLog.note(TAG, "startForeground failed; aborting capture", cause)
+        MediaProjectionHolder.noteStartFailure()
+        stopSelf()
     }
 
     override fun onDestroy() {

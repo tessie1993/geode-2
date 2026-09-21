@@ -1,7 +1,5 @@
 package dev.geode.ui
 
-import dev.geode.data.finiteDouble
-
 import android.content.Context
 import dev.geode.data.AtomicWrite
 import dev.geode.data.finiteDouble
