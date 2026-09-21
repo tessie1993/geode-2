@@ -1,5 +1,7 @@
 package dev.geode.ui
 
+import dev.geode.data.finiteDouble
+
 import android.content.Context
 import dev.geode.data.AtomicWrite
 import org.json.JSONArray
@@ -201,7 +203,7 @@ class TrackLibrary(
                 title = o.optString("title", "Track"),
                 artist = o.optString("artist", ""),
                 durationMs = o.optLong("durationMs", 0L),
-                bpm = o.optDouble("bpm", 0.0).toFloat(),
+                bpm = o.finiteDouble("bpm", 0.0).toFloat(),
                 key = o.optString("key", ""),
                 analyzed = o.optBoolean("analyzed", false),
                 album = o.optString("album", ""),

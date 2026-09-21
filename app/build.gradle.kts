@@ -228,6 +228,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
+    // Shadows android.jar's org.json stub so JSON parsing is real under unit tests.
+    testImplementation(libs.json)
     testImplementation(libs.kotlinx.coroutines.test)
 
     androidTestImplementation(libs.androidx.test.ext.junit)
