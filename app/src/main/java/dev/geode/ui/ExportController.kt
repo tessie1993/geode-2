@@ -211,6 +211,11 @@ internal class ExportController(
         }
     }
 
+    // Written from ExportRun.scope (Dispatchers.Default) and read from Main by
+    // publishStudioProgress, which is what performs the cooperative cancel. A stale read
+    // there silently skips that cancel. StudioExporter and NativeDspProcessor mark their
+    // cross-thread fields the same way.
+    @Volatile
     private var studioJob: Job? = null
 
     fun startExport(
@@ -322,7 +327,7 @@ internal class ExportController(
                         _exportState.value = ExportUiState()
                         throw t
                     } else if (ExportRun.cancelRequested) {
-                        _exportState.value = ExportUiState()
+                        _exportState.value = ExportUiState(phase = cancelledPhase())
                     } else {
                         val message = describeExportFailure(t)
                         _exportState.value = ExportUiState(phase = ExportPhase.Failed(message))
@@ -498,7 +503,7 @@ internal class ExportController(
                     // is stopped by cancelling this job, not by checking a flag) so cancellation
                     // always arrives here as a CancellationException, not as a Cancelled result.
                     if (t is kotlinx.coroutines.CancellationException) {
-                        _studio.update { it.copy(phase = ExportPhase.Idle) }
+                        _studio.update { it.copy(phase = cancelledPhase()) }
                         throw t
                     } else {
                         val message = describeExportFailure(t)
@@ -581,7 +586,7 @@ internal class ExportController(
                     }
                 } catch (t: Throwable) {
                     if (t is kotlinx.coroutines.CancellationException) {
-                        _studio.update { it.copy(phase = ExportPhase.Idle) }
+                        _studio.update { it.copy(phase = cancelledPhase()) }
                         throw t
                     } else {
                         val message = describeExportFailure(t)
@@ -695,7 +700,7 @@ internal class ExportController(
                         _loopState.value = LoopUiState()
                         throw t
                     } else if (ExportRun.cancelRequested) {
-                        _loopState.value = LoopUiState()
+                        _loopState.value = LoopUiState(phase = cancelledPhase())
                     } else {
                         val message = describeExportFailure(t)
                         _loopState.value = LoopUiState(phase = ExportPhase.Failed(message))
@@ -774,9 +779,25 @@ internal class ExportController(
      * text used to go straight into the UI as `"${simpleName}: ${message}"`, which is not
      * something most people can do anything with.
      */
+    /**
+     * The phase a cancelled run should leave on screen. A cancel the user asked for just clears the
+     * dialog, which is why these branches blank the state. An *abort* — [ExportRun.abort], i.e.
+     * something outside the render made it impossible to continue, such as the foreground service
+     * being refused — is not something they asked for, so its reason stays up instead of the dialog
+     * closing on its own and leaving no trace of a half-finished export.
+     *
+     * The studio paths reach this through their `CancellationException` branch rather than a
+     * `cancelRequested` one: [publishStudioProgress] is what notices the cancel, and it acts on it
+     * by cancelling the job.
+     */
+    private fun cancelledPhase(): ExportPhase = ExportRun.abortReason?.let { ExportPhase.Failed(it) } ?: ExportPhase.Idle
+
     private fun describeExportFailure(t: Throwable): String {
         dev.geode.RingLog.note(TAG, "export failed", t)
         return when (t) {
+            // Before the IllegalStateException branch below, which ExportFailure extends: the
+            // exporter already diagnosed this one precisely, so its own string wins.
+            is dev.geode.export.ExportFailure -> t.describe(application)
             is android.media.MediaCodec.CodecException ->
                 application.getString(dev.geode.R.string.export_error_codec)
             is java.io.IOException ->

@@ -3,6 +3,7 @@ package dev.geode.playback
 import androidx.media3.common.C
 import dev.geode.engine.audioandroid.PcmTap
 import dev.geode.engine.audioandroid.SinkClockDriver
+import dev.geode.RingLog
 import dev.geode.engine.bridge.GeodeNative
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -28,10 +29,22 @@ class NativeTapPump(
             }
     }
 
-    /** Returns once the thread has let go of the handle; call before the player is destroyed. */
+    /**
+     * Returns once the thread has let go of the handle, or once the wait runs out; call before the
+     * player is destroyed.
+     *
+     * The wait is bounded because this runs on the application looper — `NativePlayer.handleRelease`
+     * is called there — and the worker can be inside a blocking `playerReadTap`. An unbounded join
+     * turns a stalled Oboe stream into an ANR at teardown. Every other join in this codebase is
+     * bounded the same way (`AudioCapturePump`, `NativePlayer`, `VisualizerView`); a timeout is
+     * logged rather than swallowed so a wedged tap thread is diagnosable.
+     */
     fun stop() {
         running = false
-        thread?.join()
+        thread?.let { t ->
+            t.join(JOIN_TIMEOUT_MS)
+            if (t.isAlive) RingLog.note(TAG, "native tap did not stop within ${JOIN_TIMEOUT_MS}ms")
+        }
         thread = null
     }
 
@@ -60,6 +73,11 @@ class NativeTapPump(
     }
 
     private companion object {
+        const val TAG = "NativeTapPump"
+
+        /** Matches the bound the rest of the codebase uses for a teardown join. */
+        const val JOIN_TIMEOUT_MS = 500L
+
         const val FRAMES = 2048
         const val CHANNELS = 2
         const val IDLE_SLEEP_MS = 10L

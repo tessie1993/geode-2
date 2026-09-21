@@ -350,10 +350,10 @@ fun QueuePanel(
                 title = stringResource(R.string.queue_save_dialog_title),
                 confirmLabel = stringResource(R.string.action_save),
                 taken = library.playlists.map { it.name }.toSet(),
-                onName = { name ->
-                    viewModel.createMusicPlaylist(name)
-                    queue.tracks.forEach { viewModel.addTrackToPlaylist(name, it.uri) }
-                },
+                // One write for the whole queue. This used to create the playlist and then loop
+                // addTrackToPlaylist over every track, each doing an fsync plus a full reparse of
+                // the playlist directory, synchronously on this click handler's thread.
+                onName = { name -> viewModel.createMusicPlaylist(name, queue.tracks.map { it.uri }) },
                 onDismiss = { saving = false },
             )
         }

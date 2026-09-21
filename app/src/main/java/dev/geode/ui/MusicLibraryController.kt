@@ -382,62 +382,86 @@ internal class MusicLibraryController(
         }
     }
 
-    fun createMusicPlaylist(name: String) {
-        if (name.isBlank()) return
-        musicPlaylists.save(MusicPlaylist(name.trim()))
-        _library.update { it.copy(playlists = musicPlaylists.list()) }
+    /**
+     * Runs a playlist mutation off the main thread, then republishes the list exactly once.
+     *
+     * Every mutator here used to do its disk write *and* a full-directory reparse inline, on
+     * whatever thread called it — which for a Compose click handler is Main. `AtomicWrite` fsyncs
+     * and [MusicPlaylistStore.list] re-reads and re-parses every playlist file, so a mutation was
+     * never as cheap as it looked. The reparse also sat inside the `update {}` lambda, which
+     * `MutableStateFlow` may re-invoke on CAS contention, redoing the disk read. Same shape as
+     * [refresh] above: read on IO, publish on Main.
+     */
+    private fun mutatePlaylists(block: () -> Unit) {
+        scope.launch(Dispatchers.IO) {
+            block()
+            val playlists = musicPlaylists.list()
+            withContext(Dispatchers.Main) { _library.update { it.copy(playlists = playlists) } }
+        }
     }
 
+    /** [mutatePlaylists] for the smart-playlist half of the state. */
+    private fun mutateSmartPlaylists(block: () -> Unit) {
+        scope.launch(Dispatchers.IO) {
+            block()
+            val smart = smartPlaylists.list()
+            withContext(Dispatchers.Main) { _library.update { it.copy(smartPlaylists = smart) } }
+        }
+    }
+
+    /**
+     * Creates a playlist, optionally with its whole track list in the same write.
+     *
+     * [uris] exists so "save this queue as a playlist" is one read-modify-write rather than one
+     * per track: the caller used to create the playlist and then loop `addTrackToPlaylist` over
+     * the queue, which on a 300-track queue was 300 fsyncs and 300 full-directory reparses.
+     */
+    fun createMusicPlaylist(
+        name: String,
+        uris: List<String> = emptyList(),
+    ) {
+        if (name.isBlank()) return
+        val trimmed = name.trim()
+        val tracks = uris.distinct()
+        mutatePlaylists { musicPlaylists.save(MusicPlaylist(trimmed, tracks)) }
+    }
+
+    /**
+     * Renames, asynchronously.
+     *
+     * This used to return whether the rename succeeded, but the only caller discarded it, and
+     * keeping it meant doing two `list()` passes and a write on the main thread to produce an
+     * answer nobody read.
+     */
     fun renameMusicPlaylist(
         oldName: String,
         newName: String,
-    ): Boolean {
-        val renamed = musicPlaylists.rename(oldName, newName.trim())
-        if (renamed) {
-            _library.update { it.copy(playlists = musicPlaylists.list()) }
-        }
-        return renamed
+    ) {
+        val trimmed = newName.trim()
+        mutatePlaylists { musicPlaylists.rename(oldName, trimmed) }
     }
 
     fun moveMusicPlaylistTrack(
         name: String,
         from: Int,
         to: Int,
-    ) {
-        musicPlaylists.move(name, from, to)
-        _library.update { it.copy(playlists = musicPlaylists.list()) }
-    }
+    ) = mutatePlaylists { musicPlaylists.move(name, from, to) }
 
-    fun deleteMusicPlaylist(name: String) {
-        musicPlaylists.delete(name)
-        _library.update { it.copy(playlists = musicPlaylists.list()) }
-    }
+    fun deleteMusicPlaylist(name: String) = mutatePlaylists { musicPlaylists.delete(name) }
 
     fun addTrackToPlaylist(
         playlist: String,
         uri: String,
-    ) {
-        musicPlaylists.addTrack(playlist, uri)
-        _library.update { it.copy(playlists = musicPlaylists.list()) }
-    }
+    ) = mutatePlaylists { musicPlaylists.addTrack(playlist, uri) }
 
     fun removeTrackFromPlaylist(
         playlist: String,
         uri: String,
-    ) {
-        musicPlaylists.removeTrack(playlist, uri)
-        _library.update { it.copy(playlists = musicPlaylists.list()) }
-    }
+    ) = mutatePlaylists { musicPlaylists.removeTrack(playlist, uri) }
 
-    fun saveSmartPlaylist(playlist: SmartPlaylist) {
-        smartPlaylists.save(playlist)
-        _library.update { it.copy(smartPlaylists = smartPlaylists.list()) }
-    }
+    fun saveSmartPlaylist(playlist: SmartPlaylist) = mutateSmartPlaylists { smartPlaylists.save(playlist) }
 
-    fun deleteSmartPlaylist(name: String) {
-        smartPlaylists.delete(name)
-        _library.update { it.copy(smartPlaylists = smartPlaylists.list()) }
-    }
+    fun deleteSmartPlaylist(name: String) = mutateSmartPlaylists { smartPlaylists.delete(name) }
 
     /**
      * Reads an M3U/PLS/XSPF file the user picked, resolves its entries against the imported

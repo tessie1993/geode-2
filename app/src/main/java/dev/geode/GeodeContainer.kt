@@ -112,7 +112,7 @@ class GeodeContainer(
         const val PENDING_EXPORT_GRACE_MS = 5 * 60 * 1000L
 
         /** Kept in step with AudioTranscoder, LoopRender and StudioExporter. */
-        val RENDER_SCRATCH_PREFIXES = listOf("geode_aac_", "geode_loop_", "studio-")
+        val RENDER_SCRATCH_PREFIXES = listOf("geode_aac_", "geode_loop_", "geode_video_", "studio-")
 
         fun isRenderScratch(name: String): Boolean = RENDER_SCRATCH_PREFIXES.any { name.startsWith(it) }
     }
