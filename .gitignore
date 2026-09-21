@@ -24,6 +24,7 @@ google-services.json
 .claude/
 .agents/
 .codex/
+graphify/
 AGENTS.md
 __pycache__/
 *.logcat

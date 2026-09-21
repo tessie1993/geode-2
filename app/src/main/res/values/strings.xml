@@ -593,6 +593,7 @@
     <string name="export_error_encoder_no_output">The video encoder produced no output — this device\'s encoder or the chosen format may not be supported.</string>
     <string name="export_error_encoder_stalled">The video encoder stalled while flushing — the export is incomplete.</string>
     <string name="export_error_audio_transcode_stalled">The audio encoder stalled while processing the soundtrack.</string>
+    <string name="export_error_foreground_denied">Android would not let the export keep running in the background, so it was stopped. Try again with Geode open on screen.</string>
     <string name="export_error_studio_save">The finished file could not be saved to Movies/Geode.</string>
     <string name="export_error_studio_start">The export could not be started.</string>
     <string name="export_error_destination_save">The export could not be saved to that folder.</string>

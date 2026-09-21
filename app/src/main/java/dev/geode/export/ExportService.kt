@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import dev.geode.RingLog
+import dev.geode.util.bestEffort
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -29,10 +30,11 @@ class ExportService : Service() {
         super.onCreate()
         try {
             startForegroundNotification(ExportRun.state.value)
-        } catch (t: Throwable) {
-            RingLog.note(TAG, "startForeground failed; aborting export", t)
-            ExportRun.requestCancel()
-            stopSelf()
+        } catch (e: IllegalStateException) {
+            abandonRender(e)
+            return
+        } catch (e: SecurityException) {
+            abandonRender(e)
             return
         }
         watcher =
@@ -42,13 +44,29 @@ class ExportService : Service() {
                         stopSelf()
                         return@collectLatest
                     }
-                    try {
-                        startForegroundNotification(state)
-                    } catch (t: Throwable) {
-                        RingLog.note(TAG, "updating foreground notification failed", t)
-                    }
+                    // Only the promotion in onCreate is bound by the five-second contract; by
+                    // here the service is already foreground and this call merely refreshes the
+                    // notification, so a failure costs a stale progress bar, not the render.
+                    bestEffort(TAG, "refresh export notification") { startForegroundNotification(state) }
                 }
             }
+    }
+
+    /**
+     * Gives up the render, and says why.
+     *
+     * [start] promotes this service with `startForegroundService`, so the platform kills the
+     * process when `startForeground` has not landed within five seconds - while the render carries
+     * on over on [ExportRun.scope], which outlives this service, with no notification, no progress
+     * and no way for the user to find out that the export they walked away from is not coming back.
+     *
+     * [ExportRun.abort] rather than `requestCancel`: a render only ever learns that it was
+     * cancelled, so a plain cancel would report one the user never asked for and explain nothing.
+     */
+    private fun abandonRender(cause: Exception) {
+        RingLog.note(TAG, "startForeground failed; aborting export", cause)
+        ExportRun.abort(getString(dev.geode.R.string.export_error_foreground_denied))
+        stopSelf()
     }
 
     override fun onStartCommand(

@@ -34,7 +34,16 @@ class NativeTapPump(
         job = scope.launch { loop(handle) }
     }
 
-    /** Returns once the thread has let go of the handle; call before the player is destroyed. */
+    /**
+     * Returns once the thread has let go of the handle, or once the wait runs out; call before the
+     * player is destroyed.
+     *
+     * The wait is bounded because this runs on the application looper — `NativePlayer.handleRelease`
+     * is called there — and the worker can be inside a blocking `playerReadTap`. An unbounded join
+     * turns a stalled Oboe stream into an ANR at teardown. Every other join in this codebase is
+     * bounded the same way (`AudioCapturePump`, `NativePlayer`, `VisualizerView`); a timeout is
+     * logged rather than swallowed so a wedged tap thread is diagnosable.
+     */
     fun stop() {
         running = false
         runBlocking {

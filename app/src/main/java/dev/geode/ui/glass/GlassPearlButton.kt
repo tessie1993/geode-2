@@ -72,8 +72,7 @@ fun GlassPearlSphereButton(
                             true
                         }
                     }
-                }
-                .focusable(enabled)
+                }.focusable(enabled)
                 .graphicsLayer {
                     scaleX = pressScale.value
                     scaleY = pressScale.value

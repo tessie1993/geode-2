@@ -400,6 +400,12 @@ internal class MusicLibraryController(
         }
     }
 
+    /**
+     * Renames, asynchronously.
+     *
+     * The returned flag reports only that the rename was *scheduled*: the store call happens on
+     * [Dispatchers.IO] after this has returned, so it cannot say whether the rename succeeded.
+     */
     fun renameMusicPlaylist(
         oldName: String,
         newName: String,

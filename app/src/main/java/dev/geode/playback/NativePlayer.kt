@@ -405,6 +405,9 @@ class NativePlayer(
         const val TAG = "NativePlayer"
         const val POLL_MS = 200L
 
+        /** Bound on waiting for the open/queue worker at release; matches the rest of the codebase. */
+        const val WORKER_DRAIN_MS = 500L
+
         // GeodePlayerState in core/api/geode_api.h.
         const val ENGINE_IDLE = 0
         const val ENGINE_READY = 2

@@ -16,6 +16,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -138,6 +139,10 @@ fun GlassBubbleButton(
 ) {
     Box(
         modifier
+            // Applied in the component, not at each call site: GlassTopBar draws these at 36dp and
+            // they are the Player screen's primary nav affordances. This grows the *touch target*
+            // to the 48dp minimum while the drawn bubble stays whatever `size` says.
+            .minimumInteractiveComponentSize()
             .size(size)
             .glassSurface(shape = GlassShapes.bubble, tint = tint)
             .floatOnWater()

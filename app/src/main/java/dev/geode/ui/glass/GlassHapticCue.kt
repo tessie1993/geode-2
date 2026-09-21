@@ -1,5 +1,3 @@
-@file:Suppress("MatchingDeclarationName")
-
 package dev.geode.ui.glass
 
 import android.os.Build

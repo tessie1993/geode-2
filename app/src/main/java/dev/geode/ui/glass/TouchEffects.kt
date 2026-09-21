@@ -114,6 +114,11 @@ fun Modifier.waterTouch(
         var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
         this
+            // This modifier invokes onClick straight from pointerInput, which no assistive
+            // technology can reach: TalkBack's double-tap, Switch Access and keyboard/D-pad
+            // activation all dispatch the onClick *semantics action*, not a pointer event. Without
+            // these, every control built on the glass layer is announced and cannot be activated.
+            // GlassNavBar is the one component that got this right, via Modifier.selectable.
             .semantics {
                 semanticRole?.let { role = it }
                 if (onClick != null) {
@@ -128,8 +133,7 @@ fun Modifier.waterTouch(
                         true
                     }
                 }
-            }
-            .focusable()
+            }.focusable()
             .onGloballyPositioned { coords = it }
             .pointerInput(drag, reducedMotion) {
                 awaitEachGesture {

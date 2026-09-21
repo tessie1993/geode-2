@@ -155,7 +155,7 @@ class LibraryViewModel
         fun renameMusicPlaylist(
             oldName: String,
             newName: String,
-        ): Boolean = session.renameMusicPlaylist(oldName, newName)
+        ) = session.renameMusicPlaylist(oldName, newName)
 
         fun moveMusicPlaylistTrack(
             name: String,

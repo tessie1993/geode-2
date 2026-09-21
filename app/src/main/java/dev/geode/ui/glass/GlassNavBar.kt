@@ -109,7 +109,11 @@ fun GlassNavBar(
                         ) {
                             Icon(
                                 item.icon,
-                                contentDescription = item.label,
+                                // null, not item.label: the sibling Text already names the tab and
+                                // the enclosing selectable(role = Role.Tab) already supplies the
+                                // role, so labelling the icon too had TalkBack read every item
+                                // twice - "Player, Player, tab".
+                                contentDescription = null,
                                 tint = contentColor,
                                 modifier = Modifier.size(20.dp),
                             )
@@ -131,7 +135,11 @@ fun GlassNavBar(
                         ) {
                             Icon(
                                 item.icon,
-                                contentDescription = item.label,
+                                // null, not item.label: the sibling Text already names the tab and
+                                // the enclosing selectable(role = Role.Tab) already supplies the
+                                // role, so labelling the icon too had TalkBack read every item
+                                // twice - "Player, Player, tab".
+                                contentDescription = null,
                                 tint = contentColor,
                                 modifier = Modifier.size(20.dp),
                             )

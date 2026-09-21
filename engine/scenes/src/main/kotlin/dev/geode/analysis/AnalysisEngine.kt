@@ -225,7 +225,17 @@ class AnalysisEngine(
         }
     }
 
-    /** Best-effort teardown: the loop may still observe [closed] one tick late. Prefer [closeAndJoin] where a suspend context is available. */
+    /**
+     * Teardown from a non-suspend caller.
+     *
+     * The native analyzer is destroyed only once the loop coroutine has actually completed, rather
+     * than immediately after cancelling it: `cancel()` is a request, so the loop could still be
+     * inside `analyzer.analyze()` when the handle went away — a use-after-free on every teardown
+     * that raced. Deferring through [Job.invokeOnCompletion] gets that ordering without blocking
+     * the caller (this runs on the main thread) and without a suspend signature. The handler runs
+     * immediately if the job has already finished, and [closeAndJoin] remains for suspend callers
+     * that want to wait it out.
+     */
     fun close() {
         closed = true
         stop()

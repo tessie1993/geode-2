@@ -69,6 +69,8 @@ private fun GlassTabPill(
             .glassSurface(shape = GlassShapes.pill, tint = if (selected) GlassPalette.mint else null, selected = selected)
             .floatOnWater(strength = 0.3f)
             .glassTouch(onClick = onClick, semanticRole = Role.Tab)
+            // `selected` was driving tint and font weight only, so a screen reader was told the
+            // pill was a tab but never which one was current.
             .semantics { this.selected = selected }
             .padding(horizontal = 18.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,

@@ -771,7 +771,7 @@ class PlayerSession internal constructor(
     fun renameMusicPlaylist(
         oldName: String,
         newName: String,
-    ): Boolean = musicLibrary.renameMusicPlaylist(oldName, newName)
+    ) = musicLibrary.renameMusicPlaylist(oldName, newName)
 
     fun moveMusicPlaylistTrack(
         name: String,
