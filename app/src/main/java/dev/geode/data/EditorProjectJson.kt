@@ -133,15 +133,15 @@ internal object EditorProjectJson {
         when (val type = o.getString("type")) {
             "scene" -> ClipContent.Scene(o.getString("sceneId"), o.stringOrNull("presetId"), o.stringOrNull("milkPath"))
             "video" -> ClipContent.Video(o.getString("uri"), o.optJSONObject("edit")?.let(::clipEdit) ?: ClipEdit())
-            "still" -> ClipContent.Still(o.getString("uri"), o.optDouble("kenBurns", 0.0).toFloat())
+            "still" -> ClipContent.Still(o.getString("uri"), o.finiteDouble("kenBurns", 0.0).toFloat())
             "text" -> ClipContent.Text(o.getString("text"), o.stringOrNull("styleId"))
             "overlay" ->
                 ClipContent.Overlay(
                     o.getString("uri"),
                     enumOr(o.optString("blend"), OverlayBlend.SCREEN),
-                    o.optDouble("opacity", 1.0).toFloat(),
+                    o.finiteDouble("opacity", 1.0).toFloat(),
                 )
-            "audio" -> ClipContent.Audio(o.getString("uri"), o.optDouble("gainDb", 0.0).toFloat())
+            "audio" -> ClipContent.Audio(o.getString("uri"), o.finiteDouble("gainDb", 0.0).toFloat())
             else -> throw IllegalArgumentException("unknown clip content: $type")
         }
 
@@ -172,22 +172,22 @@ internal object EditorProjectJson {
             startMs = o.optLong("startMs", 0L),
             endMs = o.optLong("endMs", 0L),
             look = enumOr(o.optString("look"), ClipLook.NONE),
-            brightness = o.optDouble("brightness", 0.0).toFloat(),
-            contrast = o.optDouble("contrast", 0.0).toFloat(),
-            saturation = o.optDouble("saturation", 0.0).toFloat(),
-            hueDegrees = o.optDouble("hueDegrees", 0.0).toFloat(),
+            brightness = o.finiteDouble("brightness", 0.0).toFloat(),
+            contrast = o.finiteDouble("contrast", 0.0).toFloat(),
+            saturation = o.finiteDouble("saturation", 0.0).toFloat(),
+            hueDegrees = o.finiteDouble("hueDegrees", 0.0).toFloat(),
             monochrome = o.optBoolean("monochrome", false),
             invert = o.optBoolean("invert", false),
-            speed = o.optDouble("speed", 1.0).toFloat(),
-            rotationDegrees = o.optDouble("rotationDegrees", 0.0).toFloat(),
+            speed = o.finiteDouble("speed", 1.0).toFloat(),
+            rotationDegrees = o.finiteDouble("rotationDegrees", 0.0).toFloat(),
             ratio = o.stringOrNull("ratio")?.let { name -> ExportRatio.entries.firstOrNull { it.name == name } },
             quality = enumOr(o.optString("quality"), ExportQuality.FHD1080),
             mute = o.optBoolean("mute", false),
             caption = o.optString("caption", ""),
             lutUri = o.stringOrNull("lutUri"),
-            gammaRed = o.optDouble("gammaRed", 1.0).toFloat(),
-            gammaGreen = o.optDouble("gammaGreen", 1.0).toFloat(),
-            gammaBlue = o.optDouble("gammaBlue", 1.0).toFloat(),
+            gammaRed = o.finiteDouble("gammaRed", 1.0).toFloat(),
+            gammaGreen = o.finiteDouble("gammaGreen", 1.0).toFloat(),
+            gammaBlue = o.finiteDouble("gammaBlue", 1.0).toFloat(),
         )
 
     private fun marker(m: Marker): JSONObject =
