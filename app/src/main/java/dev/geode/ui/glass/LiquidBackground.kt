@@ -141,6 +141,15 @@ private fun DrawScope.drawRefractedCaustics(
     dst: IntSize,
     tint: Float,
 ) {
+    // Redundant at runtime: rememberRefractionShader returns null below API 33, so a non-null
+    // RuntimeShader can only exist above it. Lint cannot follow that across two functions, and
+    // :app:lintDebug runs with abortOnError, so without this the whole build fails on five NewApi
+    // errors. Guarding here rather than suppressing also makes the function correct on its own
+    // terms, instead of resting on a precondition established by a different composable.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        drawImage(image, dstSize = dst, filterQuality = FilterQuality.Low, alpha = 0.85f)
+        return
+    }
     val drewViaShader =
         runCatching {
             val bitmapShader =
