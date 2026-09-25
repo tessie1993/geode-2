@@ -41,7 +41,11 @@ fun TransitionSheet(
     var durationMs by remember { mutableStateOf(current?.boundedDurationMs ?: ClipTransition.DEFAULT_TRANSITION_MS) }
     CreativeSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.editor_transition), style = MaterialTheme.typography.titleMedium, color = CreativeColors.textPrimary)
+            Text(
+                stringResource(R.string.editor_transition),
+                style = MaterialTheme.typography.titleMedium,
+                color = CreativeColors.textPrimary,
+            )
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 ClipTransition.DURATION_CHOICES_MS.forEach { choice ->
                     CreativeButton(

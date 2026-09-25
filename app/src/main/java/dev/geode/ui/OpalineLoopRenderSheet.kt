@@ -15,8 +15,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import dev.geode.ui.opaline.creative.CreativeSlider as Slider
-import dev.geode.ui.opaline.creative.CreativeToggle as Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,6 +37,8 @@ import dev.geode.export.ExportAspect
 import dev.geode.export.LoopSpec
 import dev.geode.export.TimeOfDayDrift
 import kotlin.math.roundToInt
+import dev.geode.ui.opaline.creative.CreativeSlider as Slider
+import dev.geode.ui.opaline.creative.CreativeToggle as Switch
 
 /**
  * Picks the loop's length, seam and palette drift, then starts [ExportController.startLoopRender]
@@ -97,35 +97,38 @@ fun LoopRenderSheet(
         )
 
     OpalineContextSheet(onDismiss = onDismiss) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Text(stringResource(R.string.export_loop_title), style = MaterialTheme.typography.titleLarge)
-                when (val phase = state.phase) {
-                    is ExportPhase.Running -> LoopRenderRunning(phase.progress)
-                    is ExportPhase.Done -> LoopRenderDone(phase.resultUri)
-                    is ExportPhase.Failed ->
-                        Text(
-                            stringResource(R.string.export_failed, phase.message),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    ExportPhase.Idle, ExportPhase.Loading ->
-                        LoopRenderControls(
-                            loopSeconds = loopSeconds,
-                            onLoopSecondsChange = { loopSeconds = it },
-                            crossfadeSeconds = crossfadeSeconds,
-                            onCrossfadeSecondsChange = { crossfadeSeconds = it },
-                            driftEnabled = driftEnabled,
-                            onDriftEnabledChange = { driftEnabled = it },
-                            driftHueTurns = driftHueTurns,
-                            onDriftHueTurnsChange = { driftHueTurns = it },
-                            driftStops = driftStops,
-                            onDriftStopsChange = { driftStops = it },
-                            audioClips = audioClips,
-                            onAddClips = { clipPicker.launch(arrayOf("audio/*")) },
-                            onRemoveClip = { clip -> audioClips = audioClips - clip },
-                            onStart = { onStart(buildRequest()) },
-                            onStartToDestination = { onStartToDestination(buildRequest()) },
-                        )
-                }
+            when (val phase = state.phase) {
+                is ExportPhase.Running -> LoopRenderRunning(phase.progress)
+                is ExportPhase.Done -> LoopRenderDone(phase.resultUri)
+                is ExportPhase.Failed ->
+                    Text(
+                        stringResource(R.string.export_failed, phase.message),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                ExportPhase.Idle, ExportPhase.Loading ->
+                    LoopRenderControls(
+                        loopSeconds = loopSeconds,
+                        onLoopSecondsChange = { loopSeconds = it },
+                        crossfadeSeconds = crossfadeSeconds,
+                        onCrossfadeSecondsChange = { crossfadeSeconds = it },
+                        driftEnabled = driftEnabled,
+                        onDriftEnabledChange = { driftEnabled = it },
+                        driftHueTurns = driftHueTurns,
+                        onDriftHueTurnsChange = { driftHueTurns = it },
+                        driftStops = driftStops,
+                        onDriftStopsChange = { driftStops = it },
+                        audioClips = audioClips,
+                        onAddClips = { clipPicker.launch(arrayOf("audio/*")) },
+                        onRemoveClip = { clip -> audioClips = audioClips - clip },
+                        onStart = { onStart(buildRequest()) },
+                        onStartToDestination = { onStartToDestination(buildRequest()) },
+                    )
+            }
 
             if (state.phase.isRunning) {
                 TextButton(onClick = onCancel) { Text(stringResource(R.string.export_cancel)) }

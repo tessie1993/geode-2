@@ -1,7 +1,6 @@
 package dev.geode.ui.opaline
 
 import android.annotation.SuppressLint
-import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -38,10 +37,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import java.io.ByteArrayInputStream
-import java.util.concurrent.atomic.AtomicLong
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.util.concurrent.atomic.AtomicLong
+import android.graphics.Color as AndroidColor
 
 private const val SCENE_ORIGIN = "https://opaline.geode.invalid"
 private val nextPartId = AtomicLong()
@@ -70,13 +70,14 @@ fun OpalineSceneHost(
     }
     DisposableEffect(lifecycle, bridge) {
         bridge.setResumed(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> bridge.setResumed(true)
-                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> bridge.setResumed(false)
-                else -> Unit
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_RESUME -> bridge.setResumed(true)
+                    Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> bridge.setResumed(false)
+                    else -> Unit
+                }
             }
-        }
         lifecycle.addObserver(observer)
         onDispose {
             lifecycle.removeObserver(observer)
@@ -132,9 +133,10 @@ fun Modifier.opalinePart(
                 if (bridge?.ready != true) {
                     // The semantic surface remains readable during loading or loss of WebGL.
                     drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            listOf(Color(0xFF38576A), Color(0xFF193345)),
-                        ),
+                        brush =
+                            Brush.verticalGradient(
+                                listOf(Color(0xFF38576A), Color(0xFF193345)),
+                            ),
                         cornerRadius = CornerRadius(size.minDimension * 0.35f),
                     )
                 }
@@ -148,12 +150,13 @@ fun Modifier.opalinePart(
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Final)
                             for (change in event.changes) {
-                                val action = when {
-                                    change.pressed && !change.previousPressed -> "down"
-                                    !change.pressed && change.previousPressed -> "up"
-                                    change.pressed -> "move"
-                                    else -> null
-                                }
+                                val action =
+                                    when {
+                                        change.pressed && !change.previousPressed -> "down"
+                                        !change.pressed && change.previousPressed -> "up"
+                                        change.pressed -> "move"
+                                        else -> null
+                                    }
                                 if (action != null) {
                                     bridge.touch(
                                         id = id,
@@ -210,44 +213,48 @@ private class OpalineBridge {
     private var posted = false
     private var probes = 0
 
-    private val flush = Runnable {
-        posted = false
-        val target = view
-        if (target != null && !disposed && bounds.width > 0 && bounds.height > 0) {
-            val visibleParts = JSONArray()
-            parts.values.filter { it.bounds.overlaps(bounds) }.take(96).forEach {
-                visibleParts.put(it.json(bounds.topLeft))
+    private val flush =
+        Runnable {
+            posted = false
+            val target = view
+            val hasViewport = bounds.width > 0 && bounds.height > 0
+            if (target != null && !disposed && hasViewport) {
+                val visibleParts = JSONArray()
+                parts.values.filter { it.bounds.overlaps(bounds) }.take(96).forEach {
+                    visibleParts.put(it.json(bounds.topLeft))
+                }
+                val state =
+                    JSONObject()
+                        .put("width", bounds.width.toDouble())
+                        .put("height", bounds.height.toDouble())
+                        .put("parts", visibleParts)
+                        .put("reducedMotion", reducedMotion)
+                        .put("section", section)
+                        .put("active", active && resumed)
+                target.evaluateJavascript("window.Opaline?.update($state)", null)
             }
-            val state = JSONObject()
-                .put("width", bounds.width.toDouble())
-                .put("height", bounds.height.toDouble())
-                .put("parts", visibleParts)
-                .put("reducedMotion", reducedMotion)
-                .put("section", section)
-                .put("active", active && resumed)
-            target.evaluateJavascript("window.Opaline?.update($state)", null)
         }
-    }
 
-    private val probe = object : Runnable {
-        override fun run() {
-            val target = view ?: return
-            if (disposed) return
-            target.evaluateJavascript("window.Opaline?.status") { result ->
-                if (disposed || target !== view) return@evaluateJavascript
-                ready = result == "\"ready\""
-                if (ready) {
-                    target.visibility = View.VISIBLE
-                    schedule()
-                    if (active && resumed) handler.postDelayed(this, 2_000)
-                } else if (result == "\"failed\"" || result == "\"lost\"") {
-                    target.visibility = View.INVISIBLE
-                } else if (probes++ < 30) {
-                    handler.postDelayed(this, 250)
+    private val probe =
+        object : Runnable {
+            override fun run() {
+                val target = view ?: return
+                if (disposed) return
+                target.evaluateJavascript("window.Opaline?.status") { result ->
+                    if (disposed || target !== view) return@evaluateJavascript
+                    ready = result == "\"ready\""
+                    if (ready) {
+                        target.visibility = View.VISIBLE
+                        schedule()
+                        if (active && resumed) handler.postDelayed(this, 2_000)
+                    } else if (result == "\"failed\"" || result == "\"lost\"") {
+                        target.visibility = View.INVISIBLE
+                    } else if (probes++ < 30) {
+                        handler.postDelayed(this, 250)
+                    }
                 }
             }
         }
-    }
 
     @SuppressLint("SetJavaScriptEnabled")
     fun createView(context: android.content.Context): WebView =
@@ -264,23 +271,30 @@ private class OpalineBridge {
             settings.setSupportMultipleWindows(false)
             settings.mediaPlaybackRequiresUserGesture = true
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
+            webViewClient =
+                object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView,
+                        request: WebResourceRequest,
+                    ): Boolean = true
 
-                override fun shouldInterceptRequest(
-                    view: WebView,
-                    request: WebResourceRequest,
-                ): WebResourceResponse = localResource(context, request.url)
+                    override fun shouldInterceptRequest(
+                        view: WebView,
+                        request: WebResourceRequest,
+                    ): WebResourceResponse = localResource(context, request.url)
 
-                override fun onPageFinished(view: WebView, url: String) {
-                    if (url == "$SCENE_ORIGIN/index.html") {
-                        probes = 0
-                        handler.removeCallbacks(probe)
-                        handler.post(probe)
-                        schedule()
+                    override fun onPageFinished(
+                        view: WebView,
+                        url: String,
+                    ) {
+                        if (url == "$SCENE_ORIGIN/index.html") {
+                            probes = 0
+                            handler.removeCallbacks(probe)
+                            handler.post(probe)
+                            schedule()
+                        }
                     }
                 }
-            }
             attach(this)
             loadUrl("$SCENE_ORIGIN/index.html")
         }
@@ -291,7 +305,11 @@ private class OpalineBridge {
         schedule()
     }
 
-    fun configure(reducedMotion: Boolean, section: String, active: Boolean) {
+    fun configure(
+        reducedMotion: Boolean,
+        section: String,
+        active: Boolean,
+    ) {
         if (this.reducedMotion == reducedMotion && this.section == section && this.active == active) return
         this.reducedMotion = reducedMotion
         this.section = section
@@ -338,16 +356,24 @@ private class OpalineBridge {
         schedule()
     }
 
-    fun touch(id: String, pointer: Long, action: String, x: Float, y: Float) {
-        if (disposed || !active || !resumed || reducedMotion || !x.isFinite() || !y.isFinite()) return
+    fun touch(
+        id: String,
+        pointer: Long,
+        action: String,
+        x: Float,
+        y: Float,
+    ) {
+        if (disposed || !active || !resumed) return
+        if (reducedMotion || !x.isFinite() || !y.isFinite()) return
         if (action == "down") pointers[pointer] = id
         if (action == "up" || action == "cancel") pointers.remove(pointer)
-        val event = JSONObject()
-            .put("id", id)
-            .put("pointer", pointer.toString())
-            .put("action", action)
-            .put("x", x.coerceIn(0f, 1f).toDouble())
-            .put("y", y.coerceIn(0f, 1f).toDouble())
+        val event =
+            JSONObject()
+                .put("id", id)
+                .put("pointer", pointer.toString())
+                .put("action", action)
+                .put("x", x.coerceIn(0f, 1f).toDouble())
+                .put("y", y.coerceIn(0f, 1f).toDouble())
         view?.evaluateJavascript("window.Opaline?.touch($event)", null)
     }
 
@@ -382,20 +408,24 @@ private class OpalineBridge {
 }
 
 /** All requests are fulfilled from APK assets or denied; there is no network fallback. */
-private fun localResource(context: android.content.Context, uri: Uri): WebResourceResponse {
+private fun localResource(
+    context: android.content.Context,
+    uri: Uri,
+): WebResourceResponse {
     val path = uri.path.orEmpty().removePrefix("/")
-    if (uri.scheme != "https" || uri.host != "opaline.geode.invalid" ||
-        path.isEmpty() || path.split('/').any { it == ".." || it == "." }
-    ) {
+    val trustedOrigin = uri.scheme == "https" && uri.host == "opaline.geode.invalid"
+    val safePath = path.isNotEmpty() && path.split('/').none { it == ".." || it == "." }
+    if (!trustedOrigin || !safePath) {
         return WebResourceResponse("text/plain", "UTF-8", 403, "Forbidden", emptyMap(), ByteArrayInputStream(byteArrayOf()))
     }
-    val mime = when (path.substringAfterLast('.')) {
-        "html" -> "text/html"
-        "js", "mjs" -> "application/javascript"
-        "json" -> "application/json"
-        "png" -> "image/png"
-        else -> "application/octet-stream"
-    }
+    val mime =
+        when (path.substringAfterLast('.')) {
+            "html" -> "text/html"
+            "js", "mjs" -> "application/javascript"
+            "json" -> "application/json"
+            "png" -> "image/png"
+            else -> "application/octet-stream"
+        }
     return try {
         WebResourceResponse(mime, "UTF-8", context.assets.open("opaline/$path"))
     } catch (_: java.io.IOException) {

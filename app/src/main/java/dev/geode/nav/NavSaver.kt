@@ -34,8 +34,11 @@ object NavSaver {
         val section = fields[KEY_SECTION]?.let { name -> Section.entries.firstOrNull { it.name == name } } ?: Section.PLAYER
         val stacks =
             Section.entries.associateWith { each ->
-                val routes = fields[KEY_STACK + each.name].toRoutes().mapNotNull(Routes::decode)
-                    .filter { it.section == each || it.section == null }
+                val routes =
+                    fields[KEY_STACK + each.name]
+                        .toRoutes()
+                        .mapNotNull(Routes::decode)
+                        .filter { it.section == each || it.section == null }
                 val root = routes.firstOrNull { it.presentation == Presentation.ROOT } ?: each.root
                 listOf(root) + routes.filter { it.presentation != Presentation.ROOT }
             }

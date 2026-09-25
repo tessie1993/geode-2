@@ -9,17 +9,28 @@ import org.junit.Test
 class NavigatorTest {
     @Test
     fun `restore keeps one correct root and only same section pages`() {
-        val state = NavSaver.decode(
-            """section=LIBRARY
+        val state =
+            NavSaver.decode(
+                """section=LIBRARY
                 |stack.PLAYER=player/queue,player/lyrics,settings/about
                 |stack.LIBRARY=library/ALBUMS,library/album/A%2FB,visuals/presets
                 |stack.VISUALS=visuals/customize,visuals/presets
-                |""".trimMargin(),
-        )
+                |
+                """.trimMargin(),
+            )
 
-        assertEquals(listOf(Destination.Player.NowPlaying, Destination.Player.Queue, Destination.Player.Lyrics), state.stacks.getValue(Section.PLAYER))
-        assertEquals(listOf(Destination.Library.Browse(LibraryView.ALBUMS), Destination.Library.Album("A/B")), state.stacks.getValue(Section.LIBRARY))
-        assertEquals(listOf(Destination.Visuals.Hub, Destination.Visuals.Customize, Destination.Visuals.Presets), state.stacks.getValue(Section.VISUALS))
+        assertEquals(
+            listOf(Destination.Player.NowPlaying, Destination.Player.Queue, Destination.Player.Lyrics),
+            state.stacks.getValue(Section.PLAYER),
+        )
+        assertEquals(
+            listOf(Destination.Library.Browse(LibraryView.ALBUMS), Destination.Library.Album("A/B")),
+            state.stacks.getValue(Section.LIBRARY),
+        )
+        assertEquals(
+            listOf(Destination.Visuals.Hub, Destination.Visuals.Customize, Destination.Visuals.Presets),
+            state.stacks.getValue(Section.VISUALS),
+        )
     }
 
     @Test
@@ -33,7 +44,12 @@ class NavigatorTest {
 
         nav.show(Section.LIBRARY)
         assertEquals(listOf(Destination.Library.Browse()), nav.state.value.stack)
-        assertEquals(Destination.Settings.Audio, nav.state.value.stacks.getValue(Section.SETTINGS).last())
+        assertEquals(
+            Destination.Settings.Audio,
+            nav.state.value.stacks
+                .getValue(Section.SETTINGS)
+                .last(),
+        )
     }
 
     @Test
@@ -54,7 +70,11 @@ class NavigatorTest {
 
         assertEquals(Section.SETTINGS, nav.state.value.section)
         assertEquals(listOf(Destination.Settings.Root, Destination.Settings.Audio), nav.state.value.stack)
-        assertEquals(listOf(Destination.Library.Browse(), Destination.Library.Album("Blue")), nav.state.value.stacks.getValue(Section.LIBRARY))
+        assertEquals(
+            listOf(Destination.Library.Browse(), Destination.Library.Album("Blue")),
+            nav.state.value.stacks
+                .getValue(Section.LIBRARY),
+        )
 
         nav.replace(Destination.Library.Folder("/music"))
         assertEquals(listOf(Destination.Library.Browse(), Destination.Library.Folder("/music")), nav.state.value.stack)
@@ -97,7 +117,12 @@ class NavigatorTest {
         val before = nav.state.value
         nav.backStarted(BackGesture.Edge.LEFT)
         nav.backProgressed(.6f)
-        assertEquals(Destination.Library.Browse(), nav.backGesture.value?.target?.current)
+        assertEquals(
+            Destination.Library.Browse(),
+            nav.backGesture.value
+                ?.target
+                ?.current,
+        )
         nav.backCancelled()
 
         assertNull(nav.backGesture.value)

@@ -70,107 +70,109 @@ fun TemplatesSheet(
             }
         }
 
-    if (deleting == null) OpalineContextSheet(onDismiss = onDismiss) {
-        LazyColumn(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            item {
-                Text(stringResource(R.string.template_sheet_title), style = MaterialTheme.typography.titleMedium)
-            }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CreativeButton(compact = true, filled = false, onClick = {
-                        val pasted = clipboardText(context)
-                        if (pasted.isNullOrBlank()) {
-                            note = clipboardEmptyNote
-                        } else {
-                            visualsViewModel.importTemplateText(pasted) { outcome -> note = messageFor(outcome) }
-                        }
-                    }) { Text(stringResource(R.string.template_paste_link)) }
-                    CreativeButton(compact = true, filled = false, onClick = {
-                        filePicker.launch(arrayOf("*/*"))
-                    }) { Text(stringResource(R.string.template_open_file)) }
-                }
-            }
-            note?.let { n ->
+    if (deleting == null) {
+        OpalineContextSheet(onDismiss = onDismiss) {
+            LazyColumn(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 item {
-                    Text(
-                        n,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Text(stringResource(R.string.template_sheet_title), style = MaterialTheme.typography.titleMedium)
                 }
-            }
-            item {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedTextField(
-                        value = saveName,
-                        onValueChange = { saveName = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text(stringResource(R.string.template_save_placeholder)) },
-                        singleLine = true,
-                    )
-                    CreativeButton(onClick = {
-                        val trimmed = saveName.trim()
-                        if (trimmed.isNotEmpty()) {
-                            val shader = visualizerView.visualizerRenderer.customShaderFor(viz.sceneId)
-                            visualsViewModel.saveCurrentAsTemplate(trimmed, shader) { result ->
-                                note =
-                                    when (result) {
-                                        TemplateWrite.Written -> "Saved \"$trimmed\"."
-                                        is TemplateWrite.Failed -> result.why
-                                    }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CreativeButton(compact = true, filled = false, onClick = {
+                            val pasted = clipboardText(context)
+                            if (pasted.isNullOrBlank()) {
+                                note = clipboardEmptyNote
+                            } else {
+                                visualsViewModel.importTemplateText(pasted) { outcome -> note = messageFor(outcome) }
                             }
-                            saveName = ""
-                        }
-                    }) { Text(stringResource(R.string.action_save)) }
+                        }) { Text(stringResource(R.string.template_paste_link)) }
+                        CreativeButton(compact = true, filled = false, onClick = {
+                            filePicker.launch(arrayOf("*/*"))
+                        }) { Text(stringResource(R.string.template_open_file)) }
+                    }
                 }
-            }
-            if (library.isNotEmpty()) {
+                note?.let { n ->
+                    item {
+                        Text(
+                            n,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = saveName,
+                            onValueChange = { saveName = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text(stringResource(R.string.template_save_placeholder)) },
+                            singleLine = true,
+                        )
+                        CreativeButton(onClick = {
+                            val trimmed = saveName.trim()
+                            if (trimmed.isNotEmpty()) {
+                                val shader = visualizerView.visualizerRenderer.customShaderFor(viz.sceneId)
+                                visualsViewModel.saveCurrentAsTemplate(trimmed, shader) { result ->
+                                    note =
+                                        when (result) {
+                                            TemplateWrite.Written -> "Saved \"$trimmed\"."
+                                            is TemplateWrite.Failed -> result.why
+                                        }
+                                }
+                                saveName = ""
+                            }
+                        }) { Text(stringResource(R.string.action_save)) }
+                    }
+                }
+                if (library.isNotEmpty()) {
+                    item {
+                        Text(
+                            stringResource(R.string.template_library_heading),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = accentTextColor(),
+                        )
+                    }
+                }
+                items(library, key = { "t_${it.id.value}" }) { t ->
+                    TemplateRow(
+                        template = t,
+                        applyLabel = stringResource(R.string.template_apply),
+                        shareLabel = stringResource(R.string.template_share),
+                        trailingLabel = stringResource(R.string.template_delete),
+                        onApply = { visualsViewModel.applyTemplate(t) },
+                        onShare = { shareTemplate(context, visualsViewModel, t) },
+                        onTrailing = { deleting = t },
+                        trailingIsDestructive = true,
+                    )
+                }
                 item {
                     Text(
-                        stringResource(R.string.template_library_heading),
+                        stringResource(R.string.template_starters_heading),
                         style = MaterialTheme.typography.titleSmall,
                         color = accentTextColor(),
                     )
                 }
-            }
-            items(library, key = { "t_${it.id.value}" }) { t ->
-                TemplateRow(
-                    template = t,
-                    applyLabel = stringResource(R.string.template_apply),
-                    shareLabel = stringResource(R.string.template_share),
-                    trailingLabel = stringResource(R.string.template_delete),
-                    onApply = { visualsViewModel.applyTemplate(t) },
-                    onShare = { shareTemplate(context, visualsViewModel, t) },
-                    onTrailing = { deleting = t },
-                    trailingIsDestructive = true,
-                )
-            }
-            item {
-                Text(
-                    stringResource(R.string.template_starters_heading),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = accentTextColor(),
-                )
-            }
-            items(visualsViewModel.templateStarters, key = { "s_${it.id.value}" }) { t ->
-                TemplateRow(
-                    template = t,
-                    applyLabel = stringResource(R.string.template_apply),
-                    shareLabel = null,
-                    trailingLabel = stringResource(R.string.template_adopt),
-                    onApply = { visualsViewModel.applyTemplate(t) },
-                    onShare = null,
-                    onTrailing = {
-                        visualsViewModel.adoptTemplate(t) { outcome -> note = messageFor(outcome) }
-                    },
-                    trailingIsDestructive = false,
-                )
+                items(visualsViewModel.templateStarters, key = { "s_${it.id.value}" }) { t ->
+                    TemplateRow(
+                        template = t,
+                        applyLabel = stringResource(R.string.template_apply),
+                        shareLabel = null,
+                        trailingLabel = stringResource(R.string.template_adopt),
+                        onApply = { visualsViewModel.applyTemplate(t) },
+                        onShare = null,
+                        onTrailing = {
+                            visualsViewModel.adoptTemplate(t) { outcome -> note = messageFor(outcome) }
+                        },
+                        trailingIsDestructive = false,
+                    )
+                }
             }
         }
     }

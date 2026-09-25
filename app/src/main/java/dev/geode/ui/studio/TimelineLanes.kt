@@ -1,5 +1,6 @@
 package dev.geode.ui.studio
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -57,11 +58,11 @@ import dev.geode.export.ChapterMarkers
 import dev.geode.export.ChapterWriteResult
 import dev.geode.ui.EditorUiState
 import dev.geode.ui.ExportPhase
-import dev.geode.ui.opaline.creative.CreativeButton
-import dev.geode.ui.opaline.creative.CreativeProgress
-import dev.geode.ui.opaline.creative.CreativeColors
-import dev.geode.ui.opaline.creative.CreativeSheet
 import dev.geode.ui.isBusy
+import dev.geode.ui.opaline.creative.CreativeButton
+import dev.geode.ui.opaline.creative.CreativeColors
+import dev.geode.ui.opaline.creative.CreativeProgress
+import dev.geode.ui.opaline.creative.CreativeSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -76,13 +77,56 @@ private enum class PickKind {
     AUDIO,
 }
 
-private class PendingProject(val name: String, val project: EditorProject) {
-    fun matches(actions: EditorActions): Boolean = actions.currentProjectIdentity()?.let { (currentName, currentProject) ->
-        currentName == name && currentProject === project
-    } == true
+private class PendingProject(
+    val name: String,
+    val project: EditorProject,
+) {
+    fun matches(actions: EditorActions): Boolean =
+        actions.currentProjectIdentity()?.let { (currentName, currentProject) ->
+            currentName == name && currentProject === project
+        } == true
 }
 
-private class PendingPick(val laneId: LaneId, val kind: PickKind, val project: PendingProject)
+private class PendingPick(
+    val laneId: LaneId,
+    val kind: PickKind,
+    val project: PendingProject,
+)
+
+private fun handlePickedMedia(
+    context: Context,
+    uri: Uri?,
+    target: PendingPick?,
+    actions: EditorActions,
+    addClip: (LaneId, ClipContent, Long, Long) -> Unit,
+) {
+    if (uri == null || target == null || !target.project.matches(actions)) return
+    runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+    val text = uri.toString()
+    when (target.kind) {
+        PickKind.VIDEO, PickKind.AUDIO -> actions.describeMedia(uri) { media ->
+            if (target.project.matches(actions)) {
+                val content = if (target.kind == PickKind.VIDEO) ClipContent.Video(text) else ClipContent.Audio(text)
+                addClip(target.laneId, content, media.durationMs, media.durationMs)
+            }
+        }
+        PickKind.STILL -> addClip(target.laneId, ClipContent.Still(text), STILL_MS, 0L)
+        PickKind.OVERLAY -> addClip(target.laneId, ClipContent.Overlay(text), OVERLAY_MS, 0L)
+    }
+}
+
+private fun importSrt(
+    context: Context,
+    uri: Uri?,
+    target: PendingProject?,
+    actions: EditorActions,
+    addCaptionClips: (List<SubtitleCue>) -> Unit,
+) {
+    if (uri == null || target == null || !target.matches(actions)) return
+    val text = runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull()
+        ?: return
+    if (target.matches(actions)) addCaptionClips(Subtitles.parseSrt(text))
+}
 
 /** The timeline: ruler, marker lane, one row per lane, keyframe rows for the selection, and the playhead. */
 @Composable
@@ -146,27 +190,9 @@ fun TimelineEditor(
 
     val picker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            val target = picking ?: return@rememberLauncherForActivityResult
+            val target = picking
             picking = null
-            if (uri == null || !target.project.matches(actions)) return@rememberLauncherForActivityResult
-            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            val text = uri.toString()
-            when (target.kind) {
-                PickKind.VIDEO ->
-                    actions.describeMedia(
-                        uri,
-                    ) { media ->
-                        if (target.project.matches(actions)) addClip(target.laneId, ClipContent.Video(text), media.durationMs, media.durationMs)
-                    }
-                PickKind.AUDIO ->
-                    actions.describeMedia(
-                        uri,
-                    ) { media ->
-                        if (target.project.matches(actions)) addClip(target.laneId, ClipContent.Audio(text), media.durationMs, media.durationMs)
-                    }
-                PickKind.STILL -> addClip(target.laneId, ClipContent.Still(text), STILL_MS)
-                PickKind.OVERLAY -> addClip(target.laneId, ClipContent.Overlay(text), OVERLAY_MS)
-            }
+            handlePickedMedia(context, uri, target, actions, ::addClip)
         }
 
     fun pick(
@@ -192,11 +218,7 @@ fun TimelineEditor(
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             val target = importingSrt
             importingSrt = null
-            if (uri == null || target == null || !target.matches(actions)) return@rememberLauncherForActivityResult
-            val text =
-                runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull()
-                    ?: return@rememberLauncherForActivityResult
-            if (target.matches(actions)) addCaptionClips(Subtitles.parseSrt(text))
+            importSrt(context, uri, target, actions, ::addCaptionClips)
         }
     val srtExporter =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(SRT_MIME)) { uri ->
