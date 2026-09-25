@@ -8,8 +8,9 @@ import androidx.compose.ui.geometry.Rect
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
+import kotlin.math.log2
+import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.tan
@@ -55,7 +56,23 @@ internal class OpalineRenderer(
         val reveal = OpalineSpring(0f, frequency = 2.5f, damping = 1f).apply { target = 1f }
         var touchX = 0.5f
         var touchY = 0.5f
+
+        /** MotionController.drag: the last pointer delta, cleared on release (normalised units). */
+        var velocityX = 0f
+        var velocityY = 0f
         val pointers = mutableSetOf<Long>()
+    }
+
+    /** One src/materials.js family in one theme, converted once to the linear uniforms it needs. */
+    private class SurfaceMaterial(
+        val source: OpalineMaterial,
+    ) {
+        val diffuse = linearRgb(source.color)
+        val emissive = linearRgb(source.emissive).scaled(source.emissiveIntensity)
+        val attenuationColor = linearRgb(source.attenuationColor)
+        val sheenColor = linearRgb(source.sheenColor).scaled(source.sheen)
+
+        private fun FloatArray.scaled(factor: Float) = also { for (i in indices) this[i] *= factor }
     }
 
     private data class GpuPiece(
@@ -73,8 +90,11 @@ internal class OpalineRenderer(
 
     private val meshes = mutableMapOf<String, GpuMesh>()
     private val instances = mutableMapOf<Long, Instance>()
-    private lateinit var surface: Program
-    private lateinit var backdrop: Program
+    private val materials = mutableMapOf<Pair<OpalinePalette, String>, SurfaceMaterial>()
+    private lateinit var surface: OpalineProgram
+    private lateinit var backdrop: OpalineProgram
+    private var dfg = 0
+    private var environment = 0
     private var artwork = 0
     private var artworkAspect = 1f
     private var theme: OpalinePalette? = null
@@ -90,10 +110,18 @@ internal class OpalineRenderer(
     private val normal = FloatArray(9)
     private val contact = FloatArray(4)
     private val localContact = FloatArray(4)
+    private val velocity = FloatArray(4)
+    private val localVelocity = FloatArray(4)
+    private val lightCenter = FloatArray(3)
+    private val pointPositions = FloatArray(6)
+    private val pointColors = FloatArray(6)
+    private val pointDistances = FloatArray(2)
 
     fun create() {
-        surface = Program(assets, "surface")
-        backdrop = Program(assets, "backdrop")
+        surface = OpalineProgram(assets, "surface")
+        backdrop = OpalineProgram(assets, "backdrop")
+        dfg = OpalineLightingTextures.dfg()
+        environment = OpalineLightingTextures.environment()
         GL.glEnable(GL.GL_DEPTH_TEST)
         GL.glDepthFunc(GL.GL_LEQUAL)
     }
@@ -106,16 +134,23 @@ internal class OpalineRenderer(
         y: Float,
     ) {
         val instance = instances[id] ?: return
+        val dragging = pressed && pointer in instance.pointers
         if (pressed) instance.pointers.add(pointer) else instance.pointers.remove(pointer)
         instance.pressure.target = if (instance.pointers.isEmpty()) 0f else 1f
-        instance.touchX = x.coerceIn(0f, 1f)
-        instance.touchY = y.coerceIn(0f, 1f)
+        val nextX = x.coerceIn(0f, 1f)
+        val nextY = y.coerceIn(0f, 1f)
+        instance.velocityX = if (dragging) nextX - instance.touchX else 0f
+        instance.velocityY = if (dragging) nextY - instance.touchY else 0f
+        instance.touchX = nextX
+        instance.touchY = nextY
     }
 
     fun cancel(id: Long? = null) {
         (if (id == null) instances.values else listOfNotNull(instances[id])).forEach {
             it.pointers.clear()
             it.pressure.target = 0f
+            it.velocityX = 0f
+            it.velocityY = 0f
         }
     }
 
@@ -133,29 +168,23 @@ internal class OpalineRenderer(
         Matrix.perspectiveM(projection, 0, 38f, width.toFloat() / height, 0.1f, 80f)
         GL.glViewport(0, 0, width, height)
         GL.glDisable(GL.GL_SCISSOR_TEST)
+        // The transmission receiver: the scene behind every surface in linear light, mip-mapped so
+        // rough refraction reads a wider footprint, as three.js prepares its transmission target.
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, framebuffer)
-        drawBackdrop(frame)
+        drawBackdrop(frame, linear = true)
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, receiver)
+        GL.glGenerateMipmap(GL.GL_TEXTURE_2D)
         if (frame.transparent) {
             GL.glClearColor(0f, 0f, 0f, 0f)
             GL.glClear(GL.GL_COLOR_BUFFER_BIT)
         } else {
-            drawBackdrop(frame)
+            drawBackdrop(frame, linear = false)
         }
         GL.glEnable(GL.GL_DEPTH_TEST)
         GL.glClear(GL.GL_DEPTH_BUFFER_BIT)
         surface.use()
-        surface.matrix("uProjection", projection)
-        surface.vec2("uViewport", width.toFloat(), height.toFloat())
-        surface.scalar("uTime", time)
-        surface.color("uAccent", frame.palette.accent)
-        GL.glActiveTexture(GL.GL_TEXTURE0)
-        GL.glBindTexture(GL.GL_TEXTURE_2D, receiver)
-        surface.integer("uBackdrop", 0)
-        GL.glActiveTexture(GL.GL_TEXTURE1)
-        GL.glBindTexture(GL.GL_TEXTURE_2D, artwork)
-        surface.integer("uEnvironment", 1)
-        GL.glActiveTexture(GL.GL_TEXTURE0)
+        bindScene(frame)
         if (frame.environment) drawEnvironment(frame)
         // Parents first, children last. Depth is cleared between semantic surfaces so nested
         // controls cannot disappear inside a parent's thick shell. Pieces retain real self-depth.
@@ -187,6 +216,36 @@ internal class OpalineRenderer(
         }
         GL.glDisable(GL.GL_SCISSOR_TEST)
         check(GL.glGetError() == GL.GL_NO_ERROR) { "Opaline native draw failed" }
+    }
+
+    /** Uniforms shared by every surface this frame: camera, light rig, lighting textures. */
+    private fun bindScene(frame: OpalineFrame) {
+        val theme = OpalineMaterialTheme.of(frame.palette)
+        surface.matrix("uProjection", projection)
+        surface.scalar("toneMappingExposure", OpalineLightRig.TONE_MAPPING_EXPOSURE)
+        surface.scalar("envMapIntensity", OpalineLightRig.ENVIRONMENT_INTENSITY)
+        surface.scalar("envMapMaxLod", (OpalineRoomEnvironment.LEVELS - 1).toFloat())
+        surface.vec2("transmissionSamplerSize", width.toFloat(), height.toFloat())
+        surface.vec3("uHemisphereSky", OpalineLightRig.hemisphereSky)
+        surface.vec3("uHemisphereGround", OpalineLightRig.hemisphereGround)
+        surface.vec3("uHemisphereDirection", OpalineLightRig.hemisphereDirection)
+        surface.vec3s("uDirectionalColor", OpalineLightRig.directionalColors)
+        surface.vec3s("uDirectionalDirection", OpalineLightRig.directionalDirections)
+        surface.scalars("uPointDecay", OpalineLightRig.pointDecays)
+        surface.scalar("uOpTime", time)
+        surface.scalar("uOpRadius", CONTACT_RADIUS)
+        surface.color("uOpAccent", theme.accent)
+        surface.color("uOpDeep", theme.deep)
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, receiver)
+        surface.integer("transmissionSamplerMap", 0)
+        GL.glActiveTexture(GL.GL_TEXTURE1)
+        GL.glBindTexture(GL.GL_TEXTURE_CUBE_MAP, environment)
+        surface.integer("envMap", 1)
+        GL.glActiveTexture(GL.GL_TEXTURE2)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, dfg)
+        surface.integer("dfgLUT", 2)
+        GL.glActiveTexture(GL.GL_TEXTURE0)
     }
 
     private fun drawEnvironment(frame: OpalineFrame) {
@@ -277,15 +336,31 @@ internal class OpalineRenderer(
         contact[1] = source.maximum[1] - instance.touchY * sizeY
         contact[2] = source.maximum[2]
         contact[3] = 1f
-        surface.scalar("uPressure", instance.pressure.value * frame.motion)
-        surface.scalar("uSelected", instance.selection.value)
+        velocity[0] = instance.velocityX * sizeX
+        velocity[1] = -instance.velocityY * sizeY
+        velocity[2] = 0f
+        velocity[3] = 0f
+        val pressure = instance.pressure.value * frame.motion
+        surface.scalar("uPressure", pressure)
+        surface.scalar("uOpExcitation", pressure.coerceIn(0f, MAX_EXCITATION))
         surface.scalar("uEnabled", if (part.enabled) 1f else 0f)
         surface.scalar("uReveal", instance.reveal.value)
+        // The workbench lights elements of about their own size: carry the rig into this part.
+        val elementScale = (bounds.width * perPixel * .92f / sizeX + bounds.height * perPixel * .90f / sizeY) / 2f
+        lightCenter[0] = model[12]
+        lightCenter[1] = model[13]
+        lightCenter[2] = model[14]
+        OpalineLightRig.pointPosition(lightCenter, elementScale, pointPositions)
+        OpalineLightRig.pointColor(elementScale, pointColors)
+        OpalineLightRig.pointDistance(elementScale, pointDistances)
+        surface.vec3s("uPointPosition", pointPositions)
+        surface.vec3s("uPointColor", pointColors)
+        surface.scalars("uPointDistance", pointDistances)
         for (piece in mesh.pieces) {
             // UI034/UI038 sockets are re-authored as the four native tab mounts. The source
             // support is retained; its baked five/three-slot guides must not duplicate the tabs.
             if (part.element.startsWith("D") && piece.source.role == "guide") continue
-            drawPiece(piece, instance, frame, pixelDepth * perPixel / sizeZ)
+            drawPiece(piece, instance, frame, elementScale)
         }
     }
 
@@ -293,7 +368,7 @@ internal class OpalineRenderer(
         piece: GpuPiece,
         instance: Instance,
         frame: OpalineFrame,
-        opticalScale: Float,
+        elementScale: Float,
     ) {
         val source = piece.source
         val pose = source.transform.copyOf()
@@ -323,31 +398,15 @@ internal class OpalineRenderer(
         GL.glUniformMatrix3fv(surface.location("uNormal"), 1, false, normal, 0)
         Matrix.invertM(inverse, 0, pose, 0)
         Matrix.multiplyMV(localContact, 0, inverse, 0, contact, 0)
+        Matrix.multiplyMV(localVelocity, 0, inverse, 0, velocity, 0)
         surface.vec3("uContact", localContact)
+        surface.vec3("uOpTouch", localContact)
+        surface.vec3("uOpVelocity", localVelocity)
         surface.scalar("uDeform", if (source.deformable) 1f else 0f)
         surface.vec3("uShapeCenter", piece.center)
         surface.vec3("uShapeHalf", piece.half)
-        if (frame.palette == OpalinePalette.TIDAL || source.family in listOf("shell", "water", "film")) {
-            surface.vec3("uBase", source.color)
-        } else {
-            surface.color("uBase", frame.palette.materialColor(source.family))
-        }
-        if (frame.palette == OpalinePalette.TIDAL) {
-            surface.vec3("uAbsorption", source.attenuation)
-        } else {
-            surface.color("uAbsorption", frame.palette.materialColor(if (source.family == "shell") "gel" else source.family))
-        }
-        surface.vec3("uEmission", source.emission)
-        surface.vec4("uOptics", source.roughness, source.transmission, source.ior, source.thickness * opticalScale)
-        val cloud =
-            when (source.family) {
-                "pigment" -> .78f
-                "gel" -> .18f
-                "blue" -> .14f
-                "nacre" -> .27f
-                else -> 0f
-            }
-        surface.vec4("uFinish", source.iridescence, cloud, source.clearcoat, source.attenuationDistance * opticalScale)
+        val material = materials.getOrPut(frame.palette to source.family) { surfaceMaterial(frame.palette, source.family) }
+        bindMaterial(material, elementScale)
         GL.glBindVertexArray(piece.vao)
         if (source.morphs.isNotEmpty()) {
             val at = value * (source.morphs.size - 1)
@@ -364,6 +423,45 @@ internal class OpalineRenderer(
         }
         GL.glDrawElements(GL.GL_TRIANGLES, source.indices.size, GL.GL_UNSIGNED_INT, 0)
         GL.glBindVertexArray(0)
+    }
+
+    private fun surfaceMaterial(
+        palette: OpalinePalette,
+        family: String,
+    ) = SurfaceMaterial(OpalineMaterialTheme.of(palette).material(family))
+
+    /**
+     * MeshPhysicalMaterial uniforms for one family. Attenuation distance is in world units in
+     * three.js while the refracted path is scaled by the model matrix, so it scales with the element
+     * like the path does. The film family's thickness range drifts as `updateMaterials` drives it.
+     */
+    private fun bindMaterial(
+        material: SurfaceMaterial,
+        elementScale: Float,
+    ) {
+        val source = material.source
+        val drift = if (source.film >= 1f) FILM_DRIFT * sin(time * FILM_DRIFT_RATE) else 0f
+        surface.vec3("uDiffuse", material.diffuse)
+        surface.vec3("uEmissive", material.emissive)
+        surface.scalar("uRoughness", source.roughness)
+        surface.scalar("uIor", source.ior)
+        surface.scalar("uClearcoat", source.clearcoat)
+        surface.scalar("uClearcoatRoughness", source.clearcoatRoughness)
+        surface.scalar("uIridescence", source.iridescence)
+        surface.scalar("uIridescenceIOR", source.iridescenceIor)
+        surface.vec2("uIridescenceThickness", source.iridescenceThickness.start + drift, source.iridescenceThickness.endInclusive + drift)
+        surface.vec3("uSheenColor", material.sheenColor)
+        surface.scalar("uSheenRoughness", source.sheenRoughness)
+        surface.scalar("uTransmission", source.transmission)
+        surface.scalar("uThickness", source.thickness)
+        surface.vec3("uAttenuationColor", material.attenuationColor)
+        surface.scalar("uAttenuationDistance", if (source.attenuationDistance.isFinite()) source.attenuationDistance * elementScale else 0f)
+        surface.scalar("uDispersion", source.dispersion)
+        surface.flag("uDoubleSide", source.doubleSided)
+        surface.scalar("uOpFlow", source.flow)
+        surface.scalar("uOpCloud", source.cloud)
+        surface.scalar("uOpGrain", source.grain)
+        surface.scalar("uOpFilm", source.film)
     }
 
     private fun upload(mesh: OpalineMesh): GpuMesh =
@@ -433,8 +531,11 @@ internal class OpalineRenderer(
         height = h.coerceAtLeast(1)
         if (receiver != 0) GL.glDeleteTextures(1, intArrayOf(receiver), 0)
         if (framebuffer != 0) GL.glDeleteFramebuffers(1, intArrayOf(framebuffer), 0)
+        // sRGB storage keeps linear light precise in 8 bits; sampling decodes it back to linear.
         receiver = texture()
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, null)
+        val levels = log2(max(width, height).toFloat()).toInt() + 1
+        GL.glTexStorage2D(GL.GL_TEXTURE_2D, levels, GL.GL_SRGB8_ALPHA8, width, height)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR_MIPMAP_LINEAR)
         val ids = IntArray(1)
         GL.glGenFramebuffers(1, ids, 0)
         framebuffer = ids[0]
@@ -473,9 +574,13 @@ internal class OpalineRenderer(
         return ids[0]
     }
 
-    private fun drawBackdrop(frame: OpalineFrame) {
+    private fun drawBackdrop(
+        frame: OpalineFrame,
+        linear: Boolean,
+    ) {
         GL.glDisable(GL.GL_DEPTH_TEST)
         backdrop.use()
+        backdrop.flag("uLinearOutput", linear)
         GL.glActiveTexture(GL.GL_TEXTURE0)
         GL.glBindTexture(GL.GL_TEXTURE_2D, artwork)
         backdrop.integer("uArtwork", 0)
@@ -496,87 +601,21 @@ internal class OpalineRenderer(
         }
         meshes.clear()
         instances.clear()
-        GL.glDeleteTextures(2, intArrayOf(artwork, receiver), 0)
+        GL.glDeleteTextures(4, intArrayOf(artwork, receiver, dfg, environment), 0)
         GL.glDeleteFramebuffers(1, intArrayOf(framebuffer), 0)
         if (::surface.isInitialized) surface.dispose()
         if (::backdrop.isInitialized) backdrop.dispose()
     }
-}
 
-private class Program(
-    assets: AssetManager,
-    name: String,
-) {
-    private val id = GL.glCreateProgram()
-    private val locations = mutableMapOf<String, Int>()
+    private companion object {
+        /** `uOpRadius` in src/materials.js: the contact glow radius in element units. */
+        const val CONTACT_RADIUS = .42f
 
-    init {
-        val shaders =
-            listOf(GL.GL_VERTEX_SHADER to "vert", GL.GL_FRAGMENT_SHADER to "frag").map { (type, suffix) ->
-                val shader = GL.glCreateShader(type)
-                val source = assets.open("opaline-native/shaders/$name.$suffix").bufferedReader().use { it.readText() }
-                GL.glShaderSource(shader, source)
-                GL.glCompileShader(shader)
-                val status = IntArray(1)
-                GL.glGetShaderiv(shader, GL.GL_COMPILE_STATUS, status, 0)
-                check(status[0] != 0) { GL.glGetShaderInfoLog(shader) }
-                GL.glAttachShader(id, shader)
-                shader
-            }
-        GL.glLinkProgram(id)
-        shaders.forEach { GL.glDeleteShader(it) }
-        val status = IntArray(1)
-        GL.glGetProgramiv(id, GL.GL_LINK_STATUS, status, 0)
-        check(status[0] != 0) { GL.glGetProgramInfoLog(id) }
+        /** `setInteraction` clamps excitation to [0, 4]. */
+        const val MAX_EXCITATION = 4f
+
+        /** `updateMaterials`: the film's thickness range drifts by 25 nm at 0.09 rad/s. */
+        const val FILM_DRIFT = 25f
+        const val FILM_DRIFT_RATE = .09f
     }
-
-    fun location(name: String): Int = locations.getOrPut(name) { GL.glGetUniformLocation(id, name) }
-
-    fun use() = GL.glUseProgram(id)
-
-    fun scalar(
-        name: String,
-        value: Float,
-    ) = GL.glUniform1f(location(name), value)
-
-    fun integer(
-        name: String,
-        value: Int,
-    ) = GL.glUniform1i(location(name), value)
-
-    fun vec2(
-        name: String,
-        x: Float,
-        y: Float,
-    ) = GL.glUniform2f(location(name), x, y)
-
-    fun vec3(
-        name: String,
-        v: FloatArray,
-    ) = GL.glUniform3f(location(name), v[0], v[1], v[2])
-
-    fun vec4(
-        name: String,
-        x: Float,
-        y: Float,
-        z: Float,
-        w: Float,
-    ) = GL.glUniform4f(location(name), x, y, z, w)
-
-    fun matrix(
-        name: String,
-        values: FloatArray,
-    ) = GL.glUniformMatrix4fv(location(name), 1, false, values, 0)
-
-    fun color(
-        name: String,
-        color: Int,
-    ) = GL.glUniform3f(
-        location(name),
-        ((color shr 16 and 255) / 255f).pow(2.2f),
-        ((color shr 8 and 255) / 255f).pow(2.2f),
-        ((color and 255) / 255f).pow(2.2f),
-    )
-
-    fun dispose() = GL.glDeleteProgram(id)
 }
