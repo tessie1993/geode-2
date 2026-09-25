@@ -104,7 +104,5 @@ node --test tools/opaline/*.test.mjs
 ./gradlew :app:connectedDebugAndroidTest
 ```
 
-The new repository requested by the user should be named `geode-opaline-native`.
-No changes have been pushed to the original repository. Repository creation requires
-an available authenticated creation interface; the connected GitHub tools do not
-currently expose one.
+The user-selected destination is `https://github.com/tessie1993/geode-2`.
+The original repository remains the `upstream` source remote.
