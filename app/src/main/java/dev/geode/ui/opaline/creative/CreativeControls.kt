@@ -24,7 +24,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -49,10 +49,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import dev.geode.ui.opaline.OpalineDialog as Dialog
 import dev.geode.ui.opaline.OpalineButton
 import dev.geode.ui.opaline.OpalineColors
 import dev.geode.ui.opaline.OpalinePanel
+import dev.geode.ui.opaline.OpalineSlider
+import dev.geode.ui.opaline.OpalineToggle
+import dev.geode.ui.opaline.OpalineSceneHost
+import dev.geode.ui.opaline.opalineReady
 import dev.geode.ui.opaline.opalinePart
 import kotlin.math.roundToInt
 
@@ -132,19 +136,20 @@ fun CreativeSlider(
     enabled: Boolean = true,
 ) {
     val span = valueRange.endInclusive - valueRange.start
-    val fraction = if (span > 0) ((value - valueRange.start) / span).coerceIn(0f, 1f) else 0f
+    val fraction = if (span > 0 && value.isFinite()) ((value - valueRange.start) / span).coerceIn(0f, 1f) else 0f
+    val ready = opalineReady()
     Slider(
-        value = value.coerceIn(valueRange),
+        value = if (value.isFinite()) value.coerceIn(valueRange) else valueRange.start,
         onValueChange = onValueChange,
-        modifier = modifier.opalinePart("B03", value = fraction, enabled = enabled),
+        modifier = modifier.opalinePart("B01", value = fraction, enabled = enabled),
         valueRange = valueRange,
         steps = steps,
         enabled = enabled,
         colors =
             SliderDefaults.colors(
-                activeTrackColor = Color.Transparent,
-                inactiveTrackColor = Color.Transparent,
-                thumbColor = Color.Transparent,
+                activeTrackColor = if (ready) Color.Transparent else OpalineColors.accent,
+                inactiveTrackColor = if (ready) Color.Transparent else OpalineColors.surface,
+                thumbColor = if (ready) Color.Transparent else OpalineColors.pearl,
             ),
     )
 }
@@ -156,21 +161,7 @@ fun CreativeToggle(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        enabled = enabled,
-        modifier = modifier.opalinePart("B09", value = if (checked) 1f else 0f, selected = checked, enabled = enabled),
-        colors =
-            SwitchDefaults.colors(
-                checkedThumbColor = Color.Transparent,
-                uncheckedThumbColor = Color.Transparent,
-                checkedTrackColor = Color.Transparent,
-                uncheckedTrackColor = Color.Transparent,
-                checkedBorderColor = Color.Transparent,
-                uncheckedBorderColor = Color.Transparent,
-            ),
-    )
+    OpalineToggle(checked, { onCheckedChange?.invoke(it) }, modifier, enabled && onCheckedChange != null)
 }
 
 @Composable
@@ -288,7 +279,9 @@ fun CreativeSheet(
         containerColor = OpalineColors.surface,
         contentColor = CreativeColors.textPrimary,
     ) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) { content() }
+        OpalineSceneHost(Modifier.fillMaxWidth(), environment = false) {
+            Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) { content() }
+        }
     }
 }
 

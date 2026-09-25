@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,7 +56,7 @@ fun OpalinePage(
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -114,6 +115,7 @@ fun OpalineButton(
     selected: Boolean = false,
 ) {
     val sceneReady = opalineReady()
+    val view = LocalView.current
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val shape = RoundedCornerShape(50)
@@ -130,7 +132,10 @@ fun OpalineButton(
                     (if (selected) OpalineColors.accent else OpalineColors.gel).copy(alpha = if (selected) 0.88f else 0.82f)
                 },
             ).then(if (focused) Modifier.border(2.dp, OpalineColors.pearl, shape) else Modifier)
-            .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+            .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = {
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                onClick()
+            })
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -148,19 +153,25 @@ fun OpalineIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    selected: Boolean = false,
+    element: String = "A03",
 ) {
     val sceneReady = opalineReady()
+    val view = LocalView.current
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Box(
         modifier
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-            .opalinePart("A03", enabled = enabled)
+            .opalinePart(element, selected = selected, enabled = enabled)
             .alpha(if (enabled) 1f else 0.45f)
             .clip(CircleShape)
             .background(OpalineColors.surface.copy(alpha = if (sceneReady) 0.18f else 0.58f))
             .then(if (focused) Modifier.border(2.dp, OpalineColors.accent, CircleShape) else Modifier)
-            .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+            .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = {
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                onClick()
+            })
             .padding(12.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -186,7 +197,10 @@ fun OpalineRow(
             .padding(5.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(OpalineColors.deep.copy(alpha = if (sceneReady) 0.38f else 0.8f))
-            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = {
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                onClick()
+            }) else Modifier)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -231,7 +245,7 @@ fun OpalineSlider(
         modifier =
             modifier
                 .defaultMinSize(minHeight = 48.dp)
-                .opalinePart("B01", value = if (length > 0) (safe - range.start) / length else 0f, enabled = enabled),
+                .opalinePart("B07", value = if (length > 0) (safe - range.start) / length else 0f, enabled = enabled),
         valueRange = range,
         enabled = enabled,
         colors =

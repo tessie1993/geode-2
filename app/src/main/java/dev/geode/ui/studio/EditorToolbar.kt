@@ -18,7 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import dev.geode.ui.opaline.OpalineDialog as Dialog
 import dev.geode.R
 import dev.geode.editor.EditError
 import dev.geode.editor.LaneKind

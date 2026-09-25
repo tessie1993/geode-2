@@ -38,10 +38,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.AlertDialog
+import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -529,6 +529,17 @@ private fun CreativeLookSettings(
     val gui by settings.guiPrefs.collectAsStateWithLifecycle()
     OpalinePage(stringResource(R.string.oc_look), stringResource(R.string.oc_look_subtitle), back) {
         CreativeScroll {
+            SettingsGroup(stringResource(R.string.opaline_material_world)) {
+                dev.geode.ui.opaline.OpalinePalette.entries.chunked(2).forEach { pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        pair.forEach { palette ->
+                            OpalineButton(palette.asset.replaceFirstChar { it.uppercase() }, {
+                                settings.setGuiPrefs(gui.copy(opalinePalette = palette.name))
+                            }, Modifier.weight(1f), selected = gui.opalinePalette == palette.name)
+                        }
+                    }
+                }
+            }
             SettingsGroup(stringResource(R.string.oc_motion)) {
                 OpalineRow(stringResource(R.string.oc_reduced_motion), stringResource(R.string.oc_reduced_motion_subtitle), trailing = {
                     OpalineToggle(gui.reducedMotion, { settings.setGuiPrefs(gui.copy(reducedMotion = it)) })

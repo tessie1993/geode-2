@@ -20,6 +20,13 @@ internal data class OpalineMesh(
         val transform: FloatArray,
         val color: FloatArray,
         val roughness: Float,
+        val family: String,
+        val ior: Float,
+        val thickness: Float,
+        val attenuation: FloatArray,
+        val attenuationDistance: Float,
+        val clearcoat: Float,
+        val emission: FloatArray,
         val transmission: Float,
         val iridescence: Float,
         val motion: String,
@@ -28,7 +35,7 @@ internal data class OpalineMesh(
     )
 
     companion object {
-        val ELEMENTS = listOf("A01", "A03", "A05", "A22", "B01", "B03", "B07", "B09", "B13", "C01", "C02", "C03", "C04", "C20", "D03")
+        val ELEMENTS = listOf("A01", "A03", "A05", "A22", "B01", "B03", "B07", "B09", "B13", "C01", "C02", "C03", "C04", "C20", "D03", "D07", "B21", "J03", "N01", "N03", "N06")
 
         fun read(bytes: ByteArray): OpalineMesh {
             val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
@@ -107,6 +114,13 @@ internal data class OpalineMesh(
                         val travel = floatArrayOf(parent[axis * 4], parent[axis * 4 + 1], parent[axis * 4 + 2], min - translation, max - min)
                         pieces += Piece(positions, normals, indices, morphs, transform,
                             pbr.getJSONArray("baseColorFactor").floats(4), pbr.optDouble("roughnessFactor", 0.2).toFloat(),
+                            material.optString("name").substringAfterLast('/'),
+                            extensions?.optJSONObject("KHR_materials_ior")?.optDouble("ior", 1.5)?.toFloat() ?: 1.5f,
+                            extensions?.optJSONObject("KHR_materials_volume")?.optDouble("thicknessFactor", 0.1)?.toFloat() ?: 0.1f,
+                            extensions?.optJSONObject("KHR_materials_volume")?.optJSONArray("attenuationColor")?.floats(3) ?: floatArrayOf(1f, 1f, 1f),
+                            extensions?.optJSONObject("KHR_materials_volume")?.optDouble("attenuationDistance", 8.0)?.toFloat() ?: 8f,
+                            extensions?.optJSONObject("KHR_materials_clearcoat")?.optDouble("clearcoatFactor", 0.0)?.toFloat() ?: 0f,
+                            material.optJSONArray("emissiveFactor")?.floats(3) ?: FloatArray(3),
                             extensions?.optJSONObject("KHR_materials_transmission")?.optDouble("transmissionFactor")?.toFloat() ?: 0f,
                             extensions?.optJSONObject("KHR_materials_iridescence")?.optDouble("iridescenceFactor")?.toFloat() ?: 0f,
                             motion?.optString("kind").orEmpty(), travel, extras?.optBoolean("deformable") == true)

@@ -46,7 +46,7 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -108,11 +108,13 @@ internal fun OpalineContextSheet(
     onDismiss: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    OpalinePanel(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.End) {
-            OpalineIconButton(Icons.Default.Close, stringResource(R.string.action_close), onDismiss)
+    dev.geode.ui.opaline.OpalineSceneHost(Modifier.fillMaxWidth(), environment = false) {
+        OpalinePanel(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.End) {
+                OpalineIconButton(Icons.Default.Close, stringResource(R.string.action_close), onDismiss)
+            }
+            content()
         }
-        content()
     }
 }
 
@@ -280,7 +282,7 @@ internal fun OpalineTransport(
                 Icons.Default.Shuffle,
                 stringResource(R.string.action_shuffle),
                 player::toggleShuffle,
-                Modifier.opalinePart("A03", selected = state.shuffle),
+                selected = state.shuffle,
             )
             OpalineIconButton(
                 Icons.Default.SkipPrevious,
@@ -288,22 +290,21 @@ internal fun OpalineTransport(
                 player::previous,
                 enabled = state.hasMedia,
             )
-            OpalineButton(
+            OpalineIconButton(
+                if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 stringResource(if (state.isPlaying) R.string.action_pause else R.string.action_play),
                 player::togglePlayPause,
-                icon = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                modifier = Modifier.size(72.dp),
                 enabled = state.hasMedia,
+                selected = state.isPlaying,
+                element = "A22",
             )
             OpalineIconButton(Icons.Default.SkipNext, stringResource(R.string.action_next), player::next, enabled = state.hasMedia)
             OpalineIconButton(
                 Icons.Default.Repeat,
                 stringResource(R.string.action_repeat),
                 player::cycleRepeatMode,
-                Modifier.opalinePart(
-                    "A03",
-                    selected =
-                        state.repeatMode != Player.REPEAT_MODE_OFF,
-                ),
+                selected = state.repeatMode != Player.REPEAT_MODE_OFF,
             )
         }
         if (!compact) {

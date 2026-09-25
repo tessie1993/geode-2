@@ -1,14 +1,5 @@
 package dev.geode.ui.opaline
 
-import android.annotation.SuppressLint
-import android.net.Uri
-import android.os.Handler
-import android.os.Looper
-import android.view.View
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,408 +18,157 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.ByteArrayInputStream
 import java.util.concurrent.atomic.AtomicLong
-import android.graphics.Color as AndroidColor
 
-private const val SCENE_ORIGIN = "https://opaline.geode.invalid"
 private val nextPartId = AtomicLong()
-private val LocalOpaline = staticCompositionLocalOf<OpalineBridge?> { null }
+private val LocalOpaline = staticCompositionLocalOf<OpalineWorld?> { null }
+val LocalOpalinePalette = staticCompositionLocalOf { OpalinePalette.TIDAL }
 
-/** Allows native front planes to reveal live material while retaining a readable fallback. */
 @Composable
 fun opalineReady(): Boolean = LocalOpaline.current?.ready == true
 
-/**
- * One offline WebGL world behind native controls. Native UI retains focus, IME,
- * screen reader semantics, scrolling and all authoritative application state.
- */
+/** Kotlin/Compose owns semantics; Kotlin/EGL draws supplied library geometry under stable content. */
 @Composable
 fun OpalineSceneHost(
     modifier: Modifier = Modifier,
-    reducedMotion: Boolean = false,
+    reducedMotion: Boolean = LocalOpalineReducedMotion.current,
     section: String = "player",
     active: Boolean = true,
+    backgroundDim: Float = 0f,
+    motionAmount: Float = 1f,
+    environment: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val bridge = remember { OpalineBridge() }
+    val world = remember { OpalineWorld() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    SideEffect {
-        bridge.configure(reducedMotion, section, active)
-    }
-    DisposableEffect(lifecycle, bridge) {
-        bridge.setResumed(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
-        val observer =
-            LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_RESUME -> bridge.setResumed(true)
-                    Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> bridge.setResumed(false)
-                    else -> Unit
-                }
-            }
+    val palette = LocalOpalinePalette.current
+    SideEffect { world.configure(reducedMotion, active, palette, backgroundDim, motionAmount, environment, section) }
+    DisposableEffect(lifecycle, world) {
+        world.resumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        val observer = LifecycleEventObserver { _, _ ->
+            world.resumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+            world.publish()
+        }
         lifecycle.addObserver(observer)
-        onDispose {
-            lifecycle.removeObserver(observer)
-            bridge.dispose()
-        }
+        onDispose { lifecycle.removeObserver(observer); world.dispose() }
     }
-    Box(
-        modifier
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xFF102B3D), Color(0xFF081421), Color(0xFF10242E)),
-                ),
-            ).onGloballyPositioned { bridge.setViewport(it.boundsInWindow()) },
-    ) {
+    Box(modifier.background(OpalineColors.background).onGloballyPositioned { world.viewport = it.boundsInWindow(); world.publish() }) {
         AndroidView(
-            factory = { context -> bridge.createView(context) },
-            modifier = Modifier.fillMaxSize(),
-            onRelease = { bridge.releaseView(it) },
-            update = { bridge.attach(it) },
+            factory = { context -> OpalineTextureView(context) { world.ready = it }.also { world.view = it; world.publish() } },
+            modifier = Modifier.matchParentSize(),
+            onRelease = { it.release() },
         )
-        CompositionLocalProvider(LocalOpaline provides bridge) {
-            content()
-        }
+        CompositionLocalProvider(LocalOpaline provides world) { content() }
     }
 }
 
-/**
- * Attaches actual library geometry to this native control's measured bounds.
- * Pointer observation uses the final pass and never consumes native gestures.
- */
+/** Measured shells observe but never consume pointer input; Compose retains scrolling and IME. */
 fun Modifier.opalinePart(
     element: String = "A01",
     value: Float = 0.5f,
     selected: Boolean = false,
     enabled: Boolean = true,
-): Modifier =
-    composed {
-        val bridge = LocalOpaline.current
-        val id = remember { "part-${nextPartId.incrementAndGet()}" }
-        val part = remember(id) { OpalinePart(id) }
-        SideEffect {
-            part.element = element
-            part.value = value.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0.5f
-            part.selected = selected
-            part.enabled = enabled
-            bridge?.register(part)
+): Modifier = composed {
+    val world = LocalOpaline.current
+    val id = remember { nextPartId.incrementAndGet() }
+    val holder = remember { PartHolder() }
+    SideEffect {
+        holder.element = element
+        holder.value = if (value.isFinite()) value.coerceIn(0f, 1f) else .5f
+        holder.selected = selected; holder.enabled = enabled
+        world?.put(id, holder)
+    }
+    DisposableEffect(world, id) { onDispose { world?.remove(id) } }
+    this.drawBehind {
+        if (world?.ready != true) {
+            drawRoundRect(Brush.verticalGradient(listOf(Color(0xFF527C90), Color(0xFF173444))), cornerRadius = CornerRadius(size.minDimension * .35f))
         }
-        DisposableEffect(bridge, id) {
-            onDispose { bridge?.unregister(id) }
-        }
-        this
-            .drawBehind {
-                if (bridge?.ready != true) {
-                    // The semantic surface remains readable during loading or loss of WebGL.
-                    drawRoundRect(
-                        brush =
-                            Brush.verticalGradient(
-                                listOf(Color(0xFF38576A), Color(0xFF193345)),
-                            ),
-                        cornerRadius = CornerRadius(size.minDimension * 0.35f),
-                    )
-                }
-            }.onGloballyPositioned {
-                part.bounds = it.boundsInWindow()
-                bridge?.register(part)
-            }.pointerInput(bridge, id, enabled) {
-                if (bridge == null || !enabled) return@pointerInput
-                try {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Final)
-                            for (change in event.changes) {
-                                val action =
-                                    when {
-                                        change.pressed && !change.previousPressed -> "down"
-                                        !change.pressed && change.previousPressed -> "up"
-                                        change.pressed -> "move"
-                                        else -> null
-                                    }
-                                if (action != null) {
-                                    bridge.touch(
-                                        id = id,
-                                        pointer = change.id.value,
-                                        action = action,
-                                        x = change.position.x / size.width.coerceAtLeast(1),
-                                        y = change.position.y / size.height.coerceAtLeast(1),
-                                    )
-                                }
-                            }
+    }.onGloballyPositioned {
+        holder.bounds = Rect(it.positionInWindow(), Size(it.size.width.toFloat(), it.size.height.toFloat()))
+        holder.clip = it.boundsInWindow()
+        var parent = it.parentLayoutCoordinates
+        var depth = 0
+        while (parent != null) { depth++; parent = parent.parentLayoutCoordinates }
+        holder.depth = depth
+        world?.put(id, holder)
+    }.pointerInput(world, id, enabled) {
+        if (world == null || !enabled) return@pointerInput
+        try {
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Final)
+                    event.changes.forEach { change ->
+                        if (change.pressed || change.previousPressed) {
+                            // Scroll ownership cancels contact in the old body.
+                            val pressed = change.pressed && (!change.isConsumed || !change.previousPressed)
+                            world.view?.touch(id, change.id.value, pressed,
+                                change.position.x / size.width.coerceAtLeast(1), change.position.y / size.height.coerceAtLeast(1))
                         }
                     }
-                } finally {
-                    bridge.cancel(id)
                 }
             }
+        } finally { world.view?.cancel(id) }
     }
-
-private class OpalinePart(
-    val id: String,
-    var element: String = "A01",
-    var value: Float = 0.5f,
-    var selected: Boolean = false,
-    var enabled: Boolean = true,
-    var bounds: Rect = Rect.Zero,
-) {
-    fun json(origin: Offset): JSONObject =
-        JSONObject()
-            .put("id", id)
-            .put("element", element)
-            .put("value", value.toDouble())
-            .put("selected", selected)
-            .put("enabled", enabled)
-            .put("x", (bounds.left - origin.x).toDouble())
-            .put("y", (bounds.top - origin.y).toDouble())
-            .put("width", bounds.width.toDouble())
-            .put("height", bounds.height.toDouble())
 }
 
-private class OpalineBridge {
+private class PartHolder {
+    var element = "A01"
+    var value = .5f
+    var selected = false
+    var enabled = true
+    var bounds = Rect.Zero
+    var clip = Rect.Zero
+    var depth = 0
+}
+
+private class OpalineWorld {
     var ready by mutableStateOf(false)
-        private set
-
-    private val handler = Handler(Looper.getMainLooper())
-    private val parts = linkedMapOf<String, OpalinePart>()
-    private val pointers = mutableMapOf<Long, String>()
-    private var view: WebView? = null
-    private var bounds = Rect.Zero
-    private var reducedMotion = false
-    private var section = "player"
-    private var active = true
-    private var resumed = false
+    var view: OpalineTextureView? = null
+    var viewport = Rect.Zero
+    var resumed = false
+    private val parts = linkedMapOf<Long, PartHolder>()
+    private var frame = OpalineFrame()
     private var disposed = false
-    private var posted = false
-    private var probes = 0
+    private var scheduled = false
 
-    private val flush =
-        Runnable {
-            posted = false
-            val target = view
-            val hasViewport = bounds.width > 0 && bounds.height > 0
-            if (target != null && !disposed && hasViewport) {
-                val visibleParts = JSONArray()
-                parts.values.filter { it.bounds.overlaps(bounds) }.take(96).forEach {
-                    visibleParts.put(it.json(bounds.topLeft))
+    fun configure(reduced: Boolean, active: Boolean, palette: OpalinePalette, dim: Float, motion: Float, environment: Boolean, section: String) {
+        // Section is an identity boundary for touch ownership, not a web route.
+        if (currentSection != section) { parts.keys.forEach { view?.cancel(it) }; currentSection = section }
+        frame = frame.copy(reducedMotion = reduced || motion <= 0f, active = active, palette = palette,
+            dim = dim.coerceIn(0f, 1f), motion = motion.coerceIn(0f, 1.5f), environment = environment)
+        publish()
+    }
+    private var currentSection = ""
+    fun put(id: Long, holder: PartHolder) { if (!disposed) { parts[id] = holder; publish() } }
+    fun remove(id: Long) { view?.cancel(id); parts.remove(id); publish() }
+    fun publish() {
+        val target = view ?: return
+        if (disposed || scheduled) return
+        scheduled = true
+        target.postOnAnimation {
+            scheduled = false
+            if (!disposed && viewport.width > 0f && viewport.height > 0f) {
+                val origin = Offset(-viewport.left, -viewport.top)
+                val visible = parts.mapNotNull { (id, p) ->
+                    if (!p.clip.overlaps(viewport) || p.bounds.width <= 0 || p.bounds.height <= 0) null
+                    else OpalinePart(id, p.element, p.bounds.translate(origin), p.clip.intersect(viewport).translate(origin),
+                        p.value, p.selected, p.enabled, p.depth)
                 }
-                val state =
-                    JSONObject()
-                        .put("width", bounds.width.toDouble())
-                        .put("height", bounds.height.toDouble())
-                        .put("parts", visibleParts)
-                        .put("reducedMotion", reducedMotion)
-                        .put("section", section)
-                        .put("active", active && resumed)
-                target.evaluateJavascript("window.Opaline?.update($state)", null)
+                target.update(frame.copy(parts = visible, width = viewport.width, height = viewport.height, active = frame.active && resumed))
             }
         }
-
-    private val probe =
-        object : Runnable {
-            override fun run() {
-                val target = view ?: return
-                if (disposed) return
-                target.evaluateJavascript("window.Opaline?.status") { result ->
-                    if (disposed || target !== view) return@evaluateJavascript
-                    ready = result == "\"ready\""
-                    if (ready) {
-                        target.visibility = View.VISIBLE
-                        schedule()
-                        if (active && resumed) handler.postDelayed(this, 2_000)
-                    } else if (result == "\"failed\"" || result == "\"lost\"") {
-                        target.visibility = View.INVISIBLE
-                    } else if (probes++ < 30) {
-                        handler.postDelayed(this, 250)
-                    }
-                }
-            }
-        }
-
-    @SuppressLint("SetJavaScriptEnabled")
-    fun createView(context: android.content.Context): WebView =
-        WebView(context).apply {
-            setBackgroundColor(AndroidColor.TRANSPARENT)
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
-            isFocusable = false
-            isFocusableInTouchMode = false
-            setOnTouchListener { _, _ -> true }
-            settings.javaScriptEnabled = true
-            settings.allowFileAccess = false
-            settings.allowContentAccess = false
-            settings.domStorageEnabled = false
-            settings.setSupportMultipleWindows(false)
-            settings.mediaPlaybackRequiresUserGesture = true
-            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            webViewClient =
-                object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView,
-                        request: WebResourceRequest,
-                    ): Boolean = true
-
-                    override fun shouldInterceptRequest(
-                        view: WebView,
-                        request: WebResourceRequest,
-                    ): WebResourceResponse = localResource(context, request.url)
-
-                    override fun onPageFinished(
-                        view: WebView,
-                        url: String,
-                    ) {
-                        if (url == "$SCENE_ORIGIN/index.html") {
-                            probes = 0
-                            handler.removeCallbacks(probe)
-                            handler.post(probe)
-                            schedule()
-                        }
-                    }
-                }
-            attach(this)
-            loadUrl("$SCENE_ORIGIN/index.html")
-        }
-
-    fun attach(target: WebView) {
-        if (view === target || disposed) return
-        view = target
-        schedule()
     }
-
-    fun configure(
-        reducedMotion: Boolean,
-        section: String,
-        active: Boolean,
-    ) {
-        if (this.reducedMotion == reducedMotion && this.section == section && this.active == active) return
-        this.reducedMotion = reducedMotion
-        this.section = section
-        this.active = active
-        updateActivity()
-        schedule()
-    }
-
-    fun setViewport(bounds: Rect) {
-        if (this.bounds == bounds) return
-        this.bounds = bounds
-        schedule()
-    }
-
-    fun setResumed(resumed: Boolean) {
-        this.resumed = resumed
-        updateActivity()
-        schedule()
-    }
-
-    private fun updateActivity() {
-        if (active && resumed) {
-            view?.onResume()
-            view?.evaluateJavascript("window.Opaline?.resume?.()", null)
-            handler.removeCallbacks(probe)
-            handler.post(probe)
-        } else {
-            view?.evaluateJavascript("window.Opaline?.pause()", null)
-            view?.onPause()
-            pointers.clear()
-            handler.removeCallbacks(probe)
-        }
-    }
-
-    fun register(part: OpalinePart) {
-        if (disposed) return
-        parts[part.id] = part
-        schedule()
-    }
-
-    fun unregister(id: String) {
-        cancel(id)
-        parts.remove(id)
-        schedule()
-    }
-
-    fun touch(
-        id: String,
-        pointer: Long,
-        action: String,
-        x: Float,
-        y: Float,
-    ) {
-        if (disposed || !active || !resumed) return
-        if (reducedMotion || !x.isFinite() || !y.isFinite()) return
-        if (action == "down") pointers[pointer] = id
-        if (action == "up" || action == "cancel") pointers.remove(pointer)
-        val event =
-            JSONObject()
-                .put("id", id)
-                .put("pointer", pointer.toString())
-                .put("action", action)
-                .put("x", x.coerceIn(0f, 1f).toDouble())
-                .put("y", y.coerceIn(0f, 1f).toDouble())
-        view?.evaluateJavascript("window.Opaline?.touch($event)", null)
-    }
-
-    fun cancel(id: String) {
-        pointers.filterValues { it == id }.keys.toList().forEach {
-            touch(id, it, "cancel", 0f, 0f)
-        }
-    }
-
-    private fun schedule() {
-        if (disposed || posted) return
-        posted = true
-        handler.postDelayed(flush, 16)
-    }
-
-    fun releaseView(target: WebView) {
-        if (view === target) view = null
-        target.evaluateJavascript("window.Opaline?.dispose()", null)
-        target.stopLoading()
-        target.destroy()
-        ready = false
-    }
-
-    fun dispose() {
-        if (disposed) return
-        view?.evaluateJavascript("window.Opaline?.dispose()", null)
-        disposed = true
-        handler.removeCallbacksAndMessages(null)
-        parts.clear()
-        pointers.clear()
-    }
-}
-
-/** All requests are fulfilled from APK assets or denied; there is no network fallback. */
-private fun localResource(
-    context: android.content.Context,
-    uri: Uri,
-): WebResourceResponse {
-    val path = uri.path.orEmpty().removePrefix("/")
-    val trustedOrigin = uri.scheme == "https" && uri.host == "opaline.geode.invalid"
-    val safePath = path.isNotEmpty() && path.split('/').none { it == ".." || it == "." }
-    if (!trustedOrigin || !safePath) {
-        return WebResourceResponse("text/plain", "UTF-8", 403, "Forbidden", emptyMap(), ByteArrayInputStream(byteArrayOf()))
-    }
-    val mime =
-        when (path.substringAfterLast('.')) {
-            "html" -> "text/html"
-            "js", "mjs" -> "application/javascript"
-            "json" -> "application/json"
-            "png" -> "image/png"
-            else -> "application/octet-stream"
-        }
-    return try {
-        WebResourceResponse(mime, "UTF-8", context.assets.open("opaline/$path"))
-    } catch (_: java.io.IOException) {
-        WebResourceResponse("text/plain", "UTF-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(byteArrayOf()))
-    }
+    fun dispose() { disposed = true; parts.clear(); view?.release(); view = null; ready = false }
 }

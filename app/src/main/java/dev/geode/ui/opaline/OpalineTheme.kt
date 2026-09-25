@@ -33,7 +33,11 @@ fun OpalineTheme(
         lineHeight = (size * scale * 1.35f).sp,
         fontWeight = weight,
     )
-    CompositionLocalProvider(LocalOpalineReducedMotion provides (gui.reducedMotion || gui.liquidMotion <= 0f)) {
+    val palette = OpalinePalette.entries.firstOrNull { it.name == gui.opalinePalette } ?: OpalinePalette.TIDAL
+    CompositionLocalProvider(
+        LocalOpalineReducedMotion provides (gui.reducedMotion || gui.liquidMotion <= 0f),
+        LocalOpalinePalette provides palette,
+    ) {
         MaterialTheme(
             colorScheme =
                 darkColorScheme(

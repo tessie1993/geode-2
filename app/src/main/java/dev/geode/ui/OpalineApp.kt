@@ -42,9 +42,10 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MovieCreation
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material3.AlertDialog
+import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -155,7 +156,9 @@ fun OpalineApp(
     OpalineTheme(gui) {
         OpalineSceneHost(
             modifier = Modifier.fillMaxSize(),
-            reducedMotion = gui.reducedMotion,
+            reducedMotion = gui.reducedMotion || gui.liquidMotion <= 0f,
+            backgroundDim = gui.backgroundDim,
+            motionAmount = gui.liquidMotion,
             section = nav.section.name.lowercase(),
             active = resumed && nav.overlay != Overlay.Visualizer,
         ) {
@@ -163,7 +166,7 @@ fun OpalineApp(
                 // The engine view has a single parent. Remove the shell while immersive mode
                 // owns it, while retaining each section's saveable page state above the shell.
                 if (nav.overlay != Overlay.Visualizer && nav.gate == null) {
-                    OpalineShell(navigator, connectors, player, renderer, gui.reducedMotion, routeStateHolder)
+                    OpalineShell(navigator, connectors, player, renderer, gui.reducedMotion || gui.liquidMotion <= 0f, routeStateHolder)
                 }
                 when (nav.overlay.takeIf { nav.gate == null }) {
                     Overlay.Search ->
@@ -233,11 +236,12 @@ private fun OpalineShell(
     val page = nav.stack.lastOrNull { it.presentation != Presentation.SHEET } ?: nav.section.root
     val frame = OpalineRouteFrame(nav.section, page)
     BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
-        val wide = maxWidth >= 840.dp
+        val wide = maxWidth >= 600.dp
         val sheetMaxHeight = maxHeight * 0.9f
         Row(Modifier.fillMaxSize()) {
             if (wide) OpalineDock(navigator, vertical = true)
             Column(Modifier.weight(1f)) {
+                OpalineWorkspaceBar(navigator)
                 Box(
                     Modifier.weight(1f).fillMaxWidth().graphicsLayer {
                         if (!reducedMotion) {
@@ -334,6 +338,24 @@ internal fun sectionLabel(section: Section): String =
         },
     )
 
+
+/** Primary workspaces live in the dock; search and preferences stay reachable from every page. */
+@Composable
+private fun OpalineWorkspaceBar(navigator: Navigator) {
+    val nav by navigator.state.collectAsStateWithLifecycle()
+    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary)
+            Text(sectionLabel(nav.section), style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        OpalineIconButton(Icons.Default.Search, stringResource(R.string.action_search), { navigator.open(Overlay.Search) })
+        OpalineIconButton(Icons.Default.Settings, stringResource(R.string.nav_settings), { navigator.show(Section.SETTINGS) })
+    }
+}
+
 @Composable
 private fun OpalineDock(
     navigator: Navigator,
@@ -351,11 +373,11 @@ private fun OpalineDock(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)
         }
     val items: @Composable () -> Unit = {
-        Section.entries.forEach { section -> OpalineDockItem(section, section == nav.section, navigator) }
+        listOf(Section.PLAYER, Section.LIBRARY, Section.VISUALS, Section.STUDIO).forEach { section -> OpalineDockItem(section, section == nav.section, navigator) }
     }
     if (vertical) {
         Column(
-            modifier.opalinePart("D03").selectableGroup().verticalScroll(rememberScrollState()),
+            modifier.opalinePart("D07").selectableGroup().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items()
@@ -382,8 +404,8 @@ private fun OpalineDockItem(
         }
     Column(
         Modifier
-            .width(58.dp)
-            .opalinePart("A03", selected = selected)
+            .width(68.dp)
+            .opalinePart(if (selected) "N03" else "A03", selected = selected)
             .selectable(selected = selected, role = Role.Tab, onClick = {
                 view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                 navigator.show(section)

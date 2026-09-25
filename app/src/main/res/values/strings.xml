@@ -925,4 +925,5 @@
     <string name="palette_none_yet">None yet — build a gradient above and save it.</string>
     <string name="palette_edit">Edit</string>
     <string name="palette_delete">Delete</string>
+    <string name="opaline_material_world">Material world</string>
 </resources>

@@ -36,7 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -298,7 +298,7 @@ internal fun PresetsTreeTab(
     renamingFolder?.let { old ->
         val proposed = folderRenameText.trim()
         val collides = !proposed.equals(old, ignoreCase = true) && folders.any { it.equals(proposed, ignoreCase = true) }
-        androidx.compose.material3.AlertDialog(
+        dev.geode.ui.opaline.OpalineAlertDialog(
             onDismissRequest = { renamingFolder = null },
             title = { Text("Rename folder") },
             text = {
@@ -329,7 +329,7 @@ internal fun PresetsTreeTab(
     }
     movingPreset?.let { name ->
         val current = presetFolders.folderOf(name)
-        androidx.compose.material3.AlertDialog(
+        dev.geode.ui.opaline.OpalineAlertDialog(
             onDismissRequest = { movingPreset = null },
             title = { Text("Move \"$name\"") },
             text = {
@@ -349,7 +349,7 @@ internal fun PresetsTreeTab(
         )
     }
     replacingPreset?.let { name ->
-        androidx.compose.material3.AlertDialog(
+        dev.geode.ui.opaline.OpalineAlertDialog(
             onDismissRequest = { replacingPreset = null },
             title = { Text("Replace \"$name\"?") },
             text = {
@@ -373,7 +373,7 @@ internal fun PresetsTreeTab(
         )
     }
     deletingPreset?.let { name ->
-        androidx.compose.material3.AlertDialog(
+        dev.geode.ui.opaline.OpalineAlertDialog(
             onDismissRequest = { deletingPreset = null },
             title = { Text("Delete \"$name\"?") },
             text = {
@@ -725,7 +725,7 @@ private fun MilkTexturePickerDialog(
     onChoose: (String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    androidx.compose.material3.AlertDialog(
+    dev.geode.ui.opaline.OpalineAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {},
         dismissButton = { CreativeButton(filled = false, onClick = onDismiss) { Text("Cancel") } },
@@ -994,7 +994,7 @@ private fun CustomizeToolbar(
         }
     }
     if (savingPreset) {
-        androidx.compose.material3.AlertDialog(
+        dev.geode.ui.opaline.OpalineAlertDialog(
             onDismissRequest = { savingPreset = false },
             title = { Text("Save as preset") },
             text = {
@@ -1019,7 +1019,7 @@ private fun CustomizeToolbar(
         )
     }
     if (confirmReset) {
-        androidx.compose.material3.AlertDialog(
+        dev.geode.ui.opaline.OpalineAlertDialog(
             onDismissRequest = { confirmReset = false },
             title = { Text("Reset customizations?") },
             text = {
@@ -1164,7 +1164,7 @@ internal fun TakesTab(viewModel: StudioViewModel) {
     renaming?.let { old ->
         val proposed = renameText.trim()
         val renameError = takeRenameError(old, proposed, takes.takes.map { it.name })
-        androidx.compose.material3.AlertDialog(
+        dev.geode.ui.opaline.OpalineAlertDialog(
             onDismissRequest = { renaming = null },
             title = { Text("Rename take") },
             text = {
@@ -1189,7 +1189,7 @@ internal fun TakesTab(viewModel: StudioViewModel) {
         )
     }
     deleting?.let { name ->
-        androidx.compose.material3.AlertDialog(
+        dev.geode.ui.opaline.OpalineAlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text("Delete take \"$name\"?") },
             text = {
@@ -1238,7 +1238,7 @@ internal fun TexturesHubTab(
         if (textures.isEmpty()) Text("No textures imported yet.", style = MaterialTheme.typography.bodySmall)
     }
     deletingTexture?.let { name ->
-        androidx.compose.material3.AlertDialog(
+        dev.geode.ui.opaline.OpalineAlertDialog(
             onDismissRequest = { deletingTexture = null },
             title = { Text("Delete texture \"$name\"?") },
             text = {
