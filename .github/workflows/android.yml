@@ -7,6 +7,9 @@ name: Build Geode Debug APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - codex/opaline-redesign
   pull_request:
     paths:
       - "app/**"
@@ -72,22 +75,25 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" \
             "platform-tools" \
-            "platforms;android-37" \
+            "platforms;android-37.0" \
             "build-tools;36.0.0" \
             "ndk;28.0.13004108" \
             "cmake;3.22.1"
 
       - name: Make Gradle wrapper executable
+        if: ${{ !cancelled() }}
         working-directory: ${{ env.PROJECT_DIR }}
         run: chmod +x gradlew
 
       - name: Test Opaline scene and motion contracts
+        if: ${{ !cancelled() }}
         working-directory: ${{ env.PROJECT_DIR }}
         run: node --test tools/opaline/*.test.mjs
 
       # Baselined static analysis: the SwallowedException/UnusedParameter
       # class of bug is caught at PR time instead of the next audit.
       - name: detekt
+        if: ${{ !cancelled() }}
         working-directory: ${{ env.PROJECT_DIR }}
         run: ./gradlew detekt --stacktrace --no-daemon
 
