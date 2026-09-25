@@ -1,0 +1,36 @@
+package dev.geode.ui.opaline
+
+/**
+ * The DFG lookup table of three.js r186 (vendor/three/src/renderers/shaders/DFGLUTData.js in
+ * ui-system/Opaline-3D-Library, MIT): 16 x 16 texels of two IEEE half floats (scale, bias),
+ * precomputed with 4096 samples per texel, indexed by (roughness, dot(N, V)). The physical
+ * surface pass reads it for image-based specular and multiple-scattering compensation, exactly
+ * as MeshPhysicalMaterial does. Values are the upstream half-float bit patterns in order.
+ */
+internal object OpalineDfgLut {
+    const val SIZE = 16
+
+    private const val HALF_FLOATS =
+        "30b53ad1314c3a4d33d2391c35ef382837f336a638d135393979341039f832523a5330f03a942fc93abf2e353ada2d053ae82c1f3aed2ae03aea29d13ae128ff" +
+        "363838e4364a38ce3699385e374e372c383935a438dc3462396e32c439de31343a2b30033a592e3a3a6d2ce13a6e2bba3a5f2a333a49290a3a2d28263a0a26e8" +
+        "389436d7389736c938a3367538bc35ac38ee349c393e33323997318639e230383a132e753a292cf53a2d2bac3a2129ff3a0428bc39dc279039ad261a397824fa" +
+        "39ac34a839ac34a339ae348039ae342339b1330e39c231a939e0306339fc2eb53a0c2d1d3a142bcf3a0729ff39e928a339be273c398925b3394a248839072345" +
+        "3a7732233a76321f3a7332043a6a31b33a5831143a45303b3a342eb63a262d313a1e2bef3a0b2a0d39ec28a139c0271b398725803944244938fa22bd38ac2155" +
+        "3b072fca3b062fca3b002fb83af42f7c3adb2eea3ab42e003a852cec3a5e2bc53a362a003a0d289939dc270739a02562395a2424390b226838b720fd385f1fd1" +
+        "3b692cb93b682cbb3b622cbb3b562cae3b3b2c783b0d2c0a3acf2ae33a9229983a5428673a1726d039d3253c398924023935222638dc20bd387d1f54381d1db3" +
+        "3ba9296b3ba8296f3ba3297b3b9829873b7f29763b4e29273b0e28953ac227b73a73263b3a2324e739d0239b397621d93917207e38b21ee7384b1d5337c71c1e" +
+        "3bd225cb3bd125d33bcd25f03bc2261f3bad26453b7d262d3b3e25c43aec250f3a93243a3a3222ce39d0215b3969202a38fe1e6e388f1cf1381f1b9b376219dd" +
+        "3be921ab3be921b73be521e53bdd22413bc922a73ba022ec3b6222cd3b0f22473aae21753a44208839d41f4939601dbe38e91c7738701ae837f119533708181b" +
+        "3bf61cea3bf61cfb3bf31d383bec1dbd3bda1e7c3bb71f253b7d1f793b2c1f4c3ac61ea63a551dbb39da1cbd395a1b9d38d81a00385518ac37ab173c36b71598" +
+        "3bfc17363bfc17593bf917e73bf418963be419973bc61aa83b911b843b431bd23ade1b8a3a651acd39e219d3395718cd38ca17b3383e1613376d14bf366f135e" +
+        "3bff101b3bff10393bfc10c83bf912263bea14283bcf15843b9f16c53b54179a3af017ce3a76177139ea16a4395615a738bf14a738291379373511ea362d10a1" +
+        "3c00061b3c00066a3bfe081c3bfa0a4c3bed0d163bd50fb33ba9114d3b63127c3b01132f3a85134439f412d23957120d38b511223817103c37030ed335f00d6d" +
+        "3c00007a3c0000893bfe011d3bfb027c3bf004fa3bda08813bb10acd3b6f0c973b100d7b3a930df139fe0def39590d8a38af0ce938080c3136d50af035b909a3" +
+        "3c0000003c0000013bff00153bfb00593bf200fd3bdd01df3bb7031c3b79047c3b1d05d43aa006d53a08075a395d075e38aa06f737f4064836ac05763586049f"
+
+    /** Row-major RG half-float pairs, row 0 at dot(N, V) = 0, as three.js uploads them. */
+    fun halfFloats(): ShortArray =
+        ShortArray(SIZE * SIZE * 2) { index ->
+            HALF_FLOATS.substring(index * 4, index * 4 + 4).toInt(16).toShort()
+        }
+}
