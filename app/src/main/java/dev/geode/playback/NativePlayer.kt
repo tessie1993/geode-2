@@ -66,30 +66,32 @@ class NativePlayer(
     private var loadedId = -1L
     private var queuedId = -1L
     private var error: PlaybackException? = null
+
     @Volatile
     private var released = false
-    private val audioFocus = NativeAudioFocus(
-        context,
-        main,
-        onChange = { state ->
-            synchronized(this) {
-                if (!released) {
-                    if (!state.playRequested) playWhenReadyReason = Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS
-                    applyFocusState(state)
-                    invalidateState()
+    private val audioFocus =
+        NativeAudioFocus(
+            context,
+            main,
+            onChange = { state ->
+                synchronized(this) {
+                    if (!released) {
+                        if (!state.playRequested) playWhenReadyReason = Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS
+                        applyFocusState(state)
+                        invalidateState()
+                    }
                 }
-            }
-        },
-        onNoisy = {
-            synchronized(this) {
-                if (!released) {
-                    audioFocusAbandon()
-                    playWhenReadyReason = Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY
-                    invalidateState()
+            },
+            onNoisy = {
+                synchronized(this) {
+                    if (!released) {
+                        audioFocusAbandon()
+                        playWhenReadyReason = Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY
+                        invalidateState()
+                    }
                 }
-            }
-        },
-    )
+            },
+        )
 
     private val poll =
         object : Runnable {
@@ -139,10 +141,12 @@ class NativePlayer(
             .setAvailableCommands(COMMANDS)
             .setPlayWhenReady(playWhenReady, playWhenReadyReason)
             .setPlaybackSuppressionReason(
-                if (playWhenReady && !focusState.canPlay) Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS
-                else Player.PLAYBACK_SUPPRESSION_REASON_NONE,
-            )
-            .setPlaybackState(playbackState)
+                if (playWhenReady && !focusState.canPlay) {
+                    Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS
+                } else {
+                    Player.PLAYBACK_SUPPRESSION_REASON_NONE
+                },
+            ).setPlaybackState(playbackState)
             .setPlayerError(error)
             .setRepeatMode(repeatMode)
             .setShuffleModeEnabled(shuffle)
@@ -355,7 +359,7 @@ class NativePlayer(
         }
         val durationUs = GeodeNative.playerDurationUs(handle)
         if (playing == loadedId && durationUs > 0) entries.getOrNull(currentIndex)?.durationUs = durationUs
-        if (prepared && loadedId >= 0 && playing == loadedId && GeodeNative.playerState(handle) == ENGINE_ENDED) {
+        if (hasLoaded() && playing == loadedId && GeodeNative.playerState(handle) == ENGINE_ENDED) {
             val following = nextIndex()
             if (following >= 0) {
                 currentIndex = following
@@ -385,7 +389,12 @@ class NativePlayer(
                 if (fd == null) {
                     main.post {
                         if (!released && loadedId == id) {
-                            error = PlaybackException("cannot open ${entry.item.mediaId}", null, PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND)
+                            error =
+                                PlaybackException(
+                                    "cannot open ${entry.item.mediaId}",
+                                    null,
+                                    PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
+                                )
                             invalidateState()
                         }
                     }
@@ -474,11 +483,13 @@ class NativePlayer(
 
     private fun done(): ListenableFuture<*> = Futures.immediateVoidFuture()
 
+    private fun hasLoaded() = prepared && loadedId >= 0
+
     private fun applyFocusState(state: PlaybackFocusState.State) {
         focusState = state
         playWhenReady = state.playRequested
         GeodeNative.playerSetVolume(handle, volume * state.volumeMultiplier)
-        if (state.canPlay && prepared && loadedId >= 0 && GeodeNative.playerCurrentToken(handle) == loadedId) {
+        if (state.canPlay && hasLoaded() && GeodeNative.playerCurrentToken(handle) == loadedId) {
             GeodeNative.playerPlay(handle)
         } else {
             GeodeNative.playerPause(handle)

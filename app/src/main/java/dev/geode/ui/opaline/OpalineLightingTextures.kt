@@ -1,5 +1,6 @@
 package dev.geode.ui.opaline
 
+import android.annotation.SuppressLint
 import android.util.Half
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -58,6 +59,9 @@ internal object OpalineLightingTextures {
         return id
     }
 
+    // Lint's HalfFloat check misreads the ShortArray initializer lambda as widening a half;
+    // every value is produced by android.util.Half.toHalf as the check asks.
+    @SuppressLint("HalfFloat")
     private fun rgba(rgb: FloatArray): ShortArray =
         ShortArray(rgb.size / 3 * 4) { index ->
             val channel = index % 4

@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -55,7 +54,6 @@ import dev.geode.R
 import dev.geode.nav.Destination
 import dev.geode.nav.LibraryView
 import dev.geode.nav.Navigator
-import dev.geode.nav.Overlay
 import dev.geode.ui.opaline.OpalineAlertDialog
 import dev.geode.ui.opaline.OpalineButton
 import dev.geode.ui.opaline.OpalineDropdownMenu
