@@ -57,10 +57,10 @@ import dev.geode.export.ChapterMarkers
 import dev.geode.export.ChapterWriteResult
 import dev.geode.ui.EditorUiState
 import dev.geode.ui.ExportPhase
-import dev.geode.ui.glass.GlassButton
-import dev.geode.ui.glass.GlassLinearProgress
-import dev.geode.ui.glass.GlassPalette
-import dev.geode.ui.glass.GlassSheet
+import dev.geode.ui.opaline.creative.CreativeButton
+import dev.geode.ui.opaline.creative.CreativeProgress
+import dev.geode.ui.opaline.creative.CreativeColors
+import dev.geode.ui.opaline.creative.CreativeSheet
 import dev.geode.ui.isBusy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -75,6 +75,14 @@ private enum class PickKind {
     OVERLAY,
     AUDIO,
 }
+
+private class PendingProject(val name: String, val project: EditorProject) {
+    fun matches(actions: EditorActions): Boolean = actions.currentProjectIdentity()?.let { (currentName, currentProject) ->
+        currentName == name && currentProject === project
+    } == true
+}
+
+private class PendingPick(val laneId: LaneId, val kind: PickKind, val project: PendingProject)
 
 /** The timeline: ruler, marker lane, one row per lane, keyframe rows for the selection, and the playhead. */
 @Composable
@@ -95,7 +103,9 @@ fun TimelineEditor(
     var autoCutOpen by remember { mutableStateOf(false) }
     var textLane by remember { mutableStateOf<LaneId?>(null) }
     var tapSession by remember { mutableStateOf<TapInSession?>(null) }
-    var picking by remember { mutableStateOf<Pair<LaneId, PickKind>?>(null) }
+    var picking by remember { mutableStateOf<PendingPick?>(null) }
+    var importingSrt by remember { mutableStateOf<PendingProject?>(null) }
+    var exportingProject by remember { mutableStateOf<PendingProject?>(null) }
     var trackSheet by remember { mutableStateOf<ClipId?>(null) }
     var trackSheetOpen by remember { mutableStateOf(false) }
     var transitionSheet by remember { mutableStateOf<ClipId?>(null) }
@@ -138,20 +148,24 @@ fun TimelineEditor(
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             val target = picking ?: return@rememberLauncherForActivityResult
             picking = null
-            if (uri == null) return@rememberLauncherForActivityResult
+            if (uri == null || !target.project.matches(actions)) return@rememberLauncherForActivityResult
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             val text = uri.toString()
-            when (target.second) {
+            when (target.kind) {
                 PickKind.VIDEO ->
                     actions.describeMedia(
                         uri,
-                    ) { media -> addClip(target.first, ClipContent.Video(text), media.durationMs, media.durationMs) }
+                    ) { media ->
+                        if (target.project.matches(actions)) addClip(target.laneId, ClipContent.Video(text), media.durationMs, media.durationMs)
+                    }
                 PickKind.AUDIO ->
                     actions.describeMedia(
                         uri,
-                    ) { media -> addClip(target.first, ClipContent.Audio(text), media.durationMs, media.durationMs) }
-                PickKind.STILL -> addClip(target.first, ClipContent.Still(text), STILL_MS)
-                PickKind.OVERLAY -> addClip(target.first, ClipContent.Overlay(text), OVERLAY_MS)
+                    ) { media ->
+                        if (target.project.matches(actions)) addClip(target.laneId, ClipContent.Audio(text), media.durationMs, media.durationMs)
+                    }
+                PickKind.STILL -> addClip(target.laneId, ClipContent.Still(text), STILL_MS)
+                PickKind.OVERLAY -> addClip(target.laneId, ClipContent.Overlay(text), OVERLAY_MS)
             }
         }
 
@@ -159,7 +173,7 @@ fun TimelineEditor(
         laneId: LaneId,
         kind: PickKind,
     ) {
-        picking = laneId to kind
+        picking = PendingPick(laneId, kind, PendingProject(state.name, state.project))
         picker.launch(
             when (kind) {
                 PickKind.VIDEO -> arrayOf("video/*")
@@ -176,11 +190,13 @@ fun TimelineEditor(
 
     val srtImporter =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri == null) return@rememberLauncherForActivityResult
+            val target = importingSrt
+            importingSrt = null
+            if (uri == null || target == null || !target.matches(actions)) return@rememberLauncherForActivityResult
             val text =
                 runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull()
                     ?: return@rememberLauncherForActivityResult
-            addCaptionClips(Subtitles.parseSrt(text))
+            if (target.matches(actions)) addCaptionClips(Subtitles.parseSrt(text))
         }
     val srtExporter =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(SRT_MIME)) { uri ->
@@ -206,12 +222,19 @@ fun TimelineEditor(
     // forces this picker there instead of trying (and failing) to save into Movies/Geode.
     val projectDestinationPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("video/mp4")) { uri ->
-            if (uri != null) actions.exportProject(uri)
+            val target = exportingProject
+            exportingProject = null
+            if (uri != null && target?.matches(actions) == true) actions.exportProject(uri)
         }
+
+    fun launchProjectDestinationPicker() {
+        exportingProject = PendingProject(state.name, state.project)
+        projectDestinationPicker.launch("geode_cut_${System.currentTimeMillis()}.mp4")
+    }
 
     fun exportProject() {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
-            projectDestinationPicker.launch("geode_cut_${System.currentTimeMillis()}.mp4")
+            launchProjectDestinationPicker()
         } else {
             actions.exportProject()
         }
@@ -301,7 +324,7 @@ fun TimelineEditor(
             phase = exportPhase,
             onCancel = actions::cancelProjectExport,
             onExportToDestination = {
-                projectDestinationPicker.launch("geode_cut_${System.currentTimeMillis()}.mp4")
+                launchProjectDestinationPicker()
             },
         )
         EditorToolbar(
@@ -320,7 +343,10 @@ fun TimelineEditor(
             onAutoCut = { autoCutOpen = true },
             hasLyrics = actions.lyricCues() != null,
             onLyricCaptions = { addCaptionClips(actions.lyricCues().orEmpty()) },
-            onImportSrt = { srtImporter.launch(arrayOf(SRT_MIME, "text/plain", "text/*")) },
+            onImportSrt = {
+                importingSrt = PendingProject(state.name, state.project)
+                srtImporter.launch(arrayOf(SRT_MIME, "text/plain", "text/*"))
+            },
             onExportSrt = { srtExporter.launch("geode_captions_${System.currentTimeMillis()}.srt") },
             onExportChapters = { chapterFormatPicker = true },
         )
@@ -394,7 +420,7 @@ fun TimelineEditor(
             Text(
                 stringResource(R.string.editor_empty),
                 style = MaterialTheme.typography.bodySmall,
-                color = GlassPalette.textSecondary,
+                color = CreativeColors.textSecondary,
             )
         }
         val keyTracks = project.keyframes.tracksFor(null) + (selectedClip?.let(project.keyframes::tracksFor) ?: emptyList())
@@ -503,17 +529,17 @@ private fun ChapterFormatDialog(
     onPick: (ChapterFormat) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    GlassSheet(onDismissRequest = onDismiss) {
+    CreativeSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 stringResource(R.string.editor_chapters_title),
                 style = MaterialTheme.typography.titleMedium,
-                color = GlassPalette.textPrimary,
+                color = CreativeColors.textPrimary,
             )
             CHAPTER_FORMAT_LABELS.forEach { (format, label) ->
-                GlassButton(text = stringResource(label), modifier = Modifier.fillMaxWidth(), onClick = { onPick(format) })
+                CreativeButton(text = stringResource(label), modifier = Modifier.fillMaxWidth(), onClick = { onPick(format) })
             }
-            GlassButton(text = stringResource(R.string.action_cancel), modifier = Modifier.fillMaxWidth(), onClick = onDismiss)
+            CreativeButton(text = stringResource(R.string.action_cancel), modifier = Modifier.fillMaxWidth(), onClick = onDismiss)
         }
     }
 }
@@ -530,23 +556,23 @@ private fun ExportStatusRow(
                 Text(
                     stringResource(R.string.studio_rendering, (phase.progress * 100).roundToInt()),
                     style = MaterialTheme.typography.labelMedium,
-                    color = GlassPalette.textSecondary,
+                    color = CreativeColors.textSecondary,
                     modifier = Modifier.weight(1f),
                 )
-                GlassButton(text = stringResource(R.string.action_cancel), onClick = onCancel)
+                CreativeButton(text = stringResource(R.string.action_cancel), onClick = onCancel)
             }
-            GlassLinearProgress(progress = phase.progress, modifier = Modifier.fillMaxWidth())
+            CreativeProgress(progress = phase.progress, modifier = Modifier.fillMaxWidth())
         }
         is ExportPhase.Done ->
             Text(
                 stringResource(R.string.studio_saved),
                 style = MaterialTheme.typography.labelMedium,
-                color = GlassPalette.textPrimary,
+                color = CreativeColors.textPrimary,
             )
         is ExportPhase.Failed -> Text(phase.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         ExportPhase.Idle ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                GlassButton(
+                CreativeButton(
                     text = stringResource(R.string.export_render_to_folder),
                     onClick = onExportToDestination,
                 )
