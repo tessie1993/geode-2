@@ -1,6 +1,9 @@
 # Build output
 .gradle/
 build/
+# Bundled runtime sources are shipped assets, not Gradle output.
+!app/src/main/assets/opaline/vendor/three/build/
+!app/src/main/assets/opaline/vendor/three/build/*.js
 .cxx/
 .kotlin/
 local.properties
