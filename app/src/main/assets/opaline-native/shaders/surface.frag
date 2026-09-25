@@ -2,7 +2,7 @@
 precision highp float;
 in vec3 vPosition, vNormal, vLocal;
 layout(location=0) out vec4 fragColor;
-uniform sampler2D uBackdrop;
+uniform sampler2D uBackdrop, uEnvironment;
 uniform vec2 uViewport;
 uniform vec3 uBase, uAccent, uAbsorption, uContact, uEmission;
 uniform vec4 uOptics; // roughness, transmission, IOR, thickness
@@ -39,7 +39,9 @@ vec3 environment(vec3 r,float roughness) {
     vec3 sky=mix(vec3(.055,.095,.14),vec3(.50,.68,.84),smoothstep(-.3,.9,r.y));
     float key=exp(-pow((r.x+.45)/(roughness*.5+.20),2.)-pow((r.y-.70)/(.06+roughness*.3),2.));
     float strip=exp(-pow((r.x-.72)/(.025+roughness*.22),2.)-pow((r.y-.15)/.7,2.));
-    return sky+vec3(1.8,1.9,2.0)*key+vec3(.55,.95,1.35)*strip;
+    vec2 reflectedUv=vec2(atan(r.z,r.x)/6.283185+.5,acos(clamp(r.y,-1.,1.))/PI);
+    vec3 reflectedArt=pow(textureLod(uEnvironment,reflectedUv,roughness*5.).rgb,vec3(2.2));
+    return sky*.45+reflectedArt*1.5+vec3(3.8,3.9,4.0)*key+vec3(1.1,1.9,2.7)*strip;
 }
 vec3 light(vec3 n,vec3 v,vec3 l,vec3 color,float rough,float f0) {
     vec3 h=normalize(v+l);
@@ -66,9 +68,9 @@ void main() {
     vec3 ray=refract(-v,n,1./eta);
     float path=uOptics.w/max(.24,nv);
     vec2 uv=gl_FragCoord.xy/uViewport;
-    vec2 bend=ray.xy*path*.018;
+    vec2 bend=ray.xy*path*vec2(.0907*uViewport.y/uViewport.x,.0907);
     vec3 transmitted=pow(texture(uBackdrop,clamp(uv+bend,vec2(.001),vec2(.999))).rgb,vec3(2.2));
-    vec3 attenuation=exp(log(max(uAbsorption,vec3(.015)))*path/max(.1,uFinish.w));
+    vec3 attenuation=exp(log(max(uAbsorption,vec3(.015)))*path/max(.001,uFinish.w));
     transmitted=transmitted*attenuation + base*(1.-attenuation)*.65;
     float diffuse=max(dot(n,normalize(vec3(-.45,.8,.5))),0.);
     vec3 body=base*(.19+diffuse*.65);
@@ -82,7 +84,8 @@ void main() {
     rgb+=interference*film*.35;
     vec3 d=vLocal-uContact;
     float contact=exp(-dot(d,d)/.1764);
-    rgb+=uAccent*(uPressure*contact*.42+uSelected*.075)+uEmission;
+    vec3 dye=.5+.5*cos(vec3(0.,2.094,4.188)+length(d)*9.-uTime*1.5+cloud*2.);
+    rgb+=mix(uAccent,dye,.38)*uPressure*contact*.55+uAccent*uSelected*.075+uEmission;
     float sweep=exp(-pow((vLocal.x-(uReveal-.72)*8.)*4.,2.))*step(.72,uReveal)*(1.-step(.999,uReveal));
     rgb+=uAccent*sweep*.15;
     rgb=mix(rgb*.48,rgb,uEnabled);

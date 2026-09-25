@@ -32,13 +32,10 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -69,6 +66,9 @@ import dev.geode.ui.opaline.creative.CreativeSlider
 import dev.geode.ui.opaline.creative.CreativeTabs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import dev.geode.ui.opaline.OpalineAction as TextButton
+import dev.geode.ui.opaline.OpalineIconAction as IconButton
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 internal fun vizPlaylistIndexOf(
     playlist: List<VizPlaylistEntry>,

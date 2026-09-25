@@ -39,8 +39,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -189,6 +189,7 @@ fun OpalineRow(
     trailing: @Composable () -> Unit = {},
 ) {
     val sceneReady = opalineReady()
+    val view = LocalView.current
     Row(
         modifier
             .fillMaxWidth()
@@ -197,11 +198,16 @@ fun OpalineRow(
             .padding(5.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(OpalineColors.deep.copy(alpha = if (sceneReady) 0.38f else 0.8f))
-            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = {
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
-                onClick()
-            }) else Modifier)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(role = Role.Button, onClick = {
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                        onClick()
+                    })
+                } else {
+                    Modifier
+                },
+            ).padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

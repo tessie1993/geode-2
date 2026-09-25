@@ -23,9 +23,14 @@ class OpalineMotionTest {
 
     @Test
     fun clockIsStableAcrossDisplayRatesAndStalls() {
-        val results = listOf(30, 60, 120).map { hz ->
-            OpalineSpring().apply { target = 1f; repeat(hz * 2) { step(1f / hz) } }.value
-        }
+        val results =
+            listOf(30, 60, 120).map { hz ->
+                OpalineSpring()
+                    .apply {
+                        target = 1f
+                        repeat(hz * 2) { step(1f / hz) }
+                    }.value
+            }
         assertTrue(results.all { abs(it - 1f) < .001f })
         val spring = OpalineSpring().apply { target = 1f }
         spring.step(Float.NaN)

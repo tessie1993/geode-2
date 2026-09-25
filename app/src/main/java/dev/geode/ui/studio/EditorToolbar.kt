@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import dev.geode.ui.opaline.OpalineDialog as Dialog
 import dev.geode.R
 import dev.geode.editor.EditError
 import dev.geode.editor.LaneKind
@@ -28,6 +27,7 @@ import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeShapes
 import dev.geode.ui.opaline.creative.CreativeTextField
 import dev.geode.ui.opaline.creative.creativeSurface
+import dev.geode.ui.opaline.OpalineDialog as Dialog
 
 /** Back, title, undo/redo and zoom, as a row of bubble buttons. */
 @Composable

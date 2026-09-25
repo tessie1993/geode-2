@@ -29,9 +29,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 import androidx.compose.material3.MaterialTheme
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +63,8 @@ import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.opalinePart
 import kotlinx.coroutines.delay
+import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 @Composable
 internal fun OpalineSearch(
@@ -89,9 +89,7 @@ internal fun OpalineSearch(
     Column(
         Modifier
             .fillMaxSize()
-            .background(
-                MaterialTheme.colorScheme.background.copy(alpha = 0.97f),
-            ).statusBarsPadding()
+            .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
         OpalinePage(stringResource(R.string.action_search), stringResource(R.string.opaline_search_subtitle), onBack = {
@@ -99,7 +97,7 @@ internal fun OpalineSearch(
         }) {
             OutlinedTextField(query, {
                 query = it
-            }, singleLine = true, modifier = Modifier.fillMaxWidth().focusRequester(focus).opalinePart("A05"), label = {
+            }, singleLine = true, modifier = Modifier.fillMaxWidth().focusRequester(focus), label = {
                 Text(stringResource(R.string.opaline_search_hint))
             })
             LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {

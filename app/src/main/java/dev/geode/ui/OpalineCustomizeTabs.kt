@@ -14,16 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -66,6 +60,12 @@ import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeSlider
 import kotlin.math.ln
 import kotlin.math.pow
+import dev.geode.ui.opaline.OpalineAction as TextButton
+import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
+import dev.geode.ui.opaline.OpalineCheckbox as Checkbox
+import dev.geode.ui.opaline.OpalineDropdownMenu as DropdownMenu
+import dev.geode.ui.opaline.OpalineDropdownMenuItem as DropdownMenuItem
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import dev.geode.ui.opaline.creative.CreativeToggle as Switch
 
 val LocalParamLocks =

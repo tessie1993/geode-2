@@ -6,7 +6,7 @@ layout(location=2) in vec3 aMorphLow;
 layout(location=3) in vec3 aMorphHigh;
 uniform mat4 uModel, uProjection;
 uniform mat3 uNormal;
-uniform vec3 uContact;
+uniform vec3 uContact, uShapeCenter, uShapeHalf;
 uniform vec2 uMorph;
 uniform float uPressure, uDeform, uTime, uReveal;
 out vec3 vPosition, vNormal, vLocal;
@@ -17,7 +17,9 @@ void main() {
     p.xy+=d.xy*force*.07;
     p.z-=force*.12;
     // L06 contour construction: the rim arrives before the quiet interior.
-    float front=smoothstep(0.0,.72,uReveal);
+    vec2 q=abs((p.xy-uShapeCenter.xy)/max(uShapeHalf.xy,vec2(.001)));
+    float edge=clamp(max(q.x,q.y),0.,1.);
+    float front=smoothstep(0.0,.72,uReveal-(1.-edge)*.22);
     p.z*=mix(.12,1.0,front);
     vec3 n=normalize(aNormal+vec3(-d.xy*force*.33,0));
     vec4 world=uModel*vec4(p,1);

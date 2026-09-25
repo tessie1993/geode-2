@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,6 +42,7 @@ import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeProgress
 import dev.geode.ui.opaline.creative.CreativeSegments
+import dev.geode.ui.opaline.OpalineRangeSlider as RangeSlider
 
 @Composable
 fun SettingsDialog(

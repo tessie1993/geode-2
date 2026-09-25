@@ -38,10 +38,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Tune
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -85,6 +83,8 @@ import dev.geode.ui.opaline.creative.CreativeTabs
 import dev.geode.ui.opaline.opalinePart
 import dev.geode.ui.studio.TimelineEditor
 import kotlin.math.roundToInt
+import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 /** Destination-bound creative workspace. Each page retains its place through the Navigator. */
 @Composable
@@ -230,34 +230,43 @@ fun OpalineImmersive(
         } else {
             Text(secondScreenName, Modifier.align(Alignment.Center), color = Color.White, style = MaterialTheme.typography.titleLarge)
         }
-        Row(
-            Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (!secondScreenName.isNullOrBlank()) {
-                Text(secondScreenName, style = MaterialTheme.typography.labelMedium, color = Color.White)
+        dev.geode.ui.opaline.OpalineSceneHost(Modifier.fillMaxSize(), environment = false, transparent = true) {
+            Box(Modifier.fillMaxSize()) {
+                Row(
+                    Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (!secondScreenName.isNullOrBlank()) {
+                        Text(secondScreenName, style = MaterialTheme.typography.labelMedium, color = Color.White)
+                    }
+                    OpalineIconButton(Icons.Filled.Close, stringResource(R.string.action_close), { navigator.close(Overlay.Visualizer) })
+                }
+                Row(
+                    Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OpalineIconButton(
+                        Icons.Filled.SkipPrevious,
+                        stringResource(R.string.action_previous),
+                        player::previous,
+                        enabled = playback.hasMedia,
+                    )
+                    OpalineButton(
+                        stringResource(if (playback.isPlaying) R.string.action_pause else R.string.action_play),
+                        player::togglePlayPause,
+                        icon = if (playback.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        enabled = playback.hasMedia,
+                    )
+                    OpalineIconButton(
+                        Icons.Filled.SkipNext,
+                        stringResource(R.string.action_next),
+                        player::next,
+                        enabled = playback.hasMedia,
+                    )
+                }
             }
-            OpalineIconButton(Icons.Filled.Close, stringResource(R.string.action_close), { navigator.close(Overlay.Visualizer) })
-        }
-        Row(
-            Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OpalineIconButton(
-                Icons.Filled.SkipPrevious,
-                stringResource(R.string.action_previous),
-                player::previous,
-                enabled = playback.hasMedia,
-            )
-            OpalineButton(
-                stringResource(if (playback.isPlaying) R.string.action_pause else R.string.action_play),
-                player::togglePlayPause,
-                icon = if (playback.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                enabled = playback.hasMedia,
-            )
-            OpalineIconButton(Icons.Filled.SkipNext, stringResource(R.string.action_next), player::next, enabled = playback.hasMedia)
         }
     }
 }

@@ -46,7 +46,6 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.MaterialTheme
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +77,7 @@ import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.OpalineSlider
 import dev.geode.ui.opaline.opalinePart
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 @Composable
 internal fun OpalinePlayerRoute(
@@ -133,7 +133,6 @@ private fun OpalineNowPlaying(
     OpalinePage(
         title = stringResource(R.string.opaline_listen),
         subtitle = stringResource(R.string.opaline_listen_subtitle),
-        actions = { OpalineIconButton(Icons.Default.Search, stringResource(R.string.action_search), { navigator.open(Overlay.Search) }) },
     ) {
         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             item {

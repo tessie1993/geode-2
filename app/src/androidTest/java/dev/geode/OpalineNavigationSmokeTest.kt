@@ -53,7 +53,6 @@ class OpalineNavigationSmokeTest {
                 Section.LIBRARY to R.string.nav_library,
                 Section.VISUALS to R.string.nav_visuals,
                 Section.STUDIO to R.string.nav_studio,
-                Section.SETTINGS to R.string.nav_settings,
                 Section.PLAYER to R.string.opaline_listen,
             )
         tabs.forEach { (section, label) ->
@@ -65,6 +64,10 @@ class OpalineNavigationSmokeTest {
             assertEquals(section.root, activity.navigator.state.value.current)
         }
 
+        compose.onNodeWithContentDescription(activity.getString(R.string.nav_settings)).performClick()
+        compose.waitUntil(10_000) { activity.navigator.state.value.section == Section.SETTINGS }
+        compose.runOnUiThread { activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntil(10_000) { activity.navigator.state.value.section == Section.PLAYER }
         compose.onNodeWithContentDescription(activity.getString(R.string.action_search)).performClick()
         compose.waitUntil(10_000) { activity.navigator.state.value.overlay == Overlay.Search }
         compose.onNodeWithText(activity.getString(R.string.opaline_search_hint)).assertExists()

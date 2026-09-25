@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +29,7 @@ import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import dev.geode.ui.opaline.OpalineIconAction as IconButton
 
 @Composable
 internal fun FolderSettingsTab() {

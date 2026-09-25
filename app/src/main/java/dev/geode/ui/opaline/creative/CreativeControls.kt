@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -49,16 +48,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.geode.ui.opaline.OpalineDialog as Dialog
 import dev.geode.ui.opaline.OpalineButton
 import dev.geode.ui.opaline.OpalineColors
 import dev.geode.ui.opaline.OpalinePanel
+import dev.geode.ui.opaline.OpalineSceneHost
 import dev.geode.ui.opaline.OpalineSlider
 import dev.geode.ui.opaline.OpalineToggle
-import dev.geode.ui.opaline.OpalineSceneHost
-import dev.geode.ui.opaline.opalineReady
 import dev.geode.ui.opaline.opalinePart
+import dev.geode.ui.opaline.opalineReady
 import kotlin.math.roundToInt
+import dev.geode.ui.opaline.OpalineDialog as Dialog
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 /** Native content planes and semantics attached to the Opaline geometry world. */
 object CreativeColors {

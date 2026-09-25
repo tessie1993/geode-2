@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +27,7 @@ import dev.geode.R
 import dev.geode.ui.opaline.creative.CreativeButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 
 const val PRIVACY_POLICY_URL = "https://tessie1993.github.io/music-visualizer-2/privacy-policy.html"
 

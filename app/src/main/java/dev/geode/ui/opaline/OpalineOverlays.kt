@@ -85,15 +85,153 @@ fun OpalineTextField(
     minLines: Int = 1,
     shape: Shape = RoundedCornerShape(24.dp),
 ) {
-    OutlinedTextField(value, onValueChange, modifier.opalinePart("C04", enabled = enabled).padding(5.dp),
-        enabled = enabled, readOnly = readOnly, textStyle = textStyle, label = label, placeholder = placeholder,
-        leadingIcon = leadingIcon, trailingIcon = trailingIcon, supportingText = supportingText, isError = isError,
-        visualTransformation = visualTransformation, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
-        singleLine = singleLine, maxLines = maxLines, minLines = minLines, shape = shape,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = OpalineColors.deep.copy(alpha = .62f),
-            unfocusedContainerColor = OpalineColors.deep.copy(alpha = .50f),
-            focusedBorderColor = OpalineColors.accent.copy(alpha = .8f),
-            unfocusedBorderColor = Color.Transparent,
-        ))
+    OutlinedTextField(
+        value,
+        onValueChange,
+        modifier.opalinePart("C04", enabled = enabled).padding(5.dp),
+        enabled = enabled,
+        readOnly = readOnly,
+        textStyle = textStyle,
+        label = label,
+        placeholder = placeholder,
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon,
+        supportingText = supportingText,
+        isError = isError,
+        visualTransformation = visualTransformation,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        singleLine = singleLine,
+        maxLines = maxLines,
+        minLines = minLines,
+        shape = shape,
+        colors =
+            OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = OpalineColors.deep.copy(alpha = .62f),
+                unfocusedContainerColor = OpalineColors.deep.copy(alpha = .50f),
+                focusedBorderColor = OpalineColors.accent.copy(alpha = .8f),
+                unfocusedBorderColor = Color.Transparent,
+            ),
+    )
+}
+
+@Composable
+fun OpalineDropdownMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    androidx.compose.material3.DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        modifier = modifier,
+        shape = RoundedCornerShape(28.dp),
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        OpalineSceneHost(Modifier.widthIn(min = 220.dp, max = 340.dp), environment = false) {
+            Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content = content)
+        }
+    }
+}
+
+@Composable
+fun OpalineDropdownMenuItem(
+    text: @Composable () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    trailingIcon: (@Composable () -> Unit)? = null,
+    enabled: Boolean = true,
+) {
+    androidx.compose.material3.DropdownMenuItem(
+        text = text,
+        onClick = onClick,
+        modifier = modifier.opalinePart("A05", enabled = enabled),
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon,
+        enabled = enabled,
+    )
+}
+
+/** Slot variants keep existing editor actions on the same native component system. */
+@Composable
+fun OpalineAction(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit,
+) {
+    androidx.compose.material3.TextButton(
+        onClick = onClick,
+        modifier = modifier.opalinePart("A05", enabled = enabled),
+        enabled = enabled,
+        content = content,
+    )
+}
+
+@Composable
+fun OpalineIconAction(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    androidx.compose.material3.IconButton(onClick, modifier.opalinePart("A03", enabled = enabled), enabled, content = content)
+}
+
+@Composable
+fun OpalineCheckbox(
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    androidx.compose.material3.Checkbox(
+        checked,
+        onCheckedChange,
+        modifier.opalinePart("A03", selected = checked, enabled = enabled),
+        enabled = enabled,
+        colors =
+            androidx.compose.material3.CheckboxDefaults.colors(
+                checkedColor = Color.Transparent,
+                uncheckedColor = OpalineColors.rim,
+                checkmarkColor = OpalineColors.pearl,
+            ),
+    )
+}
+
+@Composable
+fun OpalineRangeSlider(
+    value: ClosedFloatingPointRange<Float>,
+    onValueChange: (ClosedFloatingPointRange<Float>) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+) {
+    val span = valueRange.endInclusive - valueRange.start
+    val start = value.start.takeIf { it.isFinite() }?.coerceIn(valueRange) ?: valueRange.start
+    val end = value.endInclusive.takeIf { it.isFinite() }?.coerceIn(start, valueRange.endInclusive) ?: start
+    val ready = opalineReady()
+    androidx.compose.material3.RangeSlider(
+        value = start..end,
+        onValueChange = onValueChange,
+        modifier =
+            modifier.opalinePart(
+                "B04",
+                value = if (span > 0) (start - valueRange.start) / span else 0f,
+                secondaryValue = if (span > 0) (end - valueRange.start) / span else 0f,
+                enabled = enabled,
+            ),
+        enabled = enabled,
+        valueRange = valueRange,
+        colors =
+            androidx.compose.material3.SliderDefaults.colors(
+                thumbColor = if (ready) Color.Transparent else OpalineColors.pearl,
+                activeTrackColor = if (ready) Color.Transparent else OpalineColors.accent,
+                inactiveTrackColor = if (ready) Color.Transparent else OpalineColors.surface,
+            ),
+    )
 }

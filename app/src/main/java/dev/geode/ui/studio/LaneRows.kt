@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +39,8 @@ import dev.geode.editor.LaneKind
 import dev.geode.editor.Marker
 import dev.geode.editor.MarkerId
 import dev.geode.ui.opaline.creative.CreativeColors
+import dev.geode.ui.opaline.OpalineDropdownMenu as DropdownMenu
+import dev.geode.ui.opaline.OpalineDropdownMenuItem as DropdownMenuItem
 
 /** Header column beside the scrolling content column; every row height is fixed so the two stay aligned. */
 @Composable

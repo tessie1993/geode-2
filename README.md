@@ -1,3 +1,7 @@
+> Native Kotlin UI redesign is in progress on this branch. Read
+> [implementation and verification status](docs/design/opaline/NATIVE-KOTLIN-STATUS.md)
+> for the current renderer, navigation, supported motion, and remaining gates.
+
 # Geode — Android music player, visualizer and video suite
 
 Native Android music player, real-time GPU music visualizer and a small video

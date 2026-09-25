@@ -11,12 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +34,9 @@ import dev.geode.export.ExportAspect
 import dev.geode.export.LoopSpec
 import dev.geode.export.TimeOfDayDrift
 import kotlin.math.roundToInt
+import dev.geode.ui.opaline.OpalineAction as Button
+import dev.geode.ui.opaline.OpalineAction as OutlinedButton
+import dev.geode.ui.opaline.OpalineAction as TextButton
 import dev.geode.ui.opaline.creative.CreativeSlider as Slider
 import dev.geode.ui.opaline.creative.CreativeToggle as Switch
 

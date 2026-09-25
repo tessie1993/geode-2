@@ -30,11 +30,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -68,6 +64,10 @@ import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.opalinePart
 import kotlinx.coroutines.launch
+import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
+import dev.geode.ui.opaline.OpalineDropdownMenu as DropdownMenu
+import dev.geode.ui.opaline.OpalineDropdownMenuItem as DropdownMenuItem
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 @Composable
 internal fun OpalineLibraryRoute(
@@ -202,7 +202,6 @@ private fun OpalineLibraryBrowse(
             if (view == LibraryView.RECENT) searched else LibraryBrowse.sort(searched, state.sort)
         }
     OpalinePage(stringResource(R.string.nav_library), stringResource(R.string.opaline_library_subtitle, tracks.size), actions = {
-        OpalineIconButton(Icons.Default.Search, stringResource(R.string.action_search), { navigator.open(Overlay.Search) })
         OpalineIconButton(Icons.Default.Refresh, stringResource(R.string.folders_rescan), library::refreshDeviceTracks)
     }) {
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

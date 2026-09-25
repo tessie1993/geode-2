@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,7 +40,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.geode.ui.opaline.OpalineDialog as Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.export.ClipEdit
@@ -63,6 +61,8 @@ import dev.geode.ui.opaline.creative.creativeSurface
 import dev.geode.ui.studio.EditorActions
 import dev.geode.ui.studio.TimelineEditor
 import kotlin.math.roundToInt
+import dev.geode.ui.opaline.OpalineDialog as Dialog
+import dev.geode.ui.opaline.OpalineRangeSlider as RangeSlider
 
 @Composable
 fun StudioRoute(viewModel: StudioViewModel = geodeViewModel()) {
@@ -574,11 +574,7 @@ private fun ClipCutSection(
     }
 }
 
-/**
- * The trim range, styled to match [dev.geode.ui.opaline.creative.CreativeSlider]'s pearl thumbs and iridescent
- * fill: an [RangeSlider] with a glass track and two pearl thumbs, since the shared glass primitives
- * (`ui/glass/`) do not include a dual-thumb slider.
- */
+/** Original B04 dual-thumb geometry with native range and accessibility semantics. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun ClipTrimSlider(
@@ -586,45 +582,7 @@ private fun ClipTrimSlider(
     onValueChange: (ClosedFloatingPointRange<Float>) -> Unit,
     valueRange: ClosedFloatingPointRange<Float>,
 ) {
-    val pearlThumb: @Composable (androidx.compose.material3.RangeSliderState) -> Unit = {
-        Box(Modifier.size(20.dp).creativeSurface(shape = CreativeShapes.bubble, tint = CreativeColors.mint, glow = 0.5f))
-    }
-    RangeSlider(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth(),
-        valueRange = valueRange,
-        startThumb = pearlThumb,
-        endThumb = pearlThumb,
-        track = { state ->
-            val span = valueRange.endInclusive - valueRange.start
-            val startFraction = if (span > 0f) (state.activeRangeStart - valueRange.start) / span else 0f
-            val endFraction = if (span > 0f) (state.activeRangeEnd - valueRange.start) / span else 0f
-            Box(Modifier.fillMaxWidth().height(14.dp)) {
-                Box(Modifier.matchParentSize().creativeSurface(shape = CreativeShapes.pill))
-                Canvas(Modifier.matchParentSize()) {
-                    val y = size.height / 2f
-                    val startX = size.width * startFraction.coerceIn(0f, 1f)
-                    val endX = size.width * endFraction.coerceIn(0f, 1f)
-                    if (endX > startX) {
-                        drawLine(
-                            brush =
-                                Brush.horizontalGradient(
-                                    listOf(CreativeColors.mint, CreativeColors.lavender, CreativeColors.peach),
-                                    startX = startX,
-                                    endX = endX,
-                                ),
-                            start = Offset(startX, y),
-                            end = Offset(endX, y),
-                            strokeWidth = 6.dp.toPx(),
-                            cap = StrokeCap.Round,
-                            alpha = 0.85f,
-                        )
-                    }
-                }
-            }
-        },
-    )
+    RangeSlider(value, onValueChange, Modifier.fillMaxWidth(), valueRange = valueRange)
 }
 
 @Composable

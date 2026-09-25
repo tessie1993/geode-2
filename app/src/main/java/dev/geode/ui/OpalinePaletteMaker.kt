@@ -14,10 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -37,6 +34,9 @@ import dev.geode.data.CustomPalette
 import dev.geode.data.PaletteStore
 import dev.geode.render.scene.SceneParams
 import dev.geode.ui.opaline.creative.CreativeSlider
+import dev.geode.ui.opaline.OpalineAction as OutlinedButton
+import dev.geode.ui.opaline.OpalineAction as TextButton
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 internal fun paletteChipIndex(
     p: SceneParams,

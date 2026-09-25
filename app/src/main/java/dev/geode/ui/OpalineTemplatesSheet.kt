@@ -16,11 +16,8 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +36,9 @@ import dev.geode.data.TemplateWrite
 import dev.geode.data.VideoTemplate
 import dev.geode.render.VisualizerView
 import dev.geode.ui.opaline.creative.CreativeButton
+import dev.geode.ui.opaline.OpalineAction as TextButton
+import dev.geode.ui.opaline.OpalineIconAction as IconButton
+import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 /**
  * Save-load-share for video templates, opened next to the preset library it mirrors

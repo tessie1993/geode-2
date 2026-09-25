@@ -45,7 +45,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -101,6 +100,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
+import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 
 @Composable
 fun OpalineApp(
@@ -160,7 +160,7 @@ fun OpalineApp(
             backgroundDim = gui.backgroundDim,
             motionAmount = gui.liquidMotion,
             section = nav.section.name.lowercase(),
-            active = resumed && nav.overlay != Overlay.Visualizer,
+            active = resumed && nav.overlay == null,
         ) {
             Box(Modifier.fillMaxSize()) {
                 // The engine view has a single parent. Remove the shell while immersive mode
@@ -171,7 +171,9 @@ fun OpalineApp(
                 when (nav.overlay.takeIf { nav.gate == null }) {
                     Overlay.Search ->
                         routeStateHolder.SaveableStateProvider("overlay:search") {
-                            OpalineSearch(navigator, player)
+                            OpalineSceneHost(Modifier.fillMaxSize(), section = "search") {
+                                OpalineSearch(navigator, player)
+                            }
                         }
                     Overlay.Visualizer -> OpalineImmersive(player, renderer, navigator, secondScreen?.name)
                     Overlay.Export ->
@@ -195,7 +197,7 @@ private fun OpalineOverlaySheet(
 ) {
     BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.48f)).clickable(onClick = onDismiss))
-        Box(
+        OpalineSceneHost(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -338,18 +340,26 @@ internal fun sectionLabel(section: Section): String =
         },
     )
 
-
 /** Primary workspaces live in the dock; search and preferences stay reachable from every page. */
 @Composable
 private fun OpalineWorkspaceBar(navigator: Navigator) {
     val nav by navigator.state.collectAsStateWithLifecycle()
-    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary)
-            Text(sectionLabel(nav.section), style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                stringResource(R.string.app_name),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                sectionLabel(nav.section),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         OpalineIconButton(Icons.Default.Search, stringResource(R.string.action_search), { navigator.open(Overlay.Search) })
         OpalineIconButton(Icons.Default.Settings, stringResource(R.string.nav_settings), { navigator.show(Section.SETTINGS) })
@@ -373,7 +383,13 @@ private fun OpalineDock(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)
         }
     val items: @Composable () -> Unit = {
-        listOf(Section.PLAYER, Section.LIBRARY, Section.VISUALS, Section.STUDIO).forEach { section -> OpalineDockItem(section, section == nav.section, navigator) }
+        listOf(Section.PLAYER, Section.LIBRARY, Section.VISUALS, Section.STUDIO).forEach { section ->
+            OpalineDockItem(
+                section,
+                section == nav.section,
+                navigator,
+            )
+        }
     }
     if (vertical) {
         Column(
