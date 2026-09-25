@@ -47,6 +47,8 @@ import dev.geode.export.ClipLook
 import dev.geode.export.ExportQuality
 import dev.geode.export.ExportRatio
 import dev.geode.export.StudioClip
+import dev.geode.ui.opaline.OpalineDialog
+import dev.geode.ui.opaline.OpalineRangeSlider
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeProgress
@@ -61,8 +63,6 @@ import dev.geode.ui.opaline.creative.creativeSurface
 import dev.geode.ui.studio.EditorActions
 import dev.geode.ui.studio.TimelineEditor
 import kotlin.math.roundToInt
-import dev.geode.ui.opaline.OpalineDialog as Dialog
-import dev.geode.ui.opaline.OpalineRangeSlider as RangeSlider
 
 @Composable
 fun StudioRoute(viewModel: StudioViewModel = geodeViewModel()) {
@@ -331,7 +331,7 @@ private fun StudioCreativeDialog(
     body: @Composable () -> Unit = {},
     actions: @Composable () -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismissRequest) {
+    OpalineDialog(onDismissRequest = onDismissRequest) {
         Column(
             modifier
                 .creativeSurface(shape = CreativeShapes.tile)
@@ -582,7 +582,7 @@ private fun ClipTrimSlider(
     onValueChange: (ClosedFloatingPointRange<Float>) -> Unit,
     valueRange: ClosedFloatingPointRange<Float>,
 ) {
-    RangeSlider(value, onValueChange, Modifier.fillMaxWidth(), valueRange = valueRange)
+    OpalineRangeSlider(value, onValueChange, Modifier.fillMaxWidth(), valueRange = valueRange)
 }
 
 @Composable

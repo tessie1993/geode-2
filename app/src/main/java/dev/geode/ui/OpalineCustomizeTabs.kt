@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,18 +53,19 @@ import dev.geode.render.scene.ParamScope
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
 import dev.geode.render.scene.VisualStyleCatalog
+import dev.geode.ui.opaline.OpalineAction
+import dev.geode.ui.opaline.OpalineAlertDialog
+import dev.geode.ui.opaline.OpalineCheckbox
+import dev.geode.ui.opaline.OpalineChip
+import dev.geode.ui.opaline.OpalineDropdownMenu
+import dev.geode.ui.opaline.OpalineDropdownMenuItem
+import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeSlider
+import dev.geode.ui.opaline.creative.CreativeToggle
 import kotlin.math.ln
 import kotlin.math.pow
-import dev.geode.ui.opaline.OpalineAction as TextButton
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
-import dev.geode.ui.opaline.OpalineCheckbox as Checkbox
-import dev.geode.ui.opaline.OpalineDropdownMenu as DropdownMenu
-import dev.geode.ui.opaline.OpalineDropdownMenuItem as DropdownMenuItem
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
-import dev.geode.ui.opaline.creative.CreativeToggle as Switch
 
 val LocalParamLocks =
     androidx.compose.runtime.compositionLocalOf<Pair<Set<String>, (String) -> Unit>> { emptySet<String>() to {} }
@@ -282,7 +281,7 @@ internal fun SceneTab(
                 }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 dev.geode.render.TransitionCatalog.BUILT_IN_IDS.forEach { id ->
-                    FilterChip(
+                    OpalineChip(
                         selected = transitionId == id,
                         onClick = { onTransitionId(id) },
                         label = { Text(id) },
@@ -296,7 +295,7 @@ internal fun SceneTab(
                         "so nothing pops off for the length of a switch.",
                 )
                 var query by remember { mutableStateOf("") }
-                OutlinedTextField(
+                OpalineTextField(
                     value = query,
                     onValueChange = { query = it },
                     modifier = Modifier.fillMaxWidth(),
@@ -312,7 +311,7 @@ internal fun SceneTab(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     shown.take(TRANSITION_CHIP_LIMIT).forEach { def ->
-                        FilterChip(
+                        OpalineChip(
                             selected = transitionId == def.name,
                             onClick = { onTransitionId(def.name) },
                             label = { Text(def.name, style = MaterialTheme.typography.labelSmall) },
@@ -437,13 +436,13 @@ internal fun ColorTab(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                FilterChip(
+                OpalineChip(
                     selected = p.paletteLut < 0,
                     onClick = { onChange(p.copy(paletteLut = SceneParams.NO_PALETTE_LUT)) },
                     label = { Text("off", style = MaterialTheme.typography.labelSmall) },
                 )
                 SceneParams.CYCLIC_PALETTES.forEachIndexed { index, name ->
-                    FilterChip(
+                    OpalineChip(
                         selected = p.paletteLut == index,
                         onClick = { onChange(p.copy(paletteLut = index)) },
                         label = { Text(name, style = MaterialTheme.typography.labelSmall) },
@@ -534,12 +533,12 @@ private fun LayersSection() {
     if (!layers.enabled) return
     var showLayerPicker by remember { mutableStateOf(false) }
     Box {
-        TextButton(onClick = { showLayerPicker = true }) {
+        OpalineAction(onClick = { showLayerPicker = true }) {
             Text("Layer style: ${layers.sceneId?.let { sceneDisplayLabel(it) } ?: "none"}")
         }
-        DropdownMenu(expanded = showLayerPicker, onDismissRequest = { showLayerPicker = false }) {
+        OpalineDropdownMenu(expanded = showLayerPicker, onDismissRequest = { showLayerPicker = false }) {
             layerScenes.filter { it != activeScene }.forEach { id ->
-                DropdownMenuItem(
+                OpalineDropdownMenuItem(
                     text = { Text(sceneDisplayLabel(id)) },
                     onClick = {
                         LayersBus.state.value = layers.copy(sceneId = id)
@@ -576,10 +575,10 @@ private fun ModulatorCard(
     Column(modifier = Modifier.padding(vertical = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Slot ${index + 1}", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-            Switch(checked = config.enabled, onCheckedChange = { onChange(config.copy(enabled = it)) })
+            CreativeToggle(checked = config.enabled, onCheckedChange = { onChange(config.copy(enabled = it)) })
         }
         if (config.enabled) {
-            TextButton(onClick = { showTargetPicker = true }) {
+            OpalineAction(onClick = { showTargetPicker = true }) {
                 Text("Target: ${config.target.label}")
             }
             if (config.target != LfoTarget.NONE && !config.target.scope.appliesTo(sceneId)) {
@@ -608,7 +607,7 @@ private fun ModulatorCard(
         }
     }
     if (showTargetPicker) {
-        AlertDialog(
+        OpalineAlertDialog(
             onDismissRequest = { showTargetPicker = false },
             title = { Text("Slot ${index + 1} target") },
             text = {
@@ -619,7 +618,7 @@ private fun ModulatorCard(
                         val chain = t.chain
                         val offered = if (chain != null) index < chain.slot else t.scope.appliesTo(sceneId)
                         if (offered) {
-                            TextButton(onClick = {
+                            OpalineAction(onClick = {
                                 onChange(config.copy(target = t))
                                 showTargetPicker = false
                             }) {
@@ -629,7 +628,7 @@ private fun ModulatorCard(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showTargetPicker = false }) { Text("Close") } },
+            confirmButton = { OpalineAction(onClick = { showTargetPicker = false }) { Text("Close") } },
         )
     }
 }
@@ -670,7 +669,7 @@ private fun ChipRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         labels.forEachIndexed { index, label ->
-            FilterChip(
+            OpalineChip(
                 selected = index == selectedIndex,
                 onClick = { onSelect(index) },
                 label = { Text(label, style = MaterialTheme.typography.labelSmall) },
@@ -725,7 +724,7 @@ private fun CheckRow(
 ) {
     if (!visible(label, scope)) return
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked = checked, onCheckedChange = onChange)
+        OpalineCheckbox(checked = checked, onCheckedChange = onChange)
         Text(display, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
         LockChip(label)
     }
@@ -906,7 +905,7 @@ private fun InjectionShaderEditors(
     var dyeSrc by remember { mutableStateOf(template) }
     var editorsUsed by remember { mutableStateOf(false) }
     Text("Force shader", style = MaterialTheme.typography.labelSmall)
-    OutlinedTextField(
+    OpalineTextField(
         value = forceSrc,
         onValueChange = {
             forceSrc = it
@@ -916,7 +915,7 @@ private fun InjectionShaderEditors(
         textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
     )
     Text("Dye shader", style = MaterialTheme.typography.labelSmall)
-    OutlinedTextField(
+    OpalineTextField(
         value = dyeSrc,
         onValueChange = {
             dyeSrc = it
@@ -929,12 +928,12 @@ private fun InjectionShaderEditors(
         Text(injectionError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        TextButton(onClick = {
+        OpalineAction(onClick = {
             val f = forceSrc.takeIf { editorsUsed && it.isNotBlank() && it != template }
             val d = dyeSrc.takeIf { editorsUsed && it.isNotBlank() && it != template }
             onApplyInjectionShaders(f, d)
         }) { Text("Apply shaders") }
-        TextButton(onClick = {
+        OpalineAction(onClick = {
             forceSrc = template
             dyeSrc = template
             onApplyInjectionShaders(null, null)
@@ -1037,24 +1036,24 @@ private fun AdsrCard(
         }
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             config.targets.forEach { t ->
-                AssistChip(
+                OpalineChip(
                     onClick = { onChange(config.copy(targets = config.targets - t)) },
                     label = { Text(t.label, style = MaterialTheme.typography.labelSmall) },
                 )
             }
             Box {
-                AssistChip(
+                OpalineChip(
                     onClick = { showAdd = true },
                     label = { Text("+", style = MaterialTheme.typography.labelSmall) },
                 )
-                DropdownMenu(expanded = showAdd, onDismissRequest = { showAdd = false }) {
+                OpalineDropdownMenu(expanded = showAdd, onDismissRequest = { showAdd = false }) {
                     LfoTarget.entries
                         .filter {
                             it != LfoTarget.NONE &&
                                 it !in config.targets &&
                                 (it.chain != null || it.scope.appliesTo(sceneId))
                         }.forEach { t ->
-                            DropdownMenuItem(
+                            OpalineDropdownMenuItem(
                                 text = { Text(t.label) },
                                 onClick = {
                                     onChange(config.copy(targets = config.targets + t))

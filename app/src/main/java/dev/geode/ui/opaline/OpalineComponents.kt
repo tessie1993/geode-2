@@ -20,17 +20,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -143,6 +147,61 @@ fun OpalineButton(
         val foreground = if (sceneReady) OpalineColors.pearl else OpalineColors.ink
         if (icon != null) Icon(icon, null, Modifier.size(20.dp), tint = foreground)
         Text(text, style = MaterialTheme.typography.labelLarge, color = foreground, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/**
+ * A05 gel capsule from the library's UI010 filter-chip row. With [selected] it is a filter chip
+ * (selectable, checkbox semantics); without it, an action chip with button semantics. The label
+ * slot matches Material's chips so their call sites keep their content.
+ */
+@Composable
+fun OpalineChip(
+    onClick: () -> Unit,
+    label: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean? = null,
+    enabled: Boolean = true,
+) {
+    val sceneReady = opalineReady()
+    val view = LocalView.current
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val active = selected == true
+    val shape = RoundedCornerShape(50)
+    val press = {
+        view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+        onClick()
+    }
+    val action =
+        if (selected != null) {
+            Modifier.selectable(selected, interaction, null, enabled, Role.Checkbox, press)
+        } else {
+            Modifier.clickable(interaction, null, enabled, role = Role.Button, onClick = press)
+        }
+    Box(
+        modifier
+            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+            .opalinePart("A05", selected = active, enabled = enabled)
+            .alpha(if (enabled) 1f else 0.45f)
+            .clip(shape)
+            .background(
+                if (sceneReady) {
+                    (if (active) OpalineColors.accent else OpalineColors.deep).copy(alpha = if (active) 0.22f else 0.26f)
+                } else {
+                    (if (active) OpalineColors.accent else OpalineColors.surface).copy(alpha = if (active) 0.88f else 0.7f)
+                },
+            ).then(if (focused) Modifier.border(2.dp, OpalineColors.pearl, shape) else Modifier)
+            .then(action)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        val foreground = if (sceneReady || !active) OpalineColors.pearl else OpalineColors.ink
+        CompositionLocalProvider(
+            LocalContentColor provides foreground,
+            LocalTextStyle provides MaterialTheme.typography.labelLarge,
+            content = label,
+        )
     }
 }
 
