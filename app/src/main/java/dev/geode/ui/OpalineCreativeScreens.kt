@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -230,7 +231,7 @@ fun OpalineImmersive(
             Text(secondScreenName, Modifier.align(Alignment.Center), color = Color.White, style = MaterialTheme.typography.titleLarge)
         }
         Row(
-            Modifier.align(Alignment.TopEnd).padding(16.dp),
+            Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -240,7 +241,7 @@ fun OpalineImmersive(
             OpalineIconButton(Icons.Filled.Close, stringResource(R.string.action_close), { navigator.close(Overlay.Visualizer) })
         }
         Row(
-            Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+            Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
