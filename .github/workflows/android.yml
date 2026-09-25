@@ -19,6 +19,7 @@ on:
       - "gradle/**"
       - "*.gradle.kts"
       - "gradle.properties"
+      - "tools/opaline/**"
       - ".github/workflows/android.yml"
 
 permissions:
@@ -42,6 +43,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
+          # Validate the PR's actual worktree snapshot, without combining it with main.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           # third_party/* are submodules; the root CMakeLists.txt builds them.
           submodules: recursive
 
@@ -56,7 +59,7 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Install Android SDK 36, NDK and CMake
+      - name: Install Android SDK 37, NDK and CMake
         shell: bash
         # sdkmanager is not on PATH on the ubuntu-24.04 runner image; resolve
         # it from the preinstalled SDK location instead. The NDK and CMake
@@ -69,7 +72,7 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" \
             "platform-tools" \
-            "platforms;android-36" \
+            "platforms;android-37" \
             "build-tools;36.0.0" \
             "ndk;28.0.13004108" \
             "cmake;3.22.1"
@@ -77,6 +80,10 @@ jobs:
       - name: Make Gradle wrapper executable
         working-directory: ${{ env.PROJECT_DIR }}
         run: chmod +x gradlew
+
+      - name: Test Opaline scene and motion contracts
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: node --test tools/opaline/*.test.mjs
 
       # Baselined static analysis: the SwallowedException/UnusedParameter
       # class of bug is caught at PR time instead of the next audit.
@@ -109,6 +116,7 @@ jobs:
           fi
 
       - name: Assemble debug APK
+        if: ${{ !cancelled() }}
         working-directory: ${{ env.PROJECT_DIR }}
         run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
 
@@ -155,16 +163,24 @@ jobs:
       # Verification runs after the APK upload. If a check fails, the APK is
       # still available from the workflow run for device testing.
       - name: Run unit tests
+        if: ${{ !cancelled() }}
         working-directory: ${{ env.PROJECT_DIR }}
         run: ./gradlew testDebugUnitTest --stacktrace --no-daemon
 
       - name: Run Android lint
+        if: ${{ !cancelled() }}
         working-directory: ${{ env.PROJECT_DIR }}
         run: ./gradlew :app:lintDebug --stacktrace --no-daemon
 
       - name: Run Kotlin formatting checks
+        if: ${{ !cancelled() }}
         working-directory: ${{ env.PROJECT_DIR }}
         run: ./gradlew ktlintCheck --stacktrace --no-daemon
+
+      - name: Compile Android navigation smoke tests
+        if: ${{ !cancelled() }}
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: ./gradlew :app:compileDebugAndroidTestKotlin --stacktrace --no-daemon
 
       - name: Upload reports when verification fails
         if: failure()

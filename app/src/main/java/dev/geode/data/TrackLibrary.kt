@@ -20,6 +20,7 @@ data class LibraryTrack(
     val comment: String = "",
     val fileName: String = "",
     val sizeBytes: Long = 0L,
+    val folder: String = "",
 )
 
 class TrackLibrary(
@@ -103,7 +104,7 @@ class TrackLibrary(
 
         internal fun identityKey(t: LibraryTrack): String =
             if (t.fileName.isNotBlank() && t.sizeBytes > 0L) {
-                "file:${t.fileName.lowercase()}:${t.sizeBytes}"
+                "file:${t.fileName.lowercase()}:${t.sizeBytes}:${t.folder}"
             } else {
                 "uri:${t.uri}"
             }
@@ -124,8 +125,12 @@ class TrackLibrary(
                 merged[key] = if (held == null) t else richer(held, t)
             }
             for (t in existing) {
-                val id = if (t.fileName.isBlank()) identityByUri[t.uri] else null
-                keep(if (id == null) t else t.copy(fileName = id.fileName, sizeBytes = id.sizeBytes))
+                val id = identityByUri[t.uri]
+                keep(if (id == null) t else t.copy(
+                    fileName = t.fileName.ifBlank { id.fileName },
+                    sizeBytes = t.sizeBytes.takeIf { it > 0L } ?: id.sizeBytes,
+                    folder = t.folder.ifBlank { id.folder },
+                ))
             }
             for (t in incoming) keep(t)
             return merged.values.sortedBy { it.title.lowercase() }
@@ -134,7 +139,10 @@ class TrackLibrary(
         private fun richer(
             kept: LibraryTrack,
             other: LibraryTrack,
-        ): LibraryTrack = if (!kept.analyzed && other.analyzed) other else kept
+        ): LibraryTrack {
+            val preferred = if (!kept.analyzed && other.analyzed) other else kept
+            return preferred.copy(folder = preferred.folder.ifBlank { kept.folder.ifBlank { other.folder } })
+        }
 
         internal fun upsertInfo(
             tracks: List<LibraryTrack>,
@@ -193,6 +201,7 @@ class TrackLibrary(
                 .put("comment", t.comment)
                 .put("fileName", t.fileName)
                 .put("sizeBytes", t.sizeBytes)
+                .put("folder", t.folder)
 
         private fun fromJson(o: JSONObject): LibraryTrack =
             LibraryTrack(
@@ -210,6 +219,7 @@ class TrackLibrary(
                 comment = o.optString("comment", ""),
                 fileName = o.optString("fileName", ""),
                 sizeBytes = o.optLong("sizeBytes", 0L),
+                folder = o.optString("folder", ""),
             )
     }
 }

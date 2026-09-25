@@ -11,6 +11,6 @@ sealed interface Overlay {
     /** The visualizer expanded over everything: the full-screen now-playing mode. */
     data object Visualizer : Overlay
 
-    /** A render in progress. Stays up until the run finishes or is cancelled. */
+    /** Export controls and progress; closing this surface leaves foreground rendering running. */
     data object Export : Overlay
 }

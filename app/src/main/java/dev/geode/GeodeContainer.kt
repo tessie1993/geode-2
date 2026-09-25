@@ -20,6 +20,9 @@ class GeodeContainer(
 
     val prefsFiles = GeodePrefsFiles(context)
 
+    val userData: dev.geode.ui.UserDataRepository =
+        dev.geode.ui.SharedPrefsUserDataRepository(prefsFiles.general, appScope)
+
     init {
         sweepStaleRenderScratch(context.applicationContext.cacheDir)
         sweepOrphanedPendingExports(context.applicationContext)

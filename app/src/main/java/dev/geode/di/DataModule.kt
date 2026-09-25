@@ -29,4 +29,10 @@ object DataModule {
     @Singleton
     @GeneralPrefs
     fun provideGeneralPrefs(prefsFiles: GeodePrefsFiles): SharedPreferences = prefsFiles.general
+
+    @Provides
+    @Singleton
+    fun provideUserDataRepository(
+        @ApplicationContext context: Context,
+    ): dev.geode.ui.UserDataRepository = context.geodeContainer.userData
 }

@@ -1,6 +1,6 @@
 # Opaline implementation and agent orchestration
 
-Read [DESIGN-SPEC.md](DESIGN-SPEC.md) for product behavior, [LIBRARY-AUDIT.md](LIBRARY-AUDIT.md) for inspected library evidence, and [VIDEO-REFERENCES.md](VIDEO-REFERENCES.md) for measured visual references. This file defines work ownership, order, acceptance and the persistent context for subsequent agent turns. The user requested smaller-model subagents; use bounded `gpt-6-luna` assignments with explicit files and proof, then integrate centrally. No agent should silently downgrade the physical/visual target to flat cards to make a build pass.
+Read [DESIGN-SPEC.md](DESIGN-SPEC.md) for product behavior, [LIBRARY-AUDIT.md](LIBRARY-AUDIT.md) for inspected library evidence, and [VIDEO-REFERENCES.md](VIDEO-REFERENCES.md) for measured visual references. This file defines work ownership, order, acceptance and the persistent context for subsequent agent turns. The user initially requested smaller-model subagents and then specified a Sol fleet; use bounded `gpt-6-sol` assignments with explicit files and proof, then integrate centrally. No agent should silently downgrade the physical/visual target to flat cards to make a build pass.
 
 ## Fixed boundaries
 

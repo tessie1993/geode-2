@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.channels.BufferOverflow
 
 /**
  * The one object that knows where the person is and moves them. Pure state: it holds no views,
@@ -18,17 +19,18 @@ import kotlinx.coroutines.flow.update
  */
 class Navigator(
     initial: NavState = NavState(),
+    initialLink: DeepLink? = null,
 ) {
     private val _state = MutableStateFlow(initial)
     val state: StateFlow<NavState> = _state.asStateFlow()
 
-    private val _moves = MutableSharedFlow<NavMove>(extraBufferCapacity = MOVE_BUFFER)
+    private val _moves = MutableSharedFlow<NavMove>(extraBufferCapacity = MOVE_BUFFER, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val moves: SharedFlow<NavMove> = _moves.asSharedFlow()
 
     private val _backGesture = MutableStateFlow<BackGesture?>(null)
     val backGesture: StateFlow<BackGesture?> = _backGesture.asStateFlow()
 
-    private val _pendingLink = MutableStateFlow<DeepLink?>(null)
+    private val _pendingLink = MutableStateFlow(initialLink)
 
     /** The last deep link routed, held until whatever imports or plays it calls [consumeLink]. */
     val pendingLink: StateFlow<DeepLink?> = _pendingLink.asStateFlow()
@@ -85,6 +87,23 @@ class Navigator(
         origin: Point? = null,
     ) {
         val from = now
+        if (destination.presentation == Presentation.ROOT) {
+            go(destination, origin)
+            return
+        }
+        val destinationSection = destination.section
+        if (destinationSection != null && destinationSection != from.section) {
+            val section = destinationSection
+            val stack = from.stacks.getValue(section)
+            val base = if (stack.size > 1) stack.dropLast(1) else stack
+            val next = base + destination
+            commit(
+                NavMove.Kind.SWITCH,
+                from.copy(section = section, stacks = from.stacks + (section to next)),
+                origin,
+            )
+            return
+        }
         val keepsRoot = from.stack.size > 1 || destination.presentation == Presentation.ROOT
         val base = if (keepsRoot) from.stack.dropLast(1) else from.stack
         commit(NavMove.Kind.REPLACE, from.copy(stacks = from.stacks + (from.section to base + destination)), origin)
@@ -179,7 +198,8 @@ class Navigator(
 
     private fun backTarget(from: NavState): NavState? =
         when {
-            from.gate != null -> from.copy(gate = null).takeIf { from.gate.dismissible }
+            // A non-dismissible gate owns back too; never let a gesture dismiss content behind it.
+            from.gate != null -> if (from.gate.dismissible) from.copy(gate = null) else null
             from.overlays.isNotEmpty() -> from.copy(overlays = from.overlays.dropLast(1))
             from.stack.size > 1 -> from.copy(stacks = from.stacks + (from.section to from.stack.dropLast(1)))
             from.section != Section.PLAYER -> from.copy(section = Section.PLAYER)
@@ -205,6 +225,7 @@ class Navigator(
     ) {
         val from = now
         if (to == from) return
+        if (!gesture) _backGesture.value = null
         _state.value = to
         _moves.tryEmit(NavMove(kind, from, to, origin, gesture))
     }

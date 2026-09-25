@@ -26,5 +26,7 @@ google-services.json
 .codex/
 graphify/
 AGENTS.md
+.reference/
+.verification/
 __pycache__/
 *.logcat

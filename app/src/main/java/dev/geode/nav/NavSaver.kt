@@ -35,9 +35,11 @@ object NavSaver {
         val stacks =
             Section.entries.associateWith { each ->
                 val routes = fields[KEY_STACK + each.name].toRoutes().mapNotNull(Routes::decode)
-                if (routes.firstOrNull()?.presentation == Presentation.ROOT) routes else listOf(each.root) + routes
+                    .filter { it.section == each || it.section == null }
+                val root = routes.firstOrNull { it.presentation == Presentation.ROOT } ?: each.root
+                listOf(root) + routes.filter { it.presentation != Presentation.ROOT }
             }
-        val overlays = fields[KEY_OVERLAYS].toRoutes().mapNotNull(Routes::decodeOverlay)
+        val overlays = fields[KEY_OVERLAYS].toRoutes().mapNotNull(Routes::decodeOverlay).distinct()
         val gate = fields[KEY_GATE]?.let { name -> Gate.entries.firstOrNull { it.name == name } }
         return NavState(section, stacks, overlays, gate)
     }
