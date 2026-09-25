@@ -21,30 +21,30 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.geode.ui.GuiPrefs
-import dev.geode.ui.theme.MaliFamily
-import dev.geode.ui.theme.MysteryQuestFamily
+
+
 
 /**
  * Colour tokens for the "liquid glass" design system (see docs/design/liquid-glass/README.md).
  * A single source of truth: every glass primitive reads these instead of hardcoding colour.
  */
 object GlassPalette {
-    val base = Color(0xFF8C95BB)
-    val baseLight = Color(0xFFA4ACCB)
-    val baseShadow = Color(0xFF6F78A3)
+    val base = Color(0xFF122B3C)
+    val baseLight = Color(0xFF1C3D4B)
+    val baseShadow = Color(0xFF071720)
 
-    val mint = Color(0xFFBFEBD8)
-    val lavender = Color(0xFFCDBDF0)
-    val peach = Color(0xFFF6CDB2)
-    val pink = Color(0xFFF3BFD8)
-    val sky = Color(0xFFBFD8F2)
+    val mint = Color(0xFFA8FFF1)
+    val lavender = Color(0xFFD0CEF5)
+    val peach = Color(0xFFF0D7AF)
+    val pink = Color(0xFFFFA7AE)
+    val sky = Color(0xFFC6F0F3)
 
-    val glassFill: Color = Color.White.copy(alpha = 0.32f)
-    val glassRim: Color = Color.White.copy(alpha = 0.55f)
+    val glassFill: Color = Color(0xFF204553)
+    val glassRim: Color = Color(0xFF9CCCD3).copy(alpha = 0.48f)
     val glassShadow: Color = baseShadow.copy(alpha = 0.35f)
 
-    val textPrimary: Color = Color.White.copy(alpha = 0.92f)
-    val textSecondary: Color = Color.White.copy(alpha = 0.66f)
+    val textPrimary: Color = Color(0xFFF2FCFA)
+    val textSecondary: Color = Color(0xFFBDCFD4)
 }
 
 /** Shape tokens shared by every glass primitive. */
@@ -67,7 +67,7 @@ object GlassShapes {
 
 /** Motion tokens for touch effects and drift animation, in the units each site needs. */
 object GlassMotion {
-    const val PRESS_SCALE = 0.96f
+    const val PRESS_SCALE = 0.965f
     val SPRING_STIFFNESS = Spring.StiffnessMediumLow
     const val RIPPLE_DURATION_MS = 900
     const val HOLD_THRESHOLD_MS = 350L
@@ -82,7 +82,7 @@ object GlassElevation {
     val rimWidth: Dp = 1.dp
     val shadowBlur: Dp = 18.dp
     val glowBlur: Dp = 24.dp
-    const val SPECULAR_ALPHA = 0.5f
+    const val SPECULAR_ALPHA = 0.16f
 }
 
 /** Type scale for the glass UI: one family, light weights, titles 28 sp / body 16 sp / labels 13 sp. */
@@ -100,21 +100,21 @@ object GlassTypography {
             lineHeight = (lineHeight * textScale).sp,
         )
         return Typography(
-            displayLarge = style(MysteryQuestFamily, 34, FontWeight.Normal),
-            displayMedium = style(MysteryQuestFamily, 30, FontWeight.Normal),
-            displaySmall = style(MysteryQuestFamily, 28, FontWeight.Normal),
-            headlineLarge = style(MaliFamily, 28, FontWeight.Normal),
-            headlineMedium = style(MaliFamily, 24, FontWeight.Normal),
-            headlineSmall = style(MaliFamily, 22, FontWeight.Normal),
-            titleLarge = style(MaliFamily, 20, FontWeight.Medium),
-            titleMedium = style(MaliFamily, 18, FontWeight.Medium),
-            titleSmall = style(MaliFamily, 16, FontWeight.Medium),
-            bodyLarge = style(MaliFamily, 16, FontWeight.Normal),
-            bodyMedium = style(MaliFamily, 15, FontWeight.Normal),
-            bodySmall = style(MaliFamily, 13, FontWeight.Normal),
-            labelLarge = style(MaliFamily, 14, FontWeight.Normal),
-            labelMedium = style(MaliFamily, 13, FontWeight.Normal),
-            labelSmall = style(MaliFamily, 12, FontWeight.Normal),
+            displayLarge = style(FontFamily.SansSerif, 38, FontWeight.SemiBold),
+            displayMedium = style(FontFamily.SansSerif, 32, FontWeight.SemiBold),
+            displaySmall = style(FontFamily.SansSerif, 28, FontWeight.SemiBold),
+            headlineLarge = style(FontFamily.SansSerif, 28, FontWeight.SemiBold),
+            headlineMedium = style(FontFamily.SansSerif, 24, FontWeight.SemiBold),
+            headlineSmall = style(FontFamily.SansSerif, 22, FontWeight.SemiBold),
+            titleLarge = style(FontFamily.SansSerif, 20, FontWeight.Medium),
+            titleMedium = style(FontFamily.SansSerif, 18, FontWeight.Medium),
+            titleSmall = style(FontFamily.SansSerif, 16, FontWeight.Medium),
+            bodyLarge = style(FontFamily.SansSerif, 16, FontWeight.Normal),
+            bodyMedium = style(FontFamily.SansSerif, 15, FontWeight.Normal),
+            bodySmall = style(FontFamily.SansSerif, 13, FontWeight.Medium),
+            labelLarge = style(FontFamily.SansSerif, 14, FontWeight.Medium),
+            labelMedium = style(FontFamily.SansSerif, 13, FontWeight.Medium),
+            labelSmall = style(FontFamily.SansSerif, 12, FontWeight.Normal),
         )
     }
 }
@@ -205,3 +205,4 @@ fun GlassMaterialTheme(
         )
     }
 }
+

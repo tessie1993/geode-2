@@ -4,6 +4,7 @@ import android.view.Display
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -38,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,8 +76,8 @@ import dev.geode.ui.glass.GlassPalette
 import dev.geode.ui.glass.GlassShapes
 import dev.geode.ui.glass.GlassTextField
 import dev.geode.ui.glass.GlassTopBar
-import dev.geode.ui.glass.GlassVerticalTabs
-import dev.geode.ui.glass.LiquidBackground
+import dev.geode.ui.glass.GlassNavigationRail
+import dev.geode.ui.opaline.OpalineScene
 import dev.geode.ui.glass.LocalWaterField
 import dev.geode.ui.glass.floatOnWater
 import dev.geode.ui.glass.glassSurface
@@ -156,7 +158,7 @@ fun AppRoot() {
             }
     }
     VisualizerEngineBindings(viewModel, visualizerView)
-    androidx.activity.compose.BackHandler(enabled = !appState.onPlayer) { appState.resetToPlayer() }
+    androidx.activity.compose.BackHandler(enabled = !appState.onPlayer && !appState.searching && !appState.expanded) { appState.resetToPlayer() }
     GlassMaterialTheme(gui = gui) {
         val waterField = rememberWaterField(liquidMotion = gui.liquidMotion, reducedMotion = gui.reducedMotion)
         CompositionLocalProvider(LocalWaterField provides waterField) {
@@ -236,7 +238,12 @@ private fun AppShellContent(
         GeodeDestination.entries
             .filter { it != GeodeDestination.STUDIO || showsStudio }
             .map { NavEntry(it, GlassNavItem(stringResource(it.labelRes), it.icon)) }
+    LaunchedEffect(showsStudio) {
+        if (!showsStudio && appState.dest == GeodeDestination.STUDIO) appState.resetToPlayer()
+    }
+    val destinationState = rememberSaveableStateHolder()
     val destinationContent: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
+        Column(Modifier.fillMaxSize()) {
         PlaybackNoticeBanner(viewModel)
         AnimatedContent(
             targetState = appState.dest,
@@ -244,12 +251,13 @@ private fun AppShellContent(
                 if (gui.reducedMotion) {
                     EnterTransition.None togetherWith ExitTransition.None
                 } else {
-                    (fadeIn(tween(220)) + scaleIn(initialScale = 0.98f, animationSpec = tween(220)))
+                    (fadeIn(tween(220)) + scaleIn(initialScale = 0.94f, animationSpec = spring(dampingRatio = 0.82f, stiffness = 340f)))
                         .togetherWith(fadeOut(tween(150)))
                 }
             },
             label = "destination",
         ) { dest ->
+            destinationState.SaveableStateProvider(dest.name) {
             when (dest) {
                 GeodeDestination.PLAYER ->
                     PlayerScreen(
@@ -295,12 +303,12 @@ private fun AppShellContent(
             }
         }
     }
+        }
+        }
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        LiquidBackground(
-            Modifier.fillMaxSize(),
-            motion = gui.liquidMotion,
-            bubbleDensity = gui.bubbleDensity,
-            tint = gui.glassTint,
+        OpalineScene(
+            modifier = Modifier.fillMaxSize(),
+            reducedMotion = gui.reducedMotion || gui.liquidMotion <= 0f,
         )
         val widthClass = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
         if (widthClass == WindowWidthSizeClass.COMPACT) {
@@ -318,7 +326,7 @@ private fun AppShellContent(
                 appState = appState,
                 hasMedia = state.hasMedia,
                 miniPlayer = miniPlayer,
-                content = { destinationContent(true) },
+                content = { destinationContent(widthClass == WindowWidthSizeClass.EXPANDED) },
             )
         }
         if (appState.searching) {
@@ -456,20 +464,20 @@ private fun AppShellExpanded(
             .navigationBarsPadding()
             .padding(16.dp),
     ) {
-        GlassVerticalTabs(
-            titles = navEntries.map { it.item.label },
+        GlassNavigationRail(
+            items = navEntries.map { it.item },
             selected = navEntries.indexOfFirst { it.destination == appState.dest }.coerceAtLeast(0),
             onSelect = { appState.navigateTo(navEntries[it].destination) },
             modifier = Modifier.padding(end = 16.dp),
         )
         Column(Modifier.weight(1f)) {
-            if (hasMedia && !appState.onPlayer) miniPlayer()
             Box(Modifier.weight(1f)) { content() }
+            if (hasMedia && !appState.onPlayer) miniPlayer()
         }
     }
 }
 
-/** A floating glass pill with bubble transport buttons, matching ref-05's now-playing strip. */
+/** A persistent opaline transport capsule above the destination dock. */
 @Composable
 private fun MiniPlayer(
     title: String?,
@@ -627,11 +635,9 @@ fun SearchScreen(
         }
 
     Box(Modifier.fillMaxSize().dismissTransform(dismiss)) {
-        LiquidBackground(
-            Modifier.fillMaxSize(),
-            motion = gui.liquidMotion,
-            bubbleDensity = gui.bubbleDensity,
-            tint = gui.glassTint,
+        OpalineScene(
+            modifier = Modifier.fillMaxSize(),
+            reducedMotion = gui.reducedMotion || gui.liquidMotion <= 0f,
         )
         Column(
             Modifier

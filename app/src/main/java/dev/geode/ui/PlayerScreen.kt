@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
@@ -44,7 +46,6 @@ import dev.geode.ui.glass.GlassIcons
 import dev.geode.ui.glass.GlassListRow
 import dev.geode.ui.glass.GlassPalette
 import dev.geode.ui.glass.GlassShapes
-import dev.geode.ui.glass.GlassTopBar
 import dev.geode.ui.glass.GlassTransportBar
 import dev.geode.ui.glass.floatOnWater
 import dev.geode.ui.glass.glassSurface
@@ -82,11 +83,17 @@ fun PlayerScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            GlassTopBar(
-                title = stringResource(R.string.app_name),
-                onClose = onOpenLibrary,
-                onMenu = onOpenSearch,
-            )
+            OpalineScreenHeader(
+                title = stringResource(R.string.nav_player),
+                eyebrow = stringResource(R.string.app_name),
+            ) {
+                GlassBubbleButton(
+                    icon = GlassIcons.Search,
+                    contentDescription = stringResource(R.string.action_search),
+                    onClick = onOpenSearch,
+                    size = 48.dp,
+                )
+            }
         }
 
         item {
@@ -183,7 +190,8 @@ private fun PlayerHero(
     Column(
         modifier
             .fillMaxWidth()
-            .glassTouch(enabled = hasSource, onClick = onExpand),
+            .glassSurface(shape = GlassShapes.tile, glow = 0.3f)
+            .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -193,7 +201,8 @@ private fun PlayerHero(
                 .glassSurface(
                     shape = GlassShapes.bubble,
                     glow = if (state.isPlaying || foreign || micActive) 0.6f else 0.25f,
-                ).floatOnWater(strength = 1.3f),
+                ).glassTouch(enabled = hasSource, onClick = onExpand)
+                .floatOnWater(strength = 1.3f),
         ) {
             TrackArtwork(
                 if (foreign || micActive) null else uri,
@@ -227,7 +236,7 @@ private fun PlayerHero(
                 Modifier.weight(1f),
                 style = MaterialTheme.typography.headlineSmall,
                 color = GlassPalette.textPrimary,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (state.hasMedia && !foreign) {
@@ -259,6 +268,7 @@ private fun PlayerHero(
             overflow = TextOverflow.Ellipsis,
         )
         Row(
+            Modifier.horizontalScroll(rememberScrollState()),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -305,7 +315,10 @@ private fun TransportSection(
     onOpenLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(
+        modifier.fillMaxWidth().glassSurface(shape = GlassShapes.tile).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Row(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -335,7 +348,7 @@ private fun TransportSection(
             onProfile = onOpenQueuePanel,
         )
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             GlassButton(

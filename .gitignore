@@ -27,3 +27,6 @@ google-services.json
 AGENTS.md
 __pycache__/
 *.logcat
+
+# Local source design package
+.opaline-reference/
