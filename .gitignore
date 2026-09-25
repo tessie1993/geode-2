@@ -1,0 +1,37 @@
+# Build output
+.gradle/
+build/
+# Bundled runtime sources are shipped assets, not Gradle output.
+!app/src/main/assets/opaline/vendor/three/build/
+!app/src/main/assets/opaline/vendor/three/build/*.js
+.cxx/
+.kotlin/
+local.properties
+
+# Upload-key material — never commit.
+keystore.properties
+*.jks
+*.keystore
+
+# Service credentials. The upload feature needs OAuth client ids and secrets
+# for YouTube, TikTok and Instagram, and the moment those exist locally they
+# must not be committable — a leaked client secret is a rotation and a store
+# re-verification, not an inconvenience.
+.env
+.env.*
+!.env.example
+secrets.properties
+google-services.json
+
+# Agent tooling is local-only and is not tracked in this repository.
+/.worktrees/
+/geode-app/
+.claude/
+.agents/
+.codex/
+graphify/
+AGENTS.md
+.reference/
+.verification/
+__pycache__/
+*.logcat

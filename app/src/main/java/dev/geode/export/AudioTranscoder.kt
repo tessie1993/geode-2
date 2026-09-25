@@ -1,0 +1,708 @@
+package dev.geode.export
+
+import android.content.Context
+import android.media.MediaCodec
+import android.media.MediaCodecInfo
+import android.media.MediaExtractor
+import android.media.MediaFormat
+import android.net.Uri
+import dev.geode.R
+import dev.geode.RingLog
+import dev.geode.audio.AiffPcm
+import dev.geode.util.bestEffort
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+
+class AudioTranscoder(
+    private val context: Context,
+) {
+    class Result(
+        val format: MediaFormat,
+        val file: File,
+        val sampleInfos: List<SampleInfo>,
+    ) {
+        val durationUs: Long =
+            sampleInfos.lastOrNull()?.let { last ->
+                // An AAC-LC frame is 1024 samples; its duration depends on the encoder's actual
+                // output sample rate (23.2ms at 44.1kHz, 21.3ms at 48kHz), not a fixed 24ms.
+                val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                last.presentationTimeUs + 1_024_000_000L / sampleRate
+            } ?: 0L
+
+        fun release() {
+            bestEffort(TAG, "file.delete()") { file.delete() }
+        }
+    }
+
+    class SampleInfo(
+        val offset: Long,
+        val size: Int,
+        val presentationTimeUs: Long,
+        val flags: Int,
+    )
+
+    private fun downmix(
+        src: ByteBuffer,
+        srcCh: Int,
+        dstCh: Int,
+        scratch: PcmScratch,
+    ): ByteBuffer {
+        val sb = src.duplicate().order(ByteOrder.nativeOrder()).asShortBuffer()
+        val frames = sb.remaining() / srcCh
+        val out = scratch.prepare(frames * dstCh * 2)
+        val ob = out.asShortBuffer()
+        for (f in 0 until frames) {
+            val base = f * srcCh
+            if (dstCh == 1) {
+                var acc = 0
+                for (c in 0 until srcCh) acc += sb.get(base + c)
+                ob.put((acc / srcCh).toShort())
+            } else {
+                var rest = 0
+                for (c in 2 until srcCh) rest += sb.get(base + c)
+                val fold = if (srcCh > 2) rest / (srcCh - 2) / 2 else 0
+                ob.put((sb.get(base).toInt() + fold).coerceIn(-32768, 32767).toShort())
+                ob.put((sb.get(base + 1).toInt() + fold).coerceIn(-32768, 32767).toShort())
+            }
+        }
+        return out
+    }
+
+    /**
+     * Downmixes [n] interleaved 16-bit samples at [srcCh] channels into `frames * dstCh` samples
+     * at [dstCh] (1 or 2) channels, written into [out] starting at index 0. Shared by the AIFF
+     * transcode pass and [measureAiffLoudness], which both need exactly this fold and neither can
+     * afford a fresh array per buffer.
+     */
+    private fun foldAiffFrames(
+        src: ShortArray,
+        n: Int,
+        srcCh: Int,
+        dstCh: Int,
+        out: ShortArray,
+    ) {
+        val frames = n / srcCh
+        if (srcCh <= dstCh) {
+            System.arraycopy(src, 0, out, 0, frames * dstCh)
+            return
+        }
+        for (f in 0 until frames) {
+            val base = f * srcCh
+            var rest = 0
+            for (c in 2 until srcCh) rest += src[base + c]
+            val fold = rest / (srcCh - 2) / 2
+            out[f * dstCh] = (src[base] + fold).coerceIn(-32768, 32767).toShort()
+            if (dstCh > 1) out[f * dstCh + 1] = (src[base + 1] + fold).coerceIn(-32768, 32767).toShort()
+        }
+    }
+
+    /**
+     * Scales 16-bit PCM in [pcm] (its full `position(0) until limit`) by [gain] in place, clipping
+     * to the sample range rather than wrapping. [gain] is expected to already respect a target's
+     * true-peak ceiling (see [sourceGain]), so clipping here only guards the last fraction of a dB
+     * that a block-based loudness measurement cannot promise exactly — it is not a substitute for a
+     * limiter.
+     */
+    private fun applyGain(
+        pcm: ByteBuffer,
+        gain: Float,
+    ) {
+        if (gain == 1f) return
+        val shorts = pcm.duplicate().order(ByteOrder.nativeOrder()).asShortBuffer()
+        for (i in 0 until shorts.remaining()) {
+            val scaled = shorts.get(i) * gain
+            shorts.put(i, scaled.coerceIn(-32768f, 32767f).toInt().toShort())
+        }
+    }
+
+    /**
+     * Measures [uri]'s *source* loudness — over the same [startMs]/[maxDurationMs] window
+     * [transcode] will actually export, not the whole source file it may be trimmed from — and
+     * returns the linear gain [transcode] should apply to reach [target]. Returns 1f (no change)
+     * for [LoudnessTarget.LeaveAsIs], for a target that could not be measured (unsupported channel
+     * layout, undecodable file, too short to gate), or on any failure along the way.
+     *
+     * This is a second full decode of the source, solely to read its level before any gain is
+     * baked into the AAC track: nothing upstream of [transcode] ever holds this file's PCM, so
+     * applying a target-driven gain costs one extra decode pass over the source, in addition to
+     * [VideoExporter]'s own post-export measurement of the finished file.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    fun sourceGain(
+        uri: Uri,
+        target: LoudnessTarget,
+        startMs: Long = 0L,
+        maxDurationMs: Long = 0L,
+        isCancelled: () -> Boolean = { false },
+    ): Float {
+        if (target == LoudnessTarget.LeaveAsIs) return 1f
+        val report =
+            try {
+                val aiff = AiffPcm.open(context, uri)
+                if (aiff != null) {
+                    measureAiffLoudness(aiff, startMs, maxDurationMs)
+                } else {
+                    val measured = LoudnessMeter(context).measureBlocking(uri, isCancelled, startMs, maxDurationMs)
+                    (measured as? LoudnessResult.Measured)?.report
+                }
+            } catch (e: Exception) {
+                RingLog.note(TAG, "Source loudness measurement failed", e)
+                null
+            }
+        return report?.let { LoudnessTargets.advise(it, target).linearGain } ?: 1f
+    }
+
+    /** The [sourceGain] pass over an AIFF source, which [LoudnessMeter] cannot open directly. */
+    @Suppress("NestedBlockDepth")
+    private fun measureAiffLoudness(
+        aiff: AiffPcm,
+        startMs: Long,
+        maxDurationMs: Long,
+    ): LoudnessReport? {
+        try {
+            val channels = aiff.channels.coerceAtMost(2)
+            if (!LoudnessAnalyser.supports(channels)) return null
+            val analyser = LoudnessAnalyser(aiff.sampleRate, channels)
+            val readBuf = ShortArray(16384 - (16384 % aiff.channels))
+            val foldScratch = ShortArray(readBuf.size)
+            val floats = FloatArray(readBuf.size)
+            if (startMs > 0) {
+                var toSkip = startMs * aiff.sampleRate / 1000 * aiff.channels
+                while (toSkip > 0) {
+                    val want = minOf(toSkip, readBuf.size.toLong()).toInt()
+                    val n = aiff.read(if (want == readBuf.size) readBuf else ShortArray(want))
+                    if (n <= 0) break
+                    toSkip -= n
+                }
+            }
+            val maxUs = maxDurationMs * 1000
+            var elapsedUs = 0L
+            while (maxUs <= 0 || elapsedUs <= maxUs) {
+                val n = aiff.read(readBuf)
+                if (n <= 0) break
+                val need = (n / aiff.channels) * channels
+                foldAiffFrames(readBuf, n, aiff.channels, channels, foldScratch)
+                for (i in 0 until need) floats[i] = foldScratch[i] / 32768f
+                analyser.feed(floats, need)
+                elapsedUs += (n / aiff.channels).toLong() * 1_000_000L / aiff.sampleRate
+            }
+            return if (analyser.hasCompleteBlock) analyser.finish() else null
+        } finally {
+            aiff.close()
+        }
+    }
+
+    @Suppress("NestedBlockDepth", "ThrowsCount")
+    private fun transcodeAiff(
+        aiff: AiffPcm,
+        maxDurationMs: Long,
+        startMs: Long,
+        gain: Float,
+        isCancelled: () -> Boolean,
+        onProgress: (Float) -> Unit,
+    ): Result {
+        val channels = aiff.channels.coerceAtMost(2)
+        val sampleRate = aiff.sampleRate
+        val encFormat =
+            MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, channels).apply {
+                setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
+                setInteger(MediaFormat.KEY_BIT_RATE, 192_000)
+                setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 65536)
+            }
+        val encoder: MediaCodec
+        val outFile: File
+        val out: BufferedOutputStream
+        var encoderRef: MediaCodec? = null
+        var outFileRef: File? = null
+        try {
+            encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).also { encoderRef = it }
+            encoder.configure(encFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            encoder.start()
+            outFile = File.createTempFile("geode_aac_", ".bin", context.cacheDir).also { outFileRef = it }
+            out = BufferedOutputStream(FileOutputStream(outFile))
+        } catch (t: Throwable) {
+            bestEffort(TAG, "encoderRef?.release()") { encoderRef?.release() }
+            bestEffort(TAG, "outFileRef?.delete()") { outFileRef?.delete() }
+            bestEffort(TAG, "aiff.close()") { aiff.close() }
+            throw t
+        }
+        var outBytes = 0L
+        val infos = SampleIndex()
+        var outFormat: MediaFormat? = null
+        val maxUs = maxDurationMs * 1000
+        val encInfo = MediaCodec.BufferInfo()
+        val readBuf = ShortArray(16384 - (16384 % aiff.channels))
+        val foldScratch = ShortArray(readBuf.size)
+        val pcmScratch = PcmScratch()
+        var srcDone = false
+        var eosSent = false
+        var encoderDone = false
+        var pcmCarry: ByteBuffer? = null
+        var carryTimeUs = 0L
+        var fedBytes = 0L
+        var progressed = false
+        var stallIterations = 0
+        if (startMs > 0) {
+            var toSkip = startMs * aiff.sampleRate / 1000 * aiff.channels
+            while (toSkip > 0) {
+                val want = minOf(toSkip, readBuf.size.toLong()).toInt()
+                val n = aiff.read(if (want == readBuf.size) readBuf else ShortArray(want))
+                if (n <= 0) break
+                toSkip -= n
+            }
+        }
+        try {
+            while (!encoderDone) {
+                if (isCancelled()) throw kotlinx.coroutines.CancellationException("Export cancelled")
+                progressed = false
+                if (pcmCarry == null && !srcDone) {
+                    val n = aiff.read(readBuf)
+                    if (n <= 0 || (maxUs > 0 && carryTimeUs > maxUs)) {
+                        srcDone = true
+                    } else {
+                        val need = (n / aiff.channels) * channels
+                        foldAiffFrames(readBuf, n, aiff.channels, channels, foldScratch)
+                        val bb = pcmScratch.prepare(need * 2)
+                        bb.asShortBuffer().put(foldScratch, 0, need)
+                        applyGain(bb, gain)
+                        pcmCarry = bb
+                        onProgress(aiff.progress)
+                    }
+                    progressed = true
+                }
+                val carry = pcmCarry
+                if (carry != null) {
+                    val inIndex = encoder.dequeueInputBuffer(10_000)
+                    if (inIndex >= 0) {
+                        val inBuf = checkNotNull(encoder.getInputBuffer(inIndex)) { "encoder input buffer null (codec error state)" }
+                        val toWrite = minOf(inBuf.remaining(), carry.remaining())
+                        val slice = carry.duplicate().apply { limit(position() + toWrite) }
+                        inBuf.put(slice)
+                        encoder.queueInputBuffer(inIndex, 0, toWrite, carryTimeUs, 0)
+                        fedBytes += toWrite
+                        carryTimeUs = fedBytes * 1_000_000L / (sampleRate.toLong() * channels * 2)
+                        carry.position(carry.position() + toWrite)
+                        if (!carry.hasRemaining()) pcmCarry = null
+                        progressed = true
+                    }
+                } else if (srcDone && !eosSent) {
+                    val inIndex = encoder.dequeueInputBuffer(10_000)
+                    if (inIndex >= 0) {
+                        encoder.queueInputBuffer(inIndex, 0, 0, carryTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                        eosSent = true
+                        progressed = true
+                    }
+                }
+                while (true) {
+                    val outIndex = encoder.dequeueOutputBuffer(encInfo, if (eosSent) 10_000 else 0)
+                    if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                        outFormat = encoder.outputFormat
+                        progressed = true
+                        continue
+                    }
+                    if (outIndex >= 0) {
+                        progressed = true
+                        if (encInfo.size > 0 && encInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0) {
+                            val buf = checkNotNull(encoder.getOutputBuffer(outIndex)) { "encoder output buffer null (codec error state)" }
+                            buf.position(encInfo.offset)
+                            buf.limit(encInfo.offset + encInfo.size)
+                            val bytes = ByteArray(encInfo.size)
+                            buf.get(bytes)
+                            infos.add(outBytes, encInfo.size, encInfo.presentationTimeUs, encInfo.flags)
+                            out.write(bytes)
+                            outBytes += encInfo.size
+                        }
+                        val eos = encInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
+                        encoder.releaseOutputBuffer(outIndex, false)
+                        if (eos) {
+                            encoderDone = true
+                            break
+                        }
+                    } else {
+                        break
+                    }
+                }
+                if (progressed) {
+                    stallIterations = 0
+                } else if (++stallIterations > STALL_LIMIT) {
+                    throw ExportFailure(R.string.export_error_audio_transcode_stalled)
+                }
+            }
+            out.flush()
+            return Result(requireNotNull(outFormat) { "AAC encoder produced no format" }, outFile, infos)
+        } catch (t: Throwable) {
+            bestEffort(TAG, "out.close()") { out.close() }
+            bestEffort(TAG, "outFile.delete()") { outFile.delete() }
+            throw t
+        } finally {
+            bestEffort(TAG, "out.close()") { out.close() }
+            bestEffort(TAG, "encoder.stop()") { encoder.stop() }
+            bestEffort(TAG, "encoder.release()") { encoder.release() }
+            bestEffort(TAG, "aiff.close()") { aiff.close() }
+        }
+    }
+
+    @Suppress("NestedBlockDepth", "ThrowsCount")
+    fun transcode(
+        uri: Uri,
+        maxDurationMs: Long,
+        startMs: Long = 0L,
+        gain: Float = 1f,
+        isCancelled: () -> Boolean = { false },
+        onProgress: (Float) -> Unit = {},
+    ): Result {
+        AiffPcm.open(context, uri)?.let { aiff ->
+            return transcodeAiff(aiff, maxDurationMs, startMs, gain, isCancelled, onProgress)
+        }
+        val extractor = MediaExtractor()
+        val srcFormat: MediaFormat
+        var sampleRate: Int
+        var srcChannels: Int
+        var channels: Int
+        val decoder: MediaCodec
+        var encoder: MediaCodec? = null
+        val outFile: File
+        val out: BufferedOutputStream
+        var decoderRef: MediaCodec? = null
+        var encoderRef: MediaCodec? = null
+        var outFileRef: File? = null
+        try {
+            extractor.setDataSource(context, uri, null)
+            val trackIndex =
+                (0 until extractor.trackCount).firstOrNull {
+                    extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
+                } ?: throw IllegalArgumentException("No audio track in source file")
+            srcFormat = extractor.getTrackFormat(trackIndex)
+            extractor.selectTrack(trackIndex)
+            if (startMs > 0) extractor.seekTo(startMs * 1000, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            val mime = requireNotNull(srcFormat.getString(MediaFormat.KEY_MIME))
+            sampleRate = srcFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+            srcChannels = srcFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+            channels = srcChannels.coerceAtMost(2)
+
+            decoder = MediaCodec.createDecoderByType(mime).also { decoderRef = it }
+            decoder.configure(srcFormat, null, null, 0)
+            decoder.start()
+
+            outFile = File.createTempFile("geode_aac_", ".bin", context.cacheDir).also { outFileRef = it }
+            out = BufferedOutputStream(FileOutputStream(outFile))
+        } catch (t: Throwable) {
+            bestEffort(TAG, "decoderRef?.release()") { decoderRef?.release() }
+            bestEffort(TAG, "outFileRef?.delete()") { outFileRef?.delete() }
+            bestEffort(TAG, "extractor.release()") { extractor.release() }
+            throw t
+        }
+
+        fun ensureEncoder(decoderFormat: MediaFormat?) {
+            if (encoder != null) return
+            if (decoderFormat != null) {
+                if (decoderFormat.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                    sampleRate = decoderFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                }
+                if (decoderFormat.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                    srcChannels = decoderFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                    channels = srcChannels.coerceAtMost(2)
+                }
+            }
+            val encFormat =
+                MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, channels).apply {
+                    setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
+                    setInteger(MediaFormat.KEY_BIT_RATE, 192_000)
+                    setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 65536)
+                }
+            encoder =
+                MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).also {
+                    encoderRef = it
+                    it.configure(encFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+                    it.start()
+                }
+        }
+        var outBytes = 0L
+        val infos = SampleIndex()
+        var outFormat: MediaFormat? = null
+        val maxUs = maxDurationMs * 1000
+        val startUs = startMs * 1000
+        val endUs = if (maxUs > 0) startUs + maxUs else 0L
+        val estimatedUs =
+            if (maxUs > 0) {
+                maxUs
+            } else if (srcFormat.containsKey(MediaFormat.KEY_DURATION)) {
+                (srcFormat.getLong(MediaFormat.KEY_DURATION) - startUs).coerceAtLeast(0L)
+            } else {
+                0L
+            }
+        val decInfo = MediaCodec.BufferInfo()
+        val encInfo = MediaCodec.BufferInfo()
+        val pcmScratch = PcmScratch()
+        val downmixScratch = PcmScratch()
+        var extractorDone = false
+        var decoderDone = false
+        var eosSent = false
+        var encoderDone = false
+        var pcmCarry: ByteBuffer? = null
+        var carryTimeUs = 0L
+        var nonMonotonicPtsLogged = false
+        var progressed = false
+        var stallIterations = 0
+
+        fun feedEncoder(): Boolean {
+            val carry = pcmCarry ?: return true
+            val enc = checkNotNull(encoder) { "PCM queued before the encoder existed" }
+            val inIndex = enc.dequeueInputBuffer(10_000)
+            if (inIndex < 0) return false
+            val inBuf = checkNotNull(enc.getInputBuffer(inIndex)) { "encoder input buffer null (codec error state)" }
+            val toWrite = minOf(inBuf.remaining(), carry.remaining())
+            val slice = carry.duplicate().apply { limit(position() + toWrite) }
+            inBuf.put(slice)
+            val bytesPerUs = sampleRate.toLong() * channels * 2 / 1_000_000.0
+            enc.queueInputBuffer(inIndex, 0, toWrite, carryTimeUs, 0)
+            carryTimeUs += (toWrite / bytesPerUs).toLong()
+            carry.position(carry.position() + toWrite)
+            if (!carry.hasRemaining()) pcmCarry = null
+            progressed = true
+            return pcmCarry == null
+        }
+
+        try {
+            while (!encoderDone) {
+                if (isCancelled()) throw kotlinx.coroutines.CancellationException("Export cancelled")
+                progressed = false
+                if (!extractorDone) {
+                    val inIndex = decoder.dequeueInputBuffer(10_000)
+                    if (inIndex >= 0) {
+                        val buf = checkNotNull(decoder.getInputBuffer(inIndex)) { "decoder input buffer null (codec error state)" }
+                        val size = extractor.readSampleData(buf, 0)
+                        if (size < 0 || (endUs > 0 && extractor.sampleTime > endUs)) {
+                            decoder.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            extractorDone = true
+                        } else {
+                            decoder.queueInputBuffer(inIndex, 0, size, extractor.sampleTime, 0)
+                            if (estimatedUs > 0) onProgress((extractor.sampleTime / estimatedUs.toFloat()).coerceIn(0f, 1f))
+                            extractor.advance()
+                        }
+                        progressed = true
+                    }
+                }
+                if (!decoderDone && pcmCarry == null) {
+                    val outIndex = decoder.dequeueOutputBuffer(decInfo, 10_000)
+                    if (outIndex >= 0) {
+                        progressed = true
+                        if (decInfo.size > 0) {
+                            val buf = checkNotNull(decoder.getOutputBuffer(outIndex)) { "decoder output buffer null (codec error state)" }
+                            buf.position(decInfo.offset)
+                            buf.limit(decInfo.offset + decInfo.size)
+                            val outFmt = decoder.outputFormat
+                            ensureEncoder(outFmt)
+                            val pcmEnc =
+                                if (outFmt.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                                    outFmt.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                                } else {
+                                    android.media.AudioFormat.ENCODING_PCM_16BIT
+                                }
+                            val copy: ByteBuffer
+                            if (pcmEnc == android.media.AudioFormat.ENCODING_PCM_FLOAT) {
+                                val fb = buf.order(ByteOrder.nativeOrder()).asFloatBuffer()
+                                val n = fb.remaining()
+                                copy = pcmScratch.prepare(n * 2)
+                                val sb = copy.asShortBuffer()
+                                for (i in 0 until n) {
+                                    sb.put((fb.get(i).coerceIn(-1f, 1f) * 32767f).toInt().toShort())
+                                }
+                            } else {
+                                copy = pcmScratch.prepare(decInfo.size)
+                                copy.put(buf)
+                                copy.flip()
+                            }
+                            val bufChannels =
+                                if (outFmt.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                                    outFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                                } else {
+                                    srcChannels
+                                }
+                            val mixed =
+                                if (bufChannels > channels) {
+                                    downmix(copy, bufChannels, channels, downmixScratch)
+                                } else {
+                                    copy
+                                }
+                            if (decInfo.presentationTimeUs + 1000 < startUs) {
+                                decoder.releaseOutputBuffer(outIndex, false)
+                                if (decInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) decoderDone = true
+                                continue
+                            }
+                            applyGain(mixed, gain)
+                            pcmCarry = mixed
+                            // A decoder can emit a non-monotonic PTS right after SEEK_TO_PREVIOUS_SYNC lands on
+                            // a sync frame before the real seek target; MediaMuxer rejects a timestamp that goes
+                            // backwards, so this never lets carryTimeUs fall below where it already was.
+                            val decodedUs = (decInfo.presentationTimeUs - startUs).coerceAtLeast(0L)
+                            if (decodedUs < carryTimeUs) {
+                                if (!nonMonotonicPtsLogged) {
+                                    RingLog.note(
+                                        TAG,
+                                        "Decoder PTS went backwards (${decodedUs}us < ${carryTimeUs}us); clamped to stay monotonic",
+                                    )
+                                    nonMonotonicPtsLogged = true
+                                }
+                            } else {
+                                carryTimeUs = decodedUs
+                            }
+                        }
+                        decoder.releaseOutputBuffer(outIndex, false)
+                        if (decInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) decoderDone = true
+                    }
+                }
+                if (pcmCarry != null) {
+                    feedEncoder()
+                } else if (decoderDone && !eosSent) {
+                    ensureEncoder(null)
+                    val enc = checkNotNull(encoder)
+                    val inIndex = enc.dequeueInputBuffer(10_000)
+                    if (inIndex >= 0) {
+                        enc.queueInputBuffer(inIndex, 0, 0, carryTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                        eosSent = true
+                        progressed = true
+                    }
+                }
+                while (true) {
+                    val enc = encoder ?: break
+                    val outIndex = enc.dequeueOutputBuffer(encInfo, if (eosSent) 10_000 else 0)
+                    if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                        outFormat = enc.outputFormat
+                        progressed = true
+                    } else if (outIndex >= 0) {
+                        progressed = true
+                        if (encInfo.size > 0 && encInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0) {
+                            val buf = checkNotNull(enc.getOutputBuffer(outIndex)) { "encoder output buffer null (codec error state)" }
+                            buf.position(encInfo.offset)
+                            buf.limit(encInfo.offset + encInfo.size)
+                            val bytes = ByteArray(encInfo.size)
+                            buf.get(bytes)
+                            infos.add(outBytes, encInfo.size, encInfo.presentationTimeUs, encInfo.flags)
+                            out.write(bytes)
+                            outBytes += encInfo.size
+                        }
+                        val eos = encInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
+                        enc.releaseOutputBuffer(outIndex, false)
+                        if (eos) {
+                            encoderDone = true
+                            break
+                        }
+                    } else {
+                        break
+                    }
+                }
+                if (progressed) {
+                    stallIterations = 0
+                } else if (++stallIterations > STALL_LIMIT) {
+                    throw ExportFailure(R.string.export_error_audio_transcode_stalled)
+                }
+            }
+            out.flush()
+            return Result(requireNotNull(outFormat) { "AAC encoder produced no format" }, outFile, infos)
+        } catch (t: Throwable) {
+            bestEffort(TAG, "out.close()") { out.close() }
+            bestEffort(TAG, "outFile.delete()") { outFile.delete() }
+            throw t
+        } finally {
+            bestEffort(TAG, "out.close()") { out.close() }
+            bestEffort(TAG, "decoder.stop()") { decoder.stop() }
+            bestEffort(TAG, "decoder.release()") { decoder.release() }
+            // encoderRef, not encoder: `encoder` is only assigned once configure() and start()
+            // have both returned, so a codec that fails to configure would otherwise never be
+            // released — and a leaked AAC encoder is a device-wide resource the next export needs.
+            bestEffort(TAG, "encoderRef?.stop()") { encoderRef?.stop() }
+            bestEffort(TAG, "encoderRef?.release()") { encoderRef?.release() }
+            bestEffort(TAG, "extractor.release()") { extractor.release() }
+        }
+    }
+
+    private companion object {
+        const val STALL_LIMIT = 1_000
+
+        /**
+         * How long to wait on the encoder once EOS is in. Matches the AIFF path's own drain
+         * timeout; without it nothing in the post-EOS loop blocks and [STALL_LIMIT] expires
+         * before the codec has had a chance to emit its last buffer.
+         */
+        const val DRAIN_TIMEOUT_US = 10_000L
+    }
+}
+
+/**
+ * A single reusable PCM byte buffer, grown (never shrunk) to the largest size ever needed instead
+ * of being reallocated for every buffer the decoder or encoder hands over — a three-minute export
+ * moves tens of thousands of these through the transcode loop.
+ */
+private class PcmScratch {
+    private var buf = ByteBuffer.allocate(INITIAL_BYTES).order(ByteOrder.nativeOrder())
+
+    /** A cleared buffer of at least [bytes] capacity, positioned at 0 and limited to [bytes]. */
+    fun prepare(bytes: Int): ByteBuffer {
+        if (buf.capacity() < bytes) buf = ByteBuffer.allocate(bytes).order(ByteOrder.nativeOrder())
+        buf.clear()
+        buf.limit(bytes)
+        return buf
+    }
+
+    private companion object {
+        const val INITIAL_BYTES = 64 * 1024
+    }
+}
+
+/**
+ * The AAC frame table for one exported track, as parallel primitive arrays rather than one
+ * [AudioTranscoder.SampleInfo] object (plus its slot in an `ArrayList`) per frame. At ~43 AAC-LC
+ * frames/s a five-minute export is well over 10,000 frames, and packed `LongArray`/`IntArray`
+ * storage is both smaller and far kinder to the garbage collector than that many boxed objects.
+ * [get] synthesizes a [AudioTranscoder.SampleInfo] on read, so [VideoExporter.AudioFeed] — which
+ * only ever reads sequentially through [size] and indexed [get] — sees the same `List` it always
+ * did.
+ */
+private class SampleIndex :
+    AbstractList<AudioTranscoder.SampleInfo>(),
+    RandomAccess {
+    private var offsets = LongArray(INITIAL_CAPACITY)
+    private var sizes = IntArray(INITIAL_CAPACITY)
+    private var timesUs = LongArray(INITIAL_CAPACITY)
+    private var sampleFlags = IntArray(INITIAL_CAPACITY)
+
+    override var size: Int = 0
+        private set
+
+    fun add(
+        offset: Long,
+        size: Int,
+        presentationTimeUs: Long,
+        flags: Int,
+    ) {
+        if (this.size == offsets.size) grow()
+        offsets[this.size] = offset
+        sizes[this.size] = size
+        timesUs[this.size] = presentationTimeUs
+        sampleFlags[this.size] = flags
+        this.size++
+    }
+
+    override fun get(index: Int): AudioTranscoder.SampleInfo {
+        if (index !in 0 until size) throw IndexOutOfBoundsException("index $index, size $size")
+        return AudioTranscoder.SampleInfo(offsets[index], sizes[index], timesUs[index], sampleFlags[index])
+    }
+
+    private fun grow() {
+        val newCapacity = offsets.size * 2
+        offsets = offsets.copyOf(newCapacity)
+        sizes = sizes.copyOf(newCapacity)
+        timesUs = timesUs.copyOf(newCapacity)
+        sampleFlags = sampleFlags.copyOf(newCapacity)
+    }
+
+    private companion object {
+        const val INITIAL_CAPACITY = 256
+    }
+}
+
+private const val TAG = "AudioTranscoder"
