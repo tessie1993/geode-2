@@ -1,5 +1,6 @@
 package dev.geode.ui.opaline
 
+import android.annotation.SuppressLint
 import android.util.Half
 import kotlin.math.PI
 import kotlin.math.abs
@@ -193,9 +194,14 @@ internal object OpalineRoomEnvironment {
         return f0 * (1.0 - fresnel) + fresnel
     }
 
-    private val dfgTable: FloatArray by lazy {
+    private val dfgTable: FloatArray by lazy { decodeDfgTable() }
+
+    // Lint's HalfFloat check misreads the FloatArray initializer lambda as widening a half;
+    // the conversion goes through android.util.Half.toFloat as the check asks.
+    @SuppressLint("HalfFloat")
+    private fun decodeDfgTable(): FloatArray {
         val halves = OpalineDfgLut.halfFloats()
-        FloatArray(halves.size) { Half.toFloat(halves[it]) }
+        return FloatArray(halves.size) { Half.toFloat(halves[it]) }
     }
 
     /** Bilinear read of the three.js DFG table at (roughness, dotNV), clamped to its edges. */

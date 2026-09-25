@@ -14,11 +14,12 @@ internal inline fun packTouchPoints(
     var live = 0
     val capacity = minOf(TouchField.MAX_POINTS, output.size / 2)
     for (i in 0 until pointerCount) {
-        if (i == leavingPointer) continue
         if (live == capacity) break
-        output[live * 2] = (xAt(i) / width * 2f - 1f).coerceIn(-1f, 1f)
-        output[live * 2 + 1] = (1f - yAt(i) / height * 2f).coerceIn(-1f, 1f)
-        live++
+        if (i != leavingPointer) {
+            output[live * 2] = (xAt(i) / width * 2f - 1f).coerceIn(-1f, 1f)
+            output[live * 2 + 1] = (1f - yAt(i) / height * 2f).coerceIn(-1f, 1f)
+            live++
+        }
     }
     return live
 }

@@ -38,11 +38,11 @@ import dev.geode.export.ExportQuality
 import dev.geode.export.ExportRange
 import dev.geode.export.ExportRatio
 import dev.geode.export.LoudnessTarget
+import dev.geode.ui.opaline.OpalineRangeSlider
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeProgress
 import dev.geode.ui.opaline.creative.CreativeSegments
-import dev.geode.ui.opaline.OpalineRangeSlider as RangeSlider
 
 @Composable
 fun SettingsDialog(
@@ -261,7 +261,7 @@ fun SettingsDialog(
                                 QualityChip(stringResource(R.string.export_segment), segment) { segment = true }
                             }
                             if (segment) {
-                                RangeSlider(
+                                OpalineRangeSlider(
                                     value = rangeStart..rangeEnd,
                                     onValueChange = { r ->
                                         rangeStart = r.start

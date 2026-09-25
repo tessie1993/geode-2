@@ -37,7 +37,13 @@ class NativeViz(
     private val shaders = linkedMapOf<String, String>()
     private var milkPreset: String? = null
     private var injection: Pair<String?, String?>? = null
-    private data class Image(val pixels: IntArray?, val width: Int, val height: Int)
+
+    private data class Image(
+        val pixels: IntArray?,
+        val width: Int,
+        val height: Int,
+    )
+
     private var overlay: Image? = null
     private var underlay: Image? = null
     private var underlayBlend = 0
@@ -164,8 +170,10 @@ class NativeViz(
 
     /** The preset MilkDrop last compiled, handed out once; null until the next one. */
     @Synchronized
-    fun takeMilkPresetLoaded(): String? =
-        if (handle == 0L) null else GeodeNative.vizTakeMilkPresetLoaded(handle)?.also { milkPreset = it }
+    fun takeMilkPresetLoaded(): String? {
+        if (handle == 0L) return null
+        return GeodeNative.vizTakeMilkPresetLoaded(handle)?.also { milkPreset = it }
+    }
 
     @Synchronized
     fun pushPcm(

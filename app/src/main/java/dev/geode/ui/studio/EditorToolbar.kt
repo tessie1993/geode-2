@@ -22,12 +22,12 @@ import dev.geode.R
 import dev.geode.editor.EditError
 import dev.geode.editor.LaneKind
 import dev.geode.editor.TapInSession
+import dev.geode.ui.opaline.OpalineDialog
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeShapes
 import dev.geode.ui.opaline.creative.CreativeTextField
 import dev.geode.ui.opaline.creative.creativeSurface
-import dev.geode.ui.opaline.OpalineDialog as Dialog
 
 /** Back, title, undo/redo and zoom, as a row of bubble buttons. */
 @Composable
@@ -164,7 +164,7 @@ fun TextClipDialog(
     onDismiss: () -> Unit,
 ) {
     var text by remember { mutableStateOf("") }
-    Dialog(onDismissRequest = onDismiss) {
+    OpalineDialog(onDismissRequest = onDismiss) {
         Column(
             Modifier
                 .creativeSurface(shape = CreativeShapes.tile)

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -50,15 +51,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.geode.ui.opaline.OpalineButton
 import dev.geode.ui.opaline.OpalineColors
+import dev.geode.ui.opaline.OpalineDialog
 import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineSceneHost
 import dev.geode.ui.opaline.OpalineSlider
+import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.OpalineToggle
 import dev.geode.ui.opaline.opalinePart
 import dev.geode.ui.opaline.opalineReady
 import kotlin.math.roundToInt
-import dev.geode.ui.opaline.OpalineDialog as Dialog
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 /** Native content planes and semantics attached to the Opaline geometry world. */
 object CreativeColors {
@@ -232,12 +233,24 @@ fun CreativeSegments(
     modifier: Modifier = Modifier,
 ) = CreativeTabs(options, selected, onSelect, modifier)
 
+/**
+ * UI049/UI073 progress: the B07 liquid channel whose meniscus advances with [progress]. The
+ * Material indicator underneath keeps progress semantics and is the visible fallback until the
+ * native scene is ready.
+ */
 @Composable
 fun CreativeProgress(
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
-    LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = modifier.opalinePart("B03", value = progress))
+    val fraction = if (progress.isFinite()) progress.coerceIn(0f, 1f) else 0f
+    val ready = opalineReady()
+    LinearProgressIndicator(
+        progress = { fraction },
+        modifier = modifier.height(24.dp).opalinePart("B07", value = fraction),
+        color = if (ready) Color.Transparent else OpalineColors.accent,
+        trackColor = if (ready) Color.Transparent else OpalineColors.surface,
+    )
 }
 
 @Composable
@@ -251,7 +264,7 @@ fun CreativeTextField(
     keyboardType: KeyboardType = KeyboardType.Text,
     visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
-    OutlinedTextField(
+    OpalineTextField(
         value,
         onValueChange,
         modifier.opalinePart("C04"),
@@ -293,7 +306,7 @@ fun CreativeDialog(
     text: String? = null,
     actions: @Composable () -> Unit = {},
 ) {
-    Dialog(onDismissRequest) {
+    OpalineDialog(onDismissRequest) {
         OpalinePanel(modifier.widthIn(min = 280.dp, max = 440.dp)) {
             Text(title, style = MaterialTheme.typography.headlineSmall)
             text?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }

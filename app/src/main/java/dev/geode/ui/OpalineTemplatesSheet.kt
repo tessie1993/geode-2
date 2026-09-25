@@ -35,10 +35,10 @@ import dev.geode.data.TemplateImport
 import dev.geode.data.TemplateWrite
 import dev.geode.data.VideoTemplate
 import dev.geode.render.VisualizerView
+import dev.geode.ui.opaline.OpalineAction
+import dev.geode.ui.opaline.OpalineIconAction
+import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.creative.CreativeButton
-import dev.geode.ui.opaline.OpalineAction as TextButton
-import dev.geode.ui.opaline.OpalineIconAction as IconButton
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 /**
  * Save-load-share for video templates, opened next to the preset library it mirrors
@@ -108,7 +108,7 @@ fun TemplatesSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        OutlinedTextField(
+                        OpalineTextField(
                             value = saveName,
                             onValueChange = { saveName = it },
                             modifier = Modifier.weight(1f),
@@ -185,7 +185,7 @@ fun TemplatesSheet(
                     visualsViewModel.deleteTemplate(t.id)
                     deleting = null
                 }) { Text(stringResource(R.string.template_delete)) }
-                TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.action_cancel)) }
+                OpalineAction(onClick = { deleting = null }) { Text(stringResource(R.string.action_cancel)) }
             }
         }
     }
@@ -204,20 +204,20 @@ private fun TemplateRow(
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(template.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        IconButton(onClick = onApply) {
+        OpalineIconAction(onClick = onApply) {
             Icon(Icons.Outlined.PlayArrow, applyLabel, tint = MaterialTheme.colorScheme.primary)
         }
         if (shareLabel != null && onShare != null) {
-            IconButton(onClick = onShare) {
+            OpalineIconAction(onClick = onShare) {
                 Icon(Icons.Outlined.Share, shareLabel)
             }
         }
         if (trailingIsDestructive) {
-            IconButton(onClick = onTrailing) {
+            OpalineIconAction(onClick = onTrailing) {
                 Icon(Icons.Outlined.Delete, trailingLabel, tint = MaterialTheme.colorScheme.error)
             }
         } else {
-            TextButton(onClick = onTrailing) { Text(trailingLabel) }
+            OpalineAction(onClick = onTrailing) { Text(trailingLabel) }
         }
     }
 }

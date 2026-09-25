@@ -104,12 +104,13 @@ private fun handlePickedMedia(
     runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
     val text = uri.toString()
     when (target.kind) {
-        PickKind.VIDEO, PickKind.AUDIO -> actions.describeMedia(uri) { media ->
-            if (target.project.matches(actions)) {
-                val content = if (target.kind == PickKind.VIDEO) ClipContent.Video(text) else ClipContent.Audio(text)
-                addClip(target.laneId, content, media.durationMs, media.durationMs)
+        PickKind.VIDEO, PickKind.AUDIO ->
+            actions.describeMedia(uri) { media ->
+                if (target.project.matches(actions)) {
+                    val content = if (target.kind == PickKind.VIDEO) ClipContent.Video(text) else ClipContent.Audio(text)
+                    addClip(target.laneId, content, media.durationMs, media.durationMs)
+                }
             }
-        }
         PickKind.STILL -> addClip(target.laneId, ClipContent.Still(text), STILL_MS, 0L)
         PickKind.OVERLAY -> addClip(target.laneId, ClipContent.Overlay(text), OVERLAY_MS, 0L)
     }
@@ -123,8 +124,9 @@ private fun importSrt(
     addCaptionClips: (List<SubtitleCue>) -> Unit,
 ) {
     if (uri == null || target == null || !target.matches(actions)) return
-    val text = runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull()
-        ?: return
+    val text =
+        runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull()
+            ?: return
     if (target.matches(actions)) addCaptionClips(Subtitles.parseSrt(text))
 }
 

@@ -41,7 +41,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -76,8 +75,8 @@ import dev.geode.ui.opaline.OpalinePage
 import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.OpalineSlider
+import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.opalinePart
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 @Composable
 internal fun OpalinePlayerRoute(
@@ -443,7 +442,7 @@ private fun OpalineQueue(
         )
     }) {
         if (save) {
-            OutlinedTextField(name, {
+            OpalineTextField(name, {
                 name = it
             }, label = { Text(stringResource(R.string.opaline_playlist_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OpalineButton(stringResource(R.string.action_save), {

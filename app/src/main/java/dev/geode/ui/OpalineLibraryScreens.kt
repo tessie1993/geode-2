@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -55,19 +54,18 @@ import dev.geode.R
 import dev.geode.nav.Destination
 import dev.geode.nav.LibraryView
 import dev.geode.nav.Navigator
-import dev.geode.nav.Overlay
+import dev.geode.ui.opaline.OpalineAlertDialog
 import dev.geode.ui.opaline.OpalineButton
+import dev.geode.ui.opaline.OpalineDropdownMenu
+import dev.geode.ui.opaline.OpalineDropdownMenuItem
 import dev.geode.ui.opaline.OpalineEmptyState
 import dev.geode.ui.opaline.OpalineIconButton
 import dev.geode.ui.opaline.OpalinePage
 import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRow
+import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.opalinePart
 import kotlinx.coroutines.launch
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
-import dev.geode.ui.opaline.OpalineDropdownMenu as DropdownMenu
-import dev.geode.ui.opaline.OpalineDropdownMenuItem as DropdownMenuItem
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 @Composable
 internal fun OpalineLibraryRoute(
@@ -217,7 +215,7 @@ private fun OpalineLibraryBrowse(
         if (view == LibraryView.PLAYLISTS) {
             OpalinePlaylists(library, navigator)
         } else {
-            OutlinedTextField(
+            OpalineTextField(
                 state.query,
                 library::setQuery,
                 singleLine = true,
@@ -372,18 +370,18 @@ internal fun OpalineTrackRow(
         trailing = {
             Column {
                 OpalineIconButton(Icons.Default.MoreVert, stringResource(R.string.opaline_track_actions), { menu = true })
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.opaline_play_next)) }, onClick = {
+                OpalineDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    OpalineDropdownMenuItem(text = { Text(stringResource(R.string.opaline_play_next)) }, onClick = {
                         player.playNext(track.uri)
                         menu =
                             false
                     })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.opaline_add_queue)) }, onClick = {
+                    OpalineDropdownMenuItem(text = { Text(stringResource(R.string.opaline_add_queue)) }, onClick = {
                         player.enqueue(track.uri)
                         menu =
                             false
                     })
-                    DropdownMenuItem(text = {
+                    OpalineDropdownMenuItem(text = {
                         Text(
                             stringResource(
                                 if (track.uri in
@@ -400,12 +398,12 @@ internal fun OpalineTrackRow(
                         menu =
                             false
                     })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.opaline_add_playlist)) }, onClick = {
+                    OpalineDropdownMenuItem(text = { Text(stringResource(R.string.opaline_add_playlist)) }, onClick = {
                         navigator.go(Destination.Shared.AddToPlaylist(track.uri))
                         menu =
                             false
                     })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.opaline_track_info)) }, onClick = {
+                    OpalineDropdownMenuItem(text = { Text(stringResource(R.string.opaline_track_info)) }, onClick = {
                         navigator.go(Destination.Shared.TrackInfo(track.uri))
                         menu =
                             false
@@ -504,8 +502,8 @@ private fun OpalinePlaylists(
         }
     }
     if (creating) {
-        AlertDialog(onDismissRequest = { creating = false }, title = { Text(stringResource(R.string.playlist_new)) }, text = {
-            OutlinedTextField(name, { name = it }, singleLine = true, label = { Text(stringResource(R.string.opaline_playlist_name)) })
+        OpalineAlertDialog(onDismissRequest = { creating = false }, title = { Text(stringResource(R.string.playlist_new)) }, text = {
+            OpalineTextField(name, { name = it }, singleLine = true, label = { Text(stringResource(R.string.opaline_playlist_name)) })
         }, confirmButton = {
             OpalineButton(stringResource(R.string.action_create), {
                 library.createMusicPlaylist(name.trim())

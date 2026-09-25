@@ -38,9 +38,9 @@ import dev.geode.editor.Lane
 import dev.geode.editor.LaneKind
 import dev.geode.editor.Marker
 import dev.geode.editor.MarkerId
+import dev.geode.ui.opaline.OpalineDropdownMenu
+import dev.geode.ui.opaline.OpalineDropdownMenuItem
 import dev.geode.ui.opaline.creative.CreativeColors
-import dev.geode.ui.opaline.OpalineDropdownMenu as DropdownMenu
-import dev.geode.ui.opaline.OpalineDropdownMenuItem as DropdownMenuItem
 
 /** Header column beside the scrolling content column; every row height is fixed so the two stay aligned. */
 @Composable
@@ -189,15 +189,15 @@ private fun LaneHeader(
                 HeaderToggle(stringResource(R.string.editor_add_short), false) {
                     if (lane.kind == LaneKind.Media) menu = true else onAddClip()
                 }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(
+                OpalineDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    OpalineDropdownMenuItem(
                         text = { Text(stringResource(R.string.editor_add_video)) },
                         onClick = {
                             menu = false
                             onAddClip()
                         },
                     )
-                    DropdownMenuItem(
+                    OpalineDropdownMenuItem(
                         text = { Text(stringResource(R.string.editor_add_still)) },
                         onClick = {
                             menu = false

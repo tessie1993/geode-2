@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import dev.geode.R
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeSlider
+import dev.geode.ui.opaline.creative.CreativeToggle
 import dev.geode.viz.ArtTitleOptions
 import dev.geode.viz.LyricOptions
 import dev.geode.viz.LyricPosition
@@ -31,7 +32,6 @@ import dev.geode.viz.OverlayPosition
 import dev.geode.viz.OverlaySize
 import dev.geode.viz.WatermarkCorner
 import dev.geode.viz.WatermarkOptions
-import dev.geode.ui.opaline.creative.CreativeToggle as Switch
 
 private fun positionLabel(position: OverlayPosition) =
     when (position) {
@@ -93,18 +93,18 @@ internal fun LayersSheet(
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(stringResource(R.string.overlay_enable))
-                Switch(checked = options.enabled, onCheckedChange = { onOptionsChange(options.copy(enabled = it)) })
+                CreativeToggle(checked = options.enabled, onCheckedChange = { onOptionsChange(options.copy(enabled = it)) })
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(stringResource(R.string.overlay_show_artwork))
-                Switch(
+                CreativeToggle(
                     checked = options.showArtwork,
                     onCheckedChange = { onOptionsChange(options.copy(showArtwork = it)) },
                 )
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(stringResource(R.string.overlay_show_text))
-                Switch(checked = options.showText, onCheckedChange = { onOptionsChange(options.copy(showText = it)) })
+                CreativeToggle(checked = options.showText, onCheckedChange = { onOptionsChange(options.copy(showText = it)) })
             }
 
             Text(stringResource(R.string.overlay_position_label), style = MaterialTheme.typography.labelLarge)
@@ -133,7 +133,7 @@ internal fun LayersSheet(
             Text(stringResource(R.string.overlay_lyric_sheet_title), style = MaterialTheme.typography.titleMedium)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(stringResource(R.string.overlay_lyric_enable))
-                Switch(
+                CreativeToggle(
                     checked = lyricOptions.enabled,
                     onCheckedChange = { onLyricOptionsChange(lyricOptions.copy(enabled = it)) },
                 )
@@ -208,7 +208,7 @@ private fun WatermarkSection(
 
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(stringResource(R.string.overlay_watermark_enable))
-        Switch(
+        CreativeToggle(
             checked = options.enabled,
             enabled = options.uri != null,
             onCheckedChange = { onOptionsChange(options.copy(enabled = it)) },
