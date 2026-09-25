@@ -284,74 +284,100 @@ fun ExportHost(
             }
         }
     val takes by studioViewModel.takeState.collectAsStateWithLifecycle()
-    if (!notificationRationaleVisible) when (mode) {
-        ExportEntryMode.Menu ->
-            OpalineContextSheet(onDismiss = onDismiss) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(stringResource(R.string.export_loop_menu_title), style = MaterialTheme.typography.titleLarge)
-                    Text(stringResource(R.string.export_loop_menu_subtitle))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CreativeButton(
-                        text = stringResource(R.string.export_loop_menu_loop),
-                        onClick = { chosenMode = ExportEntryMode.Loop },
-                    )
-                    CreativeButton(
-                        text = stringResource(R.string.export_loop_menu_standard),
-                        onClick = { chosenMode = ExportEntryMode.Standard },
-                    )
+    if (!notificationRationaleVisible) {
+        when (mode) {
+            ExportEntryMode.Menu ->
+                OpalineContextSheet(onDismiss = onDismiss) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(stringResource(R.string.export_loop_menu_title), style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.export_loop_menu_subtitle))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CreativeButton(
+                                text = stringResource(R.string.export_loop_menu_loop),
+                                onClick = { chosenMode = ExportEntryMode.Loop },
+                            )
+                            CreativeButton(
+                                text = stringResource(R.string.export_loop_menu_standard),
+                                onClick = { chosenMode = ExportEntryMode.Standard },
+                            )
+                        }
                     }
                 }
-            }
-        ExportEntryMode.Loop ->
-            LoopRenderSheet(
-                state = loop,
-                onStart = { req ->
-                    requestNotificationPermissionOnce()
-                    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+            ExportEntryMode.Loop ->
+                LoopRenderSheet(
+                    state = loop,
+                    onStart = { req ->
+                        requestNotificationPermissionOnce()
+                        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+                            pendingLoopExport = PendingLoopExport.from(req)
+                            loopDestinationPicker.launch("geode_loop_${System.currentTimeMillis()}.mp4")
+                        } else {
+                            viewModel.startLoopRender(
+                                req.aspect,
+                                req.codec,
+                                req.fps,
+                                visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
+                                req.loopMs,
+                                req.crossfadeMs,
+                                req.drift,
+                                req.audioClips,
+                            )
+                        }
+                    },
+                    onStartToDestination = { req ->
+                        requestNotificationPermissionOnce()
                         pendingLoopExport = PendingLoopExport.from(req)
                         loopDestinationPicker.launch("geode_loop_${System.currentTimeMillis()}.mp4")
-                    } else {
-                        viewModel.startLoopRender(
-                            req.aspect,
-                            req.codec,
-                            req.fps,
-                            visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
-                            req.loopMs,
-                            req.crossfadeMs,
-                            req.drift,
-                            req.audioClips,
-                        )
-                    }
-                },
-                onStartToDestination = { req ->
-                    requestNotificationPermissionOnce()
-                    pendingLoopExport = PendingLoopExport.from(req)
-                    loopDestinationPicker.launch("geode_loop_${System.currentTimeMillis()}.mp4")
-                },
-                onCancel = studioViewModel::cancelLoopRender,
-                onDismiss = {
-                    studioViewModel.clearLoopResult()
-                    onDismiss()
-                },
-            )
-        ExportEntryMode.Standard ->
-            SettingsDialog(
-                export = export,
-                hasMedia = state.hasMedia,
-                takes = takes.takes.map { it.name },
-                selectedTake = takes.exportTake,
-                onSelectTake = studioViewModel::setExportTake,
-                bpm = viz.bpm,
-                trackDurationMs = state.durationMs,
-                onStart = { aspect, fps, loopSafe, range, codec ->
-                    requestNotificationPermissionOnce()
-                    // Saving into the Videos library without asking is a scoped-storage privilege,
-                    // and scoped storage starts at Q. Below it the same insert needs
-                    // WRITE_EXTERNAL_STORAGE - a permission this app does not ask for and should not
-                    // start asking for - so the write failed with a SecurityException the user saw
-                    // raw. The folder picker is the same save by another route and has always worked
-                    // here, so on those versions the primary button opens it.
-                    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+                    },
+                    onCancel = studioViewModel::cancelLoopRender,
+                    onDismiss = {
+                        studioViewModel.clearLoopResult()
+                        onDismiss()
+                    },
+                )
+            ExportEntryMode.Standard ->
+                SettingsDialog(
+                    export = export,
+                    hasMedia = state.hasMedia,
+                    takes = takes.takes.map { it.name },
+                    selectedTake = takes.exportTake,
+                    onSelectTake = studioViewModel::setExportTake,
+                    bpm = viz.bpm,
+                    trackDurationMs = state.durationMs,
+                    onStart = { aspect, fps, loopSafe, range, codec ->
+                        requestNotificationPermissionOnce()
+                        // Saving into the Videos library without asking is a scoped-storage privilege,
+                        // and scoped storage starts at Q. Below it the same insert needs
+                        // WRITE_EXTERNAL_STORAGE - a permission this app does not ask for and should not
+                        // start asking for - so the write failed with a SecurityException the user saw
+                        // raw. The folder picker is the same save by another route and has always worked
+                        // here, so on those versions the primary button opens it.
+                        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+                            pendingExport =
+                                PendingExport(
+                                    aspect,
+                                    fps,
+                                    viz.sceneId,
+                                    loopSafe,
+                                    range?.startMs ?: 0L,
+                                    range?.durationMs ?: 0L,
+                                    codec,
+                                )
+                            destinationPicker.launch("geode_${System.currentTimeMillis()}.mp4")
+                        } else {
+                            viewModel.startExport(
+                                aspect,
+                                fps,
+                                visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
+                                loopSafe = loopSafe,
+                                range = range,
+                                sceneFactoryFor = { id -> sceneFactoryFor(id, viz.sceneId) },
+                                codec = codec,
+                            )
+                        }
+                    },
+                    onStartToDestination = { aspect, fps, loopSafe, range, codec ->
+                        requestNotificationPermissionOnce()
                         pendingExport =
                             PendingExport(
                                 aspect,
@@ -363,41 +389,17 @@ fun ExportHost(
                                 codec,
                             )
                         destinationPicker.launch("geode_${System.currentTimeMillis()}.mp4")
-                    } else {
-                        viewModel.startExport(
-                            aspect,
-                            fps,
-                            visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
-                            loopSafe = loopSafe,
-                            range = range,
-                            sceneFactoryFor = { id -> sceneFactoryFor(id, viz.sceneId) },
-                            codec = codec,
-                        )
-                    }
-                },
-                onStartToDestination = { aspect, fps, loopSafe, range, codec ->
-                    requestNotificationPermissionOnce()
-                    pendingExport =
-                        PendingExport(
-                            aspect,
-                            fps,
-                            viz.sceneId,
-                            loopSafe,
-                            range?.startMs ?: 0L,
-                            range?.durationMs ?: 0L,
-                            codec,
-                        )
-                    destinationPicker.launch("geode_${System.currentTimeMillis()}.mp4")
-                },
-                onCancel = studioViewModel::cancelExport,
-                onDismiss = {
-                    studioViewModel.resetExportState()
-                    studioViewModel.resetStillState()
-                    onDismiss()
-                },
-                stillPhase = stillPhase,
-                onSaveFrame = onSaveFrame,
-            )
+                    },
+                    onCancel = studioViewModel::cancelExport,
+                    onDismiss = {
+                        studioViewModel.resetExportState()
+                        studioViewModel.resetStillState()
+                        onDismiss()
+                    },
+                    stillPhase = stillPhase,
+                    onSaveFrame = onSaveFrame,
+                )
+        }
     }
 
     if (notificationRationaleVisible) {
@@ -406,17 +408,17 @@ fun ExportHost(
                 Text(stringResource(R.string.export_notification_permission_title), style = MaterialTheme.typography.titleLarge)
                 Text(stringResource(R.string.export_notification_permission_body))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CreativeButton(
-                    text = stringResource(R.string.export_notification_permission_skip),
-                    onClick = { notificationRationaleVisible = false },
-                )
-                CreativeButton(
-                    text = stringResource(R.string.action_ok),
-                    onClick = {
-                        notificationRationaleVisible = false
-                        notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                    },
-                )
+                    CreativeButton(
+                        text = stringResource(R.string.export_notification_permission_skip),
+                        onClick = { notificationRationaleVisible = false },
+                    )
+                    CreativeButton(
+                        text = stringResource(R.string.action_ok),
+                        onClick = {
+                            notificationRationaleVisible = false
+                            notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        },
+                    )
                 }
             }
         }

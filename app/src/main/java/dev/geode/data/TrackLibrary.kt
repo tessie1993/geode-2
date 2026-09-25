@@ -126,11 +126,17 @@ class TrackLibrary(
             }
             for (t in existing) {
                 val id = identityByUri[t.uri]
-                keep(if (id == null) t else t.copy(
-                    fileName = t.fileName.ifBlank { id.fileName },
-                    sizeBytes = t.sizeBytes.takeIf { it > 0L } ?: id.sizeBytes,
-                    folder = t.folder.ifBlank { id.folder },
-                ))
+                keep(
+                    if (id == null) {
+                        t
+                    } else {
+                        t.copy(
+                            fileName = t.fileName.ifBlank { id.fileName },
+                            sizeBytes = t.sizeBytes.takeIf { it > 0L } ?: id.sizeBytes,
+                            folder = t.folder.ifBlank { id.folder },
+                        )
+                    },
+                )
             }
             for (t in incoming) keep(t)
             return merged.values.sortedBy { it.title.lowercase() }

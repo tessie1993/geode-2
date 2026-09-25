@@ -19,7 +19,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
@@ -39,31 +37,6 @@ import dev.geode.data.CustomPalette
 import dev.geode.data.PaletteStore
 import dev.geode.render.scene.SceneParams
 import dev.geode.ui.opaline.creative.CreativeSlider
-
-@Stable
-internal class SavedPalettes(
-    private val store: PaletteStore,
-) {
-    var items: List<CustomPalette> by mutableStateOf(store.list())
-        private set
-
-    fun save(palette: CustomPalette): CustomPalette {
-        val stored = store.save(palette)
-        items = store.list()
-        return stored
-    }
-
-    fun delete(id: String) {
-        store.delete(id)
-        items = store.list()
-    }
-}
-
-@Composable
-internal fun rememberSavedPalettes(): SavedPalettes {
-    val context = LocalContext.current
-    return remember(context) { SavedPalettes(PaletteStore(context)) }
-}
 
 internal fun paletteChipIndex(
     p: SceneParams,

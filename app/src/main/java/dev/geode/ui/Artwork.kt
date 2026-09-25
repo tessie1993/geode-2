@@ -32,7 +32,6 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.geode.playback.MediaArtwork
-
 import dev.geode.ui.opaline.OpalineColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

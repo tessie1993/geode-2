@@ -56,7 +56,11 @@ fun AutoCutSheet(
     CreativeSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.autocut_title), style = MaterialTheme.typography.titleMedium, color = CreativeColors.textPrimary)
-            Text(stringResource(R.string.autocut_source), style = MaterialTheme.typography.labelMedium, color = CreativeColors.textSecondary)
+            Text(
+                stringResource(R.string.autocut_source),
+                style = MaterialTheme.typography.labelMedium,
+                color = CreativeColors.textSecondary,
+            )
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 TransientSource.entries.forEach { source ->
                     CreativeButton(

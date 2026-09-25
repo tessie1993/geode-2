@@ -122,12 +122,14 @@ jobs:
           fi
 
       - name: Assemble debug APK
+        id: assemble
         if: ${{ !cancelled() }}
         working-directory: ${{ env.PROJECT_DIR }}
         run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
 
       - name: Package APK and checksum
         id: package
+        if: ${{ !cancelled() && steps.assemble.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -152,6 +154,7 @@ jobs:
       # nothing had been verified at all. continue-on-error keeps a full
       # artifact store (or a flaky upload) from speaking for the code.
       - name: Upload debug APK
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:

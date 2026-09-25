@@ -19,10 +19,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -52,8 +50,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import dev.geode.ui.opaline.OpalineColors
 import dev.geode.ui.opaline.OpalineButton
+import dev.geode.ui.opaline.OpalineColors
 import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.opalinePart
 import kotlin.math.roundToInt
@@ -136,23 +134,42 @@ fun CreativeSlider(
     val span = valueRange.endInclusive - valueRange.start
     val fraction = if (span > 0) ((value - valueRange.start) / span).coerceIn(0f, 1f) else 0f
     Slider(
-        value = value.coerceIn(valueRange), onValueChange = onValueChange,
+        value = value.coerceIn(valueRange),
+        onValueChange = onValueChange,
         modifier = modifier.opalinePart("B03", value = fraction, enabled = enabled),
-        valueRange = valueRange, steps = steps, enabled = enabled,
-        colors = SliderDefaults.colors(activeTrackColor = Color.Transparent, inactiveTrackColor = Color.Transparent, thumbColor = Color.Transparent),
+        valueRange = valueRange,
+        steps = steps,
+        enabled = enabled,
+        colors =
+            SliderDefaults.colors(
+                activeTrackColor = Color.Transparent,
+                inactiveTrackColor = Color.Transparent,
+                thumbColor = Color.Transparent,
+            ),
     )
 }
 
 @Composable
-fun CreativeToggle(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun CreativeToggle(
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
     Switch(
-        checked = checked, onCheckedChange = onCheckedChange, enabled = enabled,
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        enabled = enabled,
         modifier = modifier.opalinePart("B09", value = if (checked) 1f else 0f, selected = checked, enabled = enabled),
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = Color.Transparent, uncheckedThumbColor = Color.Transparent,
-            checkedTrackColor = Color.Transparent, uncheckedTrackColor = Color.Transparent,
-            checkedBorderColor = Color.Transparent, uncheckedBorderColor = Color.Transparent,
-        ),
+        colors =
+            SwitchDefaults.colors(
+                checkedThumbColor = Color.Transparent,
+                uncheckedThumbColor = Color.Transparent,
+                checkedTrackColor = Color.Transparent,
+                uncheckedTrackColor = Color.Transparent,
+                checkedBorderColor = Color.Transparent,
+                uncheckedBorderColor = Color.Transparent,
+            ),
     )
 }
 
@@ -170,13 +187,21 @@ fun CreativeKnob(
     val latest = rememberUpdatedState(value)
     val change = rememberUpdatedState(onValueChange)
     Box(
-        modifier.size(knobSize).opalinePart("B13", value = fraction, enabled = enabled)
+        modifier
+            .size(knobSize)
+            .opalinePart("B13", value = fraction, enabled = enabled)
             .semantics {
                 progressBarRangeInfo = ProgressBarRangeInfo(value, valueRange)
                 if (!enabled) disabled()
-                setProgress { if (enabled) { change.value(it.coerceIn(valueRange)); true } else false }
-            }
-            .pointerInput(enabled, valueRange) {
+                setProgress {
+                    if (enabled) {
+                        change.value(it.coerceIn(valueRange))
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }.pointerInput(enabled, valueRange) {
                 if (enabled) {
                     var accumulated = latest.value
                     detectDragGestures(
@@ -194,47 +219,87 @@ fun CreativeKnob(
 }
 
 @Composable
-fun CreativeTabs(titles: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, scrollable: Boolean = true) {
-    Row(modifier.horizontalScroll(rememberScrollState()).padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+fun CreativeTabs(
+    titles: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    scrollable: Boolean = true,
+) {
+    val scrollState = rememberScrollState()
+    val rowModifier = if (scrollable) modifier.horizontalScroll(scrollState) else modifier
+    Row(rowModifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         titles.forEachIndexed { index, title -> CreativeButton(title, { onSelect(index) }, selected = index == selected) }
     }
 }
 
 @Composable
-fun CreativeSegments(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) =
-    CreativeTabs(options, selected, onSelect, modifier)
+fun CreativeSegments(
+    options: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) = CreativeTabs(options, selected, onSelect, modifier)
 
 @Composable
-fun CreativeProgress(progress: Float, modifier: Modifier = Modifier) {
+fun CreativeProgress(
+    progress: Float,
+    modifier: Modifier = Modifier,
+) {
     LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = modifier.opalinePart("B03", value = progress))
 }
 
 @Composable
 fun CreativeTextField(
-    value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, placeholder: String? = null,
-    enabled: Boolean = true, singleLine: Boolean = true, keyboardType: KeyboardType = KeyboardType.Text,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    enabled: Boolean = true,
+    singleLine: Boolean = true,
+    keyboardType: KeyboardType = KeyboardType.Text,
     visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
     OutlinedTextField(
-        value, onValueChange, modifier.opalinePart("C04"), enabled = enabled, singleLine = singleLine,
-        placeholder = placeholder?.let { { Text(it) } }, keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        visualTransformation = visualTransformation, shape = RoundedCornerShape(24.dp),
+        value,
+        onValueChange,
+        modifier.opalinePart("C04"),
+        enabled = enabled,
+        singleLine = singleLine,
+        placeholder = placeholder?.let { { Text(it) } },
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        visualTransformation = visualTransformation,
+        shape = RoundedCornerShape(24.dp),
     )
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun CreativeSheet(
-    onDismissRequest: () -> Unit, modifier: Modifier = Modifier,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), content: @Composable () -> Unit,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    content: @Composable () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest, modifier, sheetState, containerColor = OpalineColors.surface, contentColor = CreativeColors.textPrimary) {
+    ModalBottomSheet(
+        onDismissRequest,
+        modifier,
+        sheetState,
+        containerColor = OpalineColors.surface,
+        contentColor = CreativeColors.textPrimary,
+    ) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) { content() }
     }
 }
 
 @Composable
-fun CreativeDialog(onDismissRequest: () -> Unit, title: String, modifier: Modifier = Modifier, text: String? = null, actions: @Composable () -> Unit = {}) {
+fun CreativeDialog(
+    onDismissRequest: () -> Unit,
+    title: String,
+    modifier: Modifier = Modifier,
+    text: String? = null,
+    actions: @Composable () -> Unit = {},
+) {
     Dialog(onDismissRequest) {
         OpalinePanel(modifier.widthIn(min = 280.dp, max = 440.dp)) {
             Text(title, style = MaterialTheme.typography.headlineSmall)
@@ -245,9 +310,16 @@ fun CreativeDialog(onDismissRequest: () -> Unit, title: String, modifier: Modifi
 }
 
 @Composable
-fun CreativeTile(onClick: () -> Unit, modifier: Modifier = Modifier, contentPadding: PaddingValues = PaddingValues(16.dp), content: @Composable ColumnScope.() -> Unit) {
+fun CreativeTile(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(16.dp),
+    content: @Composable ColumnScope.() -> Unit,
+) {
     OpalinePanel(modifier.clickable(onClick = onClick)) { Column(Modifier.padding(contentPadding), content = content) }
 }
 
 @Composable
-fun CreativeTopBar(title: String) { Text(title, Modifier.padding(20.dp), style = MaterialTheme.typography.headlineMedium) }
+fun CreativeTopBar(title: String) {
+    Text(title, Modifier.padding(20.dp), style = MaterialTheme.typography.headlineMedium)
+}

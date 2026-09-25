@@ -171,7 +171,11 @@ fun TextClipDialog(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.editor_text_title), style = MaterialTheme.typography.titleLarge, color = CreativeColors.textPrimary)
+            Text(
+                stringResource(R.string.editor_text_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = CreativeColors.textPrimary,
+            )
             CreativeTextField(value = text, onValueChange = { text = it }, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 CreativeButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)

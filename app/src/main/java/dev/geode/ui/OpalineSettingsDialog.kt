@@ -40,11 +40,9 @@ import dev.geode.export.ExportRange
 import dev.geode.export.ExportRatio
 import dev.geode.export.LoudnessTarget
 import dev.geode.ui.opaline.creative.CreativeButton
-import dev.geode.ui.opaline.creative.CreativeProgress
 import dev.geode.ui.opaline.creative.CreativeColors
+import dev.geode.ui.opaline.creative.CreativeProgress
 import dev.geode.ui.opaline.creative.CreativeSegments
-import dev.geode.ui.opaline.creative.CreativeShapes
-import dev.geode.ui.opaline.creative.creativeSurface
 
 @Composable
 fun SettingsDialog(

@@ -51,11 +51,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         motion.value = MotionPolicy(reducedMotion = MotionPrefs.reducedMotion(geodeContainer.prefsFiles.general))
-        val pending = DeepLink.parse(
-            savedInstanceState?.getString(KEY_LINK_ACTION),
-            savedInstanceState?.getString(KEY_LINK_DATA),
-            savedInstanceState?.getString(KEY_LINK_QUERY),
-        )
+        val pending =
+            DeepLink.parse(
+                savedInstanceState?.getString(KEY_LINK_ACTION),
+                savedInstanceState?.getString(KEY_LINK_DATA),
+                savedInstanceState?.getString(KEY_LINK_QUERY),
+            )
         navigator = Navigator(NavSaver.decode(savedInstanceState?.getString(KEY_NAV)), pending)
         connectors = NavConnectors(motion = motion, gravity = SensorGravitySource(this))
         navigator.bindBack(onBackPressedDispatcher, this)
@@ -100,7 +101,10 @@ class MainActivity : ComponentActivity() {
         intent?.data = null
     }
 
-    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration,
+    ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         VisualizerPipCoordinator.inPictureInPicture = isInPictureInPictureMode
     }
@@ -121,21 +125,36 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun autoPip(): Boolean = settingsViewModel.guiPrefs.value.autoEnterPip &&
-        VisualizerPipCoordinator.visualizerShowing && playerViewModel.uiState.value.isPlaying
+    private fun autoPip(): Boolean =
+        settingsViewModel.guiPrefs.value.autoEnterPip &&
+            VisualizerPipCoordinator.visualizerShowing &&
+            playerViewModel.uiState.value.isPlaying
 
     private fun pipParams(): PictureInPictureParams {
         val playing = playerViewModel.uiState.value.isPlaying
         val label = getString(if (playing) R.string.action_pause else R.string.action_play)
-        val play = PlaybackPendingIntentBuilder(this, Player.COMMAND_PLAY_PAUSE, PlaybackService::class.java)
-            .setStartAsForegroundService(!playing).build()
+        val play =
+            PlaybackPendingIntentBuilder(this, Player.COMMAND_PLAY_PAUSE, PlaybackService::class.java)
+                .setStartAsForegroundService(!playing)
+                .build()
         val next = PlaybackPendingIntentBuilder(this, Player.COMMAND_SEEK_TO_NEXT, PlaybackService::class.java).build()
-        val params = PictureInPictureParams.Builder().setActions(
-            listOf(
-                RemoteAction(Icon.createWithResource(this, if (playing) R.drawable.ic_widget_pause else R.drawable.ic_widget_play), label, label, play),
-                RemoteAction(Icon.createWithResource(this, R.drawable.ic_widget_next), getString(R.string.action_next), getString(R.string.action_next), next),
-            ),
-        )
+        val params =
+            PictureInPictureParams.Builder().setActions(
+                listOf(
+                    RemoteAction(
+                        Icon.createWithResource(this, if (playing) R.drawable.ic_widget_pause else R.drawable.ic_widget_play),
+                        label,
+                        label,
+                        play,
+                    ),
+                    RemoteAction(
+                        Icon.createWithResource(this, R.drawable.ic_widget_next),
+                        getString(R.string.action_next),
+                        getString(R.string.action_next),
+                        next,
+                    ),
+                ),
+            )
         VisualizerPipCoordinator.canvasBoundsPx?.let { bounds ->
             if (bounds.height() > 0 && bounds.width() > 0) {
                 val ratio = (bounds.width().toFloat() / bounds.height()).coerceIn(1f / 2.39f, 2.39f)

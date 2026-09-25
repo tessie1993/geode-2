@@ -38,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -85,7 +84,9 @@ fun OpalinePanel(
 ) {
     val sceneReady = opalineReady()
     Column(
-        modifier.fillMaxWidth().opalinePart("C03")
+        modifier
+            .fillMaxWidth()
+            .opalinePart("C03")
             .padding(5.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(
@@ -96,8 +97,7 @@ fun OpalinePanel(
                         listOf(OpalineColors.surface.copy(alpha = 0.94f), OpalineColors.deep.copy(alpha = 0.96f))
                     },
                 ),
-            )
-            .padding(18.dp),
+            ).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         content = content,
     )
@@ -118,7 +118,8 @@ fun OpalineButton(
     val focused by interaction.collectIsFocusedAsState()
     val shape = RoundedCornerShape(50)
     Row(
-        modifier.defaultMinSize(minHeight = 48.dp)
+        modifier
+            .defaultMinSize(minHeight = 48.dp)
             .opalinePart("A01", selected = selected, enabled = enabled)
             .alpha(if (enabled) 1f else 0.45f)
             .clip(shape)
@@ -128,8 +129,7 @@ fun OpalineButton(
                 } else {
                     (if (selected) OpalineColors.accent else OpalineColors.gel).copy(alpha = if (selected) 0.88f else 0.82f)
                 },
-            )
-            .then(if (focused) Modifier.border(2.dp, OpalineColors.pearl, shape) else Modifier)
+            ).then(if (focused) Modifier.border(2.dp, OpalineColors.pearl, shape) else Modifier)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -153,7 +153,8 @@ fun OpalineIconButton(
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Box(
-        modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+        modifier
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
             .opalinePart("A03", enabled = enabled)
             .alpha(if (enabled) 1f else 0.45f)
             .clip(CircleShape)
@@ -178,7 +179,9 @@ fun OpalineRow(
 ) {
     val sceneReady = opalineReady()
     Row(
-        modifier.fillMaxWidth().defaultMinSize(minHeight = 64.dp)
+        modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 64.dp)
             .opalinePart("C02")
             .padding(5.dp)
             .clip(RoundedCornerShape(18.dp))
@@ -190,9 +193,21 @@ fun OpalineRow(
     ) {
         leading()
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = OpalineColors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleSmall,
+                color = OpalineColors.text,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (subtitle.isNotBlank()) {
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = OpalineColors.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OpalineColors.muted,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         trailing()
@@ -213,15 +228,18 @@ fun OpalineSlider(
     Slider(
         value = safe,
         onValueChange = onValueChange,
-        modifier = modifier.defaultMinSize(minHeight = 48.dp)
-            .opalinePart("B01", value = if (length > 0) (safe - range.start) / length else 0f, enabled = enabled),
+        modifier =
+            modifier
+                .defaultMinSize(minHeight = 48.dp)
+                .opalinePart("B01", value = if (length > 0) (safe - range.start) / length else 0f, enabled = enabled),
         valueRange = range,
         enabled = enabled,
-        colors = SliderDefaults.colors(
-            thumbColor = OpalineColors.pearl.copy(alpha = if (sceneReady) 0.14f else 1f),
-            activeTrackColor = OpalineColors.accent.copy(alpha = if (sceneReady) 0.16f else 0.8f),
-            inactiveTrackColor = OpalineColors.surface.copy(alpha = if (sceneReady) 0.1f else 0.55f),
-        ),
+        colors =
+            SliderDefaults.colors(
+                thumbColor = OpalineColors.pearl.copy(alpha = if (sceneReady) 0.14f else 1f),
+                activeTrackColor = OpalineColors.accent.copy(alpha = if (sceneReady) 0.16f else 0.8f),
+                inactiveTrackColor = OpalineColors.surface.copy(alpha = if (sceneReady) 0.1f else 0.55f),
+            ),
     )
 }
 
@@ -234,7 +252,9 @@ fun OpalineToggle(
 ) {
     val sceneReady = opalineReady()
     Box(
-        modifier.width(64.dp).height(48.dp)
+        modifier
+            .width(64.dp)
+            .height(48.dp)
             .opalinePart("B09", value = if (checked) 1f else 0f, selected = checked, enabled = enabled)
             .alpha(if (enabled) 1f else 0.45f)
             .clip(RoundedCornerShape(50))
@@ -253,7 +273,11 @@ fun OpalineToggle(
 }
 
 @Composable
-fun OpalineEmptyState(title: String, message: String, action: @Composable () -> Unit = {}) {
+fun OpalineEmptyState(
+    title: String,
+    message: String,
+    action: @Composable () -> Unit = {},
+) {
     Column(
         Modifier.fillMaxWidth().padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -52,23 +52,28 @@ internal class EditorController(
         if (_state.value.loaded && _state.value.name == name) return
         openJob?.cancel()
         _state.update { it.copy(loaded = false) }
-        openJob = scope.launch {
-            val loaded = withContext(storeScope.coroutineContext) { store.load(name) } ?: EditorProject()
-            _state.value = EditorUiState(name = name, history = EditorHistory(loaded), loaded = true)
-            refreshProjectNames()
-        }
+        openJob =
+            scope.launch {
+                val loaded = withContext(storeScope.coroutineContext) { store.load(name) } ?: EditorProject()
+                _state.value = EditorUiState(name = name, history = EditorHistory(loaded), loaded = true)
+                refreshProjectNames()
+            }
     }
 
-    fun create(name: String, onCreated: (Boolean) -> Unit) {
+    fun create(
+        name: String,
+        onCreated: (Boolean) -> Unit,
+    ) {
         val clean = name.trim()
         if (clean.isEmpty() || clean != PresetStore.safeFileName(clean)) {
             onCreated(false)
             return
         }
         scope.launch {
-            val saved = withContext(storeScope.coroutineContext) {
-                if (store.fileOf(clean).exists()) false else store.save(clean, EditorProject())
-            }
+            val saved =
+                withContext(storeScope.coroutineContext) {
+                    if (store.fileOf(clean).exists()) false else store.save(clean, EditorProject())
+                }
             if (saved) {
                 open(clean)
                 refreshProjectNames()

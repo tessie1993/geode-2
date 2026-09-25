@@ -1,6 +1,5 @@
 package dev.geode.editor
 
-
 data class SubtitleCue(
     val startMs: Long,
     val endMs: Long,
