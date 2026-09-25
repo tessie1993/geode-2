@@ -25,11 +25,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
+import dev.geode.ui.opaline.OpalineIconAction
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import dev.geode.ui.opaline.OpalineIconAction as IconButton
 
 @Composable
 internal fun FolderSettingsTab() {
@@ -133,7 +133,7 @@ internal fun MusicFoldersEditor(viewModel: LibraryViewModel) {
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodySmall,
                 )
-                IconButton(onClick = { viewModel.removeMediaRoot(root) }) {
+                OpalineIconAction(onClick = { viewModel.removeMediaRoot(root) }) {
                     Icon(CreativeIcons.Close, contentDescription = stringResource(R.string.folders_remove))
                 }
             }

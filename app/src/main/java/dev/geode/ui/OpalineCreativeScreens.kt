@@ -71,6 +71,7 @@ import dev.geode.render.scene.CustomizeTab
 import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.VisualStyleCatalog
+import dev.geode.ui.opaline.OpalineAlertDialog
 import dev.geode.ui.opaline.OpalineButton
 import dev.geode.ui.opaline.OpalineColors
 import dev.geode.ui.opaline.OpalineIconButton
@@ -78,13 +79,12 @@ import dev.geode.ui.opaline.OpalinePage
 import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.OpalineSlider
+import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.OpalineToggle
 import dev.geode.ui.opaline.creative.CreativeTabs
 import dev.geode.ui.opaline.opalinePart
 import dev.geode.ui.studio.TimelineEditor
 import kotlin.math.roundToInt
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 /** Destination-bound creative workspace. Each page retains its place through the Navigator. */
 @Composable
@@ -474,12 +474,12 @@ private fun CreativeStudioHome(
         }
     }
     if (creating) {
-        AlertDialog(
+        OpalineAlertDialog(
             onDismissRequest = { creating = false },
             title = { Text(stringResource(R.string.oc_new_project)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(name, {
+                    OpalineTextField(name, {
                         name = it
                         failed = false
                     }, singleLine = true, label = { Text(stringResource(R.string.oc_project_name)) })

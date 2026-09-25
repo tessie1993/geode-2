@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,12 +32,11 @@ import dev.geode.data.GeodePrefsFiles
 import dev.geode.export.ExportAspect
 import dev.geode.export.LoopSpec
 import dev.geode.export.TimeOfDayDrift
+import dev.geode.ui.opaline.OpalineAction
+import dev.geode.ui.opaline.creative.CreativeProgress
+import dev.geode.ui.opaline.creative.CreativeSlider
+import dev.geode.ui.opaline.creative.CreativeToggle
 import kotlin.math.roundToInt
-import dev.geode.ui.opaline.OpalineAction as Button
-import dev.geode.ui.opaline.OpalineAction as OutlinedButton
-import dev.geode.ui.opaline.OpalineAction as TextButton
-import dev.geode.ui.opaline.creative.CreativeSlider as Slider
-import dev.geode.ui.opaline.creative.CreativeToggle as Switch
 
 /**
  * Picks the loop's length, seam and palette drift, then starts [ExportController.startLoopRender]
@@ -131,7 +129,7 @@ fun LoopRenderSheet(
             }
 
             if (state.phase.isRunning) {
-                TextButton(onClick = onCancel) { Text(stringResource(R.string.export_cancel)) }
+                OpalineAction(onClick = onCancel) { Text(stringResource(R.string.export_cancel)) }
             }
         }
     }
@@ -139,10 +137,7 @@ fun LoopRenderSheet(
 
 @Composable
 private fun LoopRenderRunning(progress: Float) {
-    LinearProgressIndicator(
-        progress = { progress },
-        modifier = Modifier.fillMaxWidth(),
-    )
+    CreativeProgress(progress, Modifier.fillMaxWidth())
     Text(
         stringResource(R.string.export_loop_rendering, (progress * 100).roundToInt()),
         style = MaterialTheme.typography.labelMedium,
@@ -163,7 +158,7 @@ private fun LoopRenderDone(resultUri: Uri) {
         style = MaterialTheme.typography.bodyMedium,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = {
+        OpalineAction(onClick = {
             val share =
                 Intent(Intent.ACTION_SEND).apply {
                     type = "video/mp4"
@@ -201,7 +196,7 @@ private fun LoopRenderControls(
         stringResource(R.string.export_loop_length, loopSeconds.roundToInt()),
         style = MaterialTheme.typography.labelMedium,
     )
-    Slider(
+    CreativeSlider(
         value = loopSeconds,
         onValueChange = onLoopSecondsChange,
         valueRange = (LoopSpec.MIN_LOOP_MS / 1000f)..(LoopSpec.MAX_LOOP_MS / 1000f),
@@ -210,26 +205,26 @@ private fun LoopRenderControls(
         stringResource(R.string.export_loop_crossfade, crossfadeSeconds),
         style = MaterialTheme.typography.labelMedium,
     )
-    Slider(
+    CreativeSlider(
         value = crossfadeSeconds,
         onValueChange = onCrossfadeSecondsChange,
         valueRange = (LoopSpec.MIN_CROSSFADE_MS / 1000f)..(LoopSpec.MAX_CROSSFADE_MS / 1000f),
     )
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.export_loop_drift_toggle), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = driftEnabled, onCheckedChange = onDriftEnabledChange)
+        CreativeToggle(checked = driftEnabled, onCheckedChange = onDriftEnabledChange)
     }
     if (driftEnabled) {
         Text(
             stringResource(R.string.export_loop_drift_hue, (driftHueTurns * 360).roundToInt()),
             style = MaterialTheme.typography.labelMedium,
         )
-        Slider(value = driftHueTurns, onValueChange = onDriftHueTurnsChange, valueRange = -0.5f..0.5f)
+        CreativeSlider(value = driftHueTurns, onValueChange = onDriftHueTurnsChange, valueRange = -0.5f..0.5f)
         Text(
             stringResource(R.string.export_loop_drift_stops, driftStops.roundToInt()),
             style = MaterialTheme.typography.labelMedium,
         )
-        Slider(
+        CreativeSlider(
             value = driftStops,
             onValueChange = onDriftStopsChange,
             valueRange = 2f..TimeOfDayDrift.MAX_STOPS.toFloat(),
@@ -258,16 +253,16 @@ private fun LoopRenderControls(
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,
             )
-            TextButton(onClick = { onRemoveClip(clip) }) { Text(stringResource(R.string.action_delete)) }
+            OpalineAction(onClick = { onRemoveClip(clip) }) { Text(stringResource(R.string.action_delete)) }
         }
     }
-    OutlinedButton(onClick = onAddClips, modifier = Modifier.fillMaxWidth()) {
+    OpalineAction(onClick = onAddClips, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.export_loop_soundtrack_add))
     }
-    Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
+    OpalineAction(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.export_loop_start))
     }
-    OutlinedButton(onClick = onStartToDestination, modifier = Modifier.fillMaxWidth()) {
+    OpalineAction(onClick = onStartToDestination, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.export_render_to_folder))
     }
 }

@@ -55,16 +55,16 @@ import dev.geode.data.TagWriteOutcome
 import dev.geode.nav.Destination
 import dev.geode.nav.Navigator
 import dev.geode.nav.Overlay
+import dev.geode.ui.opaline.OpalineAlertDialog
 import dev.geode.ui.opaline.OpalineButton
 import dev.geode.ui.opaline.OpalineEmptyState
 import dev.geode.ui.opaline.OpalineIconButton
 import dev.geode.ui.opaline.OpalinePage
 import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRow
+import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.opalinePart
 import kotlinx.coroutines.delay
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 @Composable
 internal fun OpalineSearch(
@@ -95,7 +95,7 @@ internal fun OpalineSearch(
         OpalinePage(stringResource(R.string.action_search), stringResource(R.string.opaline_search_subtitle), onBack = {
             navigator.close(Overlay.Search)
         }) {
-            OutlinedTextField(query, {
+            OpalineTextField(query, {
                 query = it
             }, singleLine = true, modifier = Modifier.fillMaxWidth().focusRequester(focus), label = {
                 Text(stringResource(R.string.opaline_search_hint))
@@ -163,7 +163,7 @@ private fun OpalineAddToPlaylist(
     val state by library.library.collectAsStateWithLifecycle()
     var name by rememberSaveable { mutableStateOf("") }
     OpalinePage(stringResource(R.string.opaline_add_playlist), onBack = { navigator.back() }) {
-        OutlinedTextField(name, {
+        OpalineTextField(name, {
             name = it
         }, singleLine = true, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.opaline_playlist_name)) })
         OpalineButton(stringResource(R.string.action_create), {
@@ -268,7 +268,7 @@ private fun OpalineEditField(
     value: String,
     onValueChange: (String) -> Unit,
 ) {
-    OutlinedTextField(
+    OpalineTextField(
         value,
         onValueChange,
         label = { Text(label) },
@@ -332,7 +332,7 @@ internal fun OpalinePlaylistDetail(
         }
     }
     if (renaming) {
-        AlertDialog(onDismissRequest = { renaming = false }, title = { Text(stringResource(R.string.action_rename)) }, text = {
+        OpalineAlertDialog(onDismissRequest = { renaming = false }, title = { Text(stringResource(R.string.action_rename)) }, text = {
             OpalineEditField(stringResource(R.string.opaline_playlist_name), name) { name = it }
         }, confirmButton = {
             OpalineButton(stringResource(R.string.action_save), {
@@ -348,7 +348,7 @@ internal fun OpalinePlaylistDetail(
         })
     }
     if (deleting) {
-        AlertDialog(onDismissRequest = {
+        OpalineAlertDialog(onDismissRequest = {
             deleting = false
         }, title = {
             Text(stringResource(R.string.playlist_delete_title))
@@ -431,7 +431,7 @@ internal fun OpalineSmartPlaylist(
         }
     }
     if (deleting) {
-        AlertDialog(onDismissRequest = {
+        OpalineAlertDialog(onDismissRequest = {
             deleting = false
         }, title = { Text(stringResource(R.string.action_delete)) }, text = { Text(draft.name) }, confirmButton = {
             OpalineButton(stringResource(R.string.action_delete), {

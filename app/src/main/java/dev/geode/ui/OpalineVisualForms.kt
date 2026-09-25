@@ -32,7 +32,6 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -60,15 +59,16 @@ import dev.geode.render.scene.CustomizeTab
 import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.VisualStyleCatalog
+import dev.geode.ui.opaline.OpalineAction
+import dev.geode.ui.opaline.OpalineIconAction
+import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
+import dev.geode.ui.opaline.creative.CreativeProgress
 import dev.geode.ui.opaline.creative.CreativeSlider
 import dev.geode.ui.opaline.creative.CreativeTabs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import dev.geode.ui.opaline.OpalineAction as TextButton
-import dev.geode.ui.opaline.OpalineIconAction as IconButton
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 internal fun vizPlaylistIndexOf(
     playlist: List<VizPlaylistEntry>,
@@ -159,7 +159,7 @@ internal fun PresetsTreeTab(
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+                OpalineTextField(
                     value = newFolder,
                     onValueChange = { newFolder = it },
                     modifier = Modifier.weight(1f),
@@ -191,7 +191,7 @@ internal fun PresetsTreeTab(
                             overflow = TextOverflow.Ellipsis,
                         )
                         if (folder.isNotEmpty()) {
-                            IconButton(onClick = {
+                            OpalineIconAction(onClick = {
                                 renamingFolder = folder
                                 folderRenameText = folder
                             }) { Icon(Icons.Outlined.Edit, "Rename this folder") }
@@ -202,15 +202,15 @@ internal fun PresetsTreeTab(
             items(inFolder, key = { "p_${it.name}" }) { p ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(p.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    IconButton(onClick = { applyPresetLive(viewModel, visualizerView, p) }) {
+                    OpalineIconAction(onClick = { applyPresetLive(viewModel, visualizerView, p) }) {
                         Icon(Icons.Outlined.PlayArrow, "Apply", tint = MaterialTheme.colorScheme.primary)
                     }
-                    IconButton(onClick = { sharePreset(context, visualsViewModel, p.name) }) {
+                    OpalineIconAction(onClick = { sharePreset(context, visualsViewModel, p.name) }) {
                         Icon(Icons.Outlined.Share, "Share this preset")
                     }
                     val playlistIndex = vizPlaylistIndexOf(viz.vizPlaylist, p.name)
                     val inPlaylist = playlistIndex >= 0
-                    IconButton(
+                    OpalineIconAction(
                         onClick = {
                             if (inPlaylist) {
                                 viewModel.removeVizPlaylistAt(playlistIndex)
@@ -227,10 +227,10 @@ internal fun PresetsTreeTab(
                             tint = if (inPlaylist) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                         )
                     }
-                    IconButton(onClick = { movingPreset = p.name }) {
+                    OpalineIconAction(onClick = { movingPreset = p.name }) {
                         Icon(Icons.Outlined.Folder, "Move to another folder")
                     }
-                    IconButton(onClick = { deletingPreset = p.name }) {
+                    OpalineIconAction(onClick = { deletingPreset = p.name }) {
                         Icon(Icons.Outlined.Delete, "Remove", tint = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -250,7 +250,7 @@ internal fun PresetsTreeTab(
         ) { p ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(p.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                IconButton(onClick = { applyPresetLive(viewModel, visualizerView, p) }) {
+                OpalineIconAction(onClick = { applyPresetLive(viewModel, visualizerView, p) }) {
                     Icon(Icons.Outlined.PlayArrow, "Apply", tint = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -261,7 +261,7 @@ internal fun PresetsTreeTab(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(vertical = 10.dp),
             ) {
-                OutlinedTextField(
+                OpalineTextField(
                     value = saveName,
                     onValueChange = { saveName = it },
                     modifier = Modifier.weight(1f),
@@ -303,7 +303,7 @@ internal fun PresetsTreeTab(
             title = { Text("Rename folder") },
             text = {
                 Column {
-                    OutlinedTextField(
+                    OpalineTextField(
                         value = folderRenameText,
                         onValueChange = { folderRenameText = it },
                         singleLine = true,
@@ -324,7 +324,7 @@ internal fun PresetsTreeTab(
                     renamingFolder = null
                 }) { Text("Rename") }
             },
-            dismissButton = { TextButton(onClick = { renamingFolder = null }) { Text("Cancel") } },
+            dismissButton = { OpalineAction(onClick = { renamingFolder = null }) { Text("Cancel") } },
         )
     }
     movingPreset?.let { name ->
@@ -345,7 +345,7 @@ internal fun PresetsTreeTab(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { movingPreset = null }) { Text("Close") } },
+            confirmButton = { OpalineAction(onClick = { movingPreset = null }) { Text("Close") } },
         )
     }
     replacingPreset?.let { name ->
@@ -369,7 +369,7 @@ internal fun PresetsTreeTab(
                     replacingPreset = null
                 }) { Text("Replace") }
             },
-            dismissButton = { TextButton(onClick = { replacingPreset = null }) { Text("Cancel") } },
+            dismissButton = { OpalineAction(onClick = { replacingPreset = null }) { Text("Cancel") } },
         )
     }
     deletingPreset?.let { name ->
@@ -389,7 +389,7 @@ internal fun PresetsTreeTab(
                 }) { Text("Delete") }
             },
             dismissButton = {
-                TextButton(onClick = { deletingPreset = null }) { Text("Cancel") }
+                OpalineAction(onClick = { deletingPreset = null }) { Text("Cancel") }
             },
         )
     }
@@ -917,7 +917,7 @@ private fun CustomizeToolbar(
     var presetName by remember { mutableStateOf("") }
     val changed = remember(params) { CustomizeSummary.changedCount(params) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-        OutlinedTextField(
+        OpalineTextField(
             value = query,
             onValueChange = onQuery,
             modifier = Modifier.fillMaxWidth(),
@@ -998,7 +998,7 @@ private fun CustomizeToolbar(
             onDismissRequest = { savingPreset = false },
             title = { Text("Save as preset") },
             text = {
-                OutlinedTextField(
+                OpalineTextField(
                     value = presetName,
                     onValueChange = { presetName = it },
                     singleLine = true,
@@ -1015,7 +1015,7 @@ private fun CustomizeToolbar(
                     savingPreset = false
                 }) { Text("Save") }
             },
-            dismissButton = { TextButton(onClick = { savingPreset = false }) { Text("Cancel") } },
+            dismissButton = { OpalineAction(onClick = { savingPreset = false }) { Text("Cancel") } },
         )
     }
     if (confirmReset) {
@@ -1035,7 +1035,7 @@ private fun CustomizeToolbar(
                 }) { Text("Reset") }
             },
             dismissButton = {
-                TextButton(onClick = { confirmReset = false }) { Text("Cancel") }
+                OpalineAction(onClick = { confirmReset = false }) { Text("Cancel") }
             },
         )
     }
@@ -1094,16 +1094,9 @@ internal fun TakesTab(viewModel: StudioViewModel) {
                         style = MaterialTheme.typography.labelMedium,
                         color = accentTextColor(),
                     )
-                    LinearProgressIndicator(
-                        progress = {
-                            if (takes.replayEndMs > 0) {
-                                (takes.replayMs.toFloat() / takes.replayEndMs).coerceIn(0f, 1f)
-                            } else {
-                                0f
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(2.dp).padding(top = 4.dp),
-                        color = MaterialTheme.colorScheme.primary,
+                    CreativeProgress(
+                        if (takes.replayEndMs > 0) takes.replayMs.toFloat() / takes.replayEndMs else 0f,
+                        Modifier.fillMaxWidth().padding(top = 4.dp),
                     )
                 }
             }
@@ -1123,7 +1116,7 @@ internal fun TakesTab(viewModel: StudioViewModel) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                IconButton(onClick = {
+                OpalineIconAction(onClick = {
                     if (playing) studioViewModel.stopReplay() else studioViewModel.playTake(take.name)
                 }) {
                     if (playing) {
@@ -1132,7 +1125,7 @@ internal fun TakesTab(viewModel: StudioViewModel) {
                         Icon(Icons.Outlined.PlayArrow, "Replay this take", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
-                IconButton(onClick = {
+                OpalineIconAction(onClick = {
                     studioViewModel.setExportTake(if (takes.exportTake == take.name) null else take.name)
                 }) {
                     Icon(
@@ -1146,11 +1139,11 @@ internal fun TakesTab(viewModel: StudioViewModel) {
                             },
                     )
                 }
-                IconButton(onClick = {
+                OpalineIconAction(onClick = {
                     renaming = take.name
                     renameText = take.name
                 }) { Icon(Icons.Outlined.Edit, "Rename") }
-                IconButton(onClick = { deleting = take.name }) {
+                OpalineIconAction(onClick = { deleting = take.name }) {
                     Icon(Icons.Outlined.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
                 }
             }
@@ -1169,7 +1162,7 @@ internal fun TakesTab(viewModel: StudioViewModel) {
             title = { Text("Rename take") },
             text = {
                 Column {
-                    OutlinedTextField(value = renameText, onValueChange = { renameText = it }, singleLine = true)
+                    OpalineTextField(value = renameText, onValueChange = { renameText = it }, singleLine = true)
                     renameError?.let {
                         Text(
                             it,
@@ -1185,7 +1178,7 @@ internal fun TakesTab(viewModel: StudioViewModel) {
                     renaming = null
                 }) { Text("Rename") }
             },
-            dismissButton = { TextButton(onClick = { renaming = null }) { Text("Cancel") } },
+            dismissButton = { OpalineAction(onClick = { renaming = null }) { Text("Cancel") } },
         )
     }
     deleting?.let { name ->
@@ -1202,7 +1195,7 @@ internal fun TakesTab(viewModel: StudioViewModel) {
                 }) { Text("Delete") }
             },
             dismissButton = {
-                TextButton(onClick = { deleting = null }) { Text("Cancel") }
+                OpalineAction(onClick = { deleting = null }) { Text("Cancel") }
             },
         )
     }
@@ -1230,7 +1223,7 @@ internal fun TexturesHubTab(
                 CreativeButton(compact = true, filled = false, onClick = {
                     visualsViewModel.useTexture(tex.name) { path -> selectMilk(viewModel, visualizerView, path) }
                 }) { Text("Use") }
-                IconButton(onClick = { deletingTexture = tex.name }) {
+                OpalineIconAction(onClick = { deletingTexture = tex.name }) {
                     Icon(Icons.Outlined.Delete, "Delete this texture", tint = MaterialTheme.colorScheme.error)
                 }
             }
@@ -1254,7 +1247,7 @@ internal fun TexturesHubTab(
                 }) { Text("Delete") }
             },
             dismissButton = {
-                TextButton(onClick = { deletingTexture = null }) { Text("Cancel") }
+                OpalineAction(onClick = { deletingTexture = null }) { Text("Cancel") }
             },
         )
     }
@@ -1286,7 +1279,7 @@ internal fun GlslHubTab(
                 "fluid-driven distortion.",
             style = MaterialTheme.typography.labelSmall,
         )
-        OutlinedTextField(
+        OpalineTextField(
             value = source,
             onValueChange = { source = it },
             modifier = Modifier.fillMaxWidth().height(360.dp),
@@ -1297,7 +1290,7 @@ internal fun GlslHubTab(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CreativeButton(onClick = { viewModel.applyCustomShader(source) }) { Text("Apply shader") }
-            TextButton(onClick = {
+            OpalineAction(onClick = {
                 source = visualizerView.visualizerRenderer.customShaderFor(viz.sceneId) ?: ""
             }) { Text("Revert") }
         }

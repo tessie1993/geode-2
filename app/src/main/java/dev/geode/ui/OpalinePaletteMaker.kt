@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,10 +32,10 @@ import dev.geode.R
 import dev.geode.data.CustomPalette
 import dev.geode.data.PaletteStore
 import dev.geode.render.scene.SceneParams
+import dev.geode.ui.opaline.OpalineAction
+import dev.geode.ui.opaline.OpalineChip
+import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.creative.CreativeSlider
-import dev.geode.ui.opaline.OpalineAction as OutlinedButton
-import dev.geode.ui.opaline.OpalineAction as TextButton
-import dev.geode.ui.opaline.OpalineTextField as OutlinedTextField
 
 internal fun paletteChipIndex(
     p: SceneParams,
@@ -77,7 +76,7 @@ internal fun PaletteSlotSelector(
     val selected = paletteChipIndex(p, saved, second)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         labels.forEachIndexed { index, label ->
-            FilterChip(
+            OpalineChip(
                 selected = index == selected,
                 onClick = { onChange(paletteChipSelected(p, saved, index, second)) },
                 label = { Text(label, style = MaterialTheme.typography.labelSmall) },
@@ -145,24 +144,24 @@ internal fun PaletteMakerCard(
             modifier = Modifier.fillMaxWidth(),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = { onChange(PaletteStore.applyGradient(p, baseHue, hueSpan)) }) {
+            OpalineAction(onClick = { onChange(PaletteStore.applyGradient(p, baseHue, hueSpan)) }) {
                 Text(stringResource(R.string.palette_apply_gradient))
             }
-            OutlinedButton(onClick = {
+            OpalineAction(onClick = {
                 baseHue = p.paletteBase
                 hueSpan = p.paletteRange
             }) {
                 Text(stringResource(R.string.palette_from_current))
             }
         }
-        OutlinedTextField(
+        OpalineTextField(
             value = name,
             onValueChange = { name = it },
             singleLine = true,
             label = { Text(stringResource(R.string.palette_name_label)) },
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
         )
-        OutlinedButton(
+        OpalineAction(
             onClick = {
                 val stored = palettes.save(PaletteStore.create(name, baseHue, hueSpan))
                 name = ""
@@ -183,14 +182,14 @@ internal fun PaletteMakerCard(
             ) {
                 Text(palette.name, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
                 GradientPreview(palette.baseHue, palette.hueSpan, modifier = Modifier.width(64.dp))
-                TextButton(onClick = {
+                OpalineAction(onClick = {
                     baseHue = palette.baseHue
                     hueSpan = palette.hueSpan
                     name = palette.name
                 }) {
                     Text(stringResource(R.string.palette_edit), style = MaterialTheme.typography.labelSmall)
                 }
-                TextButton(onClick = {
+                OpalineAction(onClick = {
                     palettes.delete(palette.id)
                     onChange(PaletteStore.forgetDeleted(p, palette.id))
                 }) {

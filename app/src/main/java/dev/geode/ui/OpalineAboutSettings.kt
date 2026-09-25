@@ -24,10 +24,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.geode.BuildConfig
 import dev.geode.R
+import dev.geode.ui.opaline.OpalineAlertDialog
 import dev.geode.ui.opaline.creative.CreativeButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 
 const val PRIVACY_POLICY_URL = "https://tessie1993.github.io/music-visualizer-2/privacy-policy.html"
 
@@ -85,7 +85,7 @@ private fun LicensesDialog(onDismiss: () -> Unit) {
     // CreativeDialog only carries a plain title/text/actions layout, no scrollable custom body, so
     // this one long-form dialog stays on the stock AlertDialog; GlassMaterialTheme's colour scheme
     // still applies to it.
-    AlertDialog(
+    OpalineAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.about_licenses)) },
         text = {

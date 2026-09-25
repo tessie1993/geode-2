@@ -88,6 +88,7 @@ import dev.geode.nav.Section
 import dev.geode.nav.connect.MotionPolicy
 import dev.geode.nav.connect.NavConnectors
 import dev.geode.render.VisualizerView
+import dev.geode.ui.opaline.OpalineAlertDialog
 import dev.geode.ui.opaline.OpalineButton
 import dev.geode.ui.opaline.OpalineIconButton
 import dev.geode.ui.opaline.OpalinePage
@@ -100,7 +101,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
-import dev.geode.ui.opaline.OpalineAlertDialog as AlertDialog
 
 @Composable
 fun OpalineApp(
@@ -618,7 +618,7 @@ private fun OpalineCrashReport() {
             }
     }
     val text = report ?: return
-    AlertDialog(
+    OpalineAlertDialog(
         onDismissRequest = { report = null },
         title = { Text(stringResource(R.string.crash_dialog_title)) },
         text = { Text(text.take(600)) },
