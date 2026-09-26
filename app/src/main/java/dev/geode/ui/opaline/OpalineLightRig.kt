@@ -3,14 +3,16 @@ package dev.geode.ui.opaline
 import kotlin.math.sqrt
 
 /**
- * The shared light rig of the library workbench (src/workbench.js): a hemisphere light, the key
- * "sun" and cool rim directional lights, two blue point lights, ACES filmic tone mapping at
- * exposure 0.78 and the RoomEnvironment at intensity 0.42. Colours are linear and already
- * multiplied by intensity, as three.js uploads them.
+ * The shared light rig of the library workbench (src/workbench.js `buildLights`): a hemisphere
+ * light, the key "sun" and cool rim directional lights, two blue point lights, ACES filmic tone
+ * mapping at exposure 0.78 and the RoomEnvironment at intensity 0.42. Colours are linear and
+ * already multiplied by intensity, as three.js uploads them. Positions and directions are realm
+ * metres (+Y up); the renderer carries them into each pass's view.
  *
- * Point lights sit in element space (metres around the element's origin), so each part is lit
- * as the workbench lights an element of its size: [pointPosition] and [pointDistance] scale with
- * the part, and [pointColor] scales by the square of it to cancel the inverse-square falloff.
+ * Point lights sit in element space for UI parts (metres around the element's origin), so each
+ * part is lit as the workbench lights an element of its size: [pointPosition] and
+ * [pointDistance] scale with the part, and [pointColor] scales by the square of it to cancel the
+ * inverse-square falloff. The realm itself is lit at scale 1.
  */
 internal object OpalineLightRig {
     const val TONE_MAPPING_EXPOSURE = 0.78f
@@ -21,7 +23,7 @@ internal object OpalineLightRig {
     val hemisphereGround = scaled(0x142640, .55f)
     val hemisphereDirection = floatArrayOf(0f, 1f, 0f)
 
-    /** Directions toward each light (position minus the origin target), then their colours. */
+    /** Directions toward each light (position minus the origin target), sun first. */
     val directionalDirections = unit(-5f, 9f, 7f) + unit(8f, 5f, -6f)
     val directionalColors = scaled(0xE4F3FF, 1.8f) + scaled(0x6BBAFF, 1.25f)
 
@@ -30,7 +32,19 @@ internal object OpalineLightRig {
     private val pointDistances = floatArrayOf(15f, 12f)
     val pointDecays = floatArrayOf(POINT_DECAY, POINT_DECAY)
 
-    /** View-space positions of both point lights for an element whose origin is at [center]. */
+    /** The sun's position; its shadow camera looks from here at the target (the origin). */
+    val sunPosition = floatArrayOf(-5f, 9f, 7f)
+
+    /** `sun.shadow`: map 2048², orthographic ±11, near .5, far 35 (metres). */
+    const val SHADOW_MAP_SIZE = 2048
+    const val SHADOW_EXTENT = 11f
+    const val SHADOW_NEAR = .5f
+    const val SHADOW_FAR = 35f
+    const val SHADOW_NORMAL_BIAS = .025f
+    const val SHADOW_BIAS = -.00008f
+    const val SHADOW_RADIUS = 4f
+
+    /** Realm positions of both point lights for an element whose origin is at [center]. */
     fun pointPosition(
         center: FloatArray,
         scale: Float,

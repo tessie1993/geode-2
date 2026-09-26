@@ -17,8 +17,9 @@ internal class OpalineProgram(
     private val locations = mutableMapOf<String, Int>()
 
     init {
+        val stages = listOf(GL.GL_VERTEX_SHADER to "vert", GL.GL_FRAGMENT_SHADER to "frag")
         val shaders =
-            listOf(GL.GL_VERTEX_SHADER to "vert", GL.GL_FRAGMENT_SHADER to "frag").map { (type, suffix) ->
+            stages.map { (type, suffix) ->
                 val shader = GL.glCreateShader(type)
                 GL.glShaderSource(shader, source("$name.$suffix"))
                 GL.glCompileShader(shader)
@@ -40,7 +41,8 @@ internal class OpalineProgram(
             INCLUDE.matchEntire(line.trim())?.let { read(it.groupValues[1]) } ?: line
         }
 
-    private fun read(file: String): String = assets.open("opaline-native/shaders/$file").bufferedReader().use { it.readText() }
+    private fun read(file: String): String =
+        assets.open("opaline-native/shaders/$file").bufferedReader().use { it.readText() }
 
     fun location(name: String): Int = locations.getOrPut(name) { GL.glGetUniformLocation(id, name) }
 
@@ -82,6 +84,12 @@ internal class OpalineProgram(
         name: String,
         values: FloatArray,
     ) = GL.glUniform3fv(location(name), values.size / 3, values, 0)
+
+    /** A `vec4 name[n]` array from 4n packed floats. */
+    fun vec4s(
+        name: String,
+        values: FloatArray,
+    ) = GL.glUniform4fv(location(name), values.size / 4, values, 0)
 
     fun vec4(
         name: String,

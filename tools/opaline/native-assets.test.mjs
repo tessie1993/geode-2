@@ -16,7 +16,8 @@ for (const name of names.filter(n => n.endsWith('.glb'))) {
     const jsonLength = b.readUInt32LE(12);
     const gltf = JSON.parse(b.toString('utf8', 20, 20 + jsonLength));
     const binary = b.subarray(28 + jsonLength);
-    for (const a of gltf.accessors) {
+    // J24 (the catalogue's scene light rig) carries punctual lights only: no accessors, no mesh.
+    for (const a of gltf.accessors ?? []) {
       const v = gltf.bufferViews[a.bufferView];
       const components = {SCALAR:1,VEC2:2,VEC3:3,VEC4:4}[a.type];
       const bytes = {5121:1,5123:2,5125:4,5126:4}[a.componentType];
@@ -27,7 +28,7 @@ for (const name of names.filter(n => n.endsWith('.glb'))) {
         assert.ok(Number.isFinite(binary.readFloatLE(start+i*stride+j*bytes)));
       }
     }
-    assert.ok(gltf.nodes.some(n => n.mesh !== undefined));
+    assert.ok(gltf.nodes.some(n => n.mesh !== undefined || n.extensions?.KHR_lights_punctual !== undefined));
   });
 }
 for (const name of names.filter(n => n.endsWith('.png'))) {
