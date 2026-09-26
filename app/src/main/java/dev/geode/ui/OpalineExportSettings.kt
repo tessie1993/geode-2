@@ -1,11 +1,8 @@
 package dev.geode.ui
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,29 +49,28 @@ internal fun ExportSettingsTab(
             SettingsGroup(stringResource(R.string.export_group_defaults)) {
                 Column {
                     Text(stringResource(R.string.export_platform_preset), style = MaterialTheme.typography.labelMedium)
-                    Row(Modifier.fillMaxWidth().padding(top = 4.dp).horizontalScroll(rememberScrollState())) {
-                        CreativeSegments(
-                            options = ExportPresets.ALL.map { it.name },
-                            selected =
-                                ExportPresets.indexMatching(
-                                    defaults.quality,
-                                    defaults.ratio,
-                                    defaults.fps,
-                                    defaults.loopSafe,
+                    CreativeSegments(
+                        options = ExportPresets.ALL.map { it.name },
+                        selected =
+                            ExportPresets.indexMatching(
+                                defaults.quality,
+                                defaults.ratio,
+                                defaults.fps,
+                                defaults.loopSafe,
+                            ),
+                        onSelect = {
+                            val preset = ExportPresets.ALL[it]
+                            update(
+                                defaults.copy(
+                                    quality = preset.quality,
+                                    ratio = preset.ratio,
+                                    fps = preset.fps,
+                                    loopSafe = preset.loopSafe,
                                 ),
-                            onSelect = {
-                                val preset = ExportPresets.ALL[it]
-                                update(
-                                    defaults.copy(
-                                        quality = preset.quality,
-                                        ratio = preset.ratio,
-                                        fps = preset.fps,
-                                        loopSafe = preset.loopSafe,
-                                    ),
-                                )
-                            },
-                        )
-                    }
+                            )
+                        },
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                     Text(
                         presetCaption(
                             defaults,
@@ -104,13 +100,12 @@ internal fun ExportSettingsTab(
                 }
                 Column {
                     Text(stringResource(R.string.export_aspect_ratio), style = MaterialTheme.typography.labelMedium)
-                    Row(Modifier.fillMaxWidth().padding(top = 4.dp).horizontalScroll(rememberScrollState())) {
-                        CreativeSegments(
-                            options = ExportRatio.entries.map { it.label },
-                            selected = ExportRatio.entries.indexOf(defaults.ratio),
-                            onSelect = { update(defaults.copy(ratio = ExportRatio.entries[it])) },
-                        )
-                    }
+                    CreativeSegments(
+                        options = ExportRatio.entries.map { it.label },
+                        selected = ExportRatio.entries.indexOf(defaults.ratio),
+                        onSelect = { update(defaults.copy(ratio = ExportRatio.entries[it])) },
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
                 Column {
                     Text(stringResource(R.string.export_codec), style = MaterialTheme.typography.labelMedium)

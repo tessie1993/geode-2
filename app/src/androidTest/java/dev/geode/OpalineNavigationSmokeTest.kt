@@ -3,7 +3,7 @@ package dev.geode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -58,13 +58,16 @@ class OpalineNavigationSmokeTest {
         tabs.forEach { (section, label) ->
             compose
                 .onNode(
-                    SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab) and hasText(activity.getString(label)),
+                    SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab) and
+                        hasContentDescription(activity.getString(label)),
                 ).performClick()
             compose.waitUntil(10_000) { activity.navigator.state.value.section == section }
             assertEquals(section.root, activity.navigator.state.value.current)
         }
 
-        compose.onNodeWithContentDescription(activity.getString(R.string.nav_settings)).performClick()
+        compose
+            .onNodeWithContentDescription(activity.getString(R.string.nav_settings))
+            .performClick()
         compose.waitUntil(10_000) { activity.navigator.state.value.section == Section.SETTINGS }
         compose.runOnUiThread { activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitUntil(10_000) { activity.navigator.state.value.section == Section.PLAYER }

@@ -1,12 +1,10 @@
 package dev.geode.ui.studio
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,12 +25,17 @@ import dev.geode.editor.AutoCutSettings
 import dev.geode.editor.TransientEnvelope
 import dev.geode.editor.TransientHit
 import dev.geode.editor.TransientSource
+import dev.geode.ui.opaline.OpalineChip
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeSheet
 import dev.geode.ui.opaline.creative.CreativeSlider
+import dev.geode.ui.opaline.kit.OpalineFilterChipRow
 
-/** Runs [AutoCut] over the analysed track and hands the accepted hits back as markers or clips. */
+/**
+ * Runs [AutoCut] over the analysed track and hands the accepted hits back as markers or clips: a
+ * UI044 sheet, the source as UI010 filter chips, UI019 sliders and UI001 actions.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AutoCutSheet(
@@ -61,13 +64,12 @@ fun AutoCutSheet(
                 style = MaterialTheme.typography.labelMedium,
                 color = CreativeColors.textSecondary,
             )
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OpalineFilterChipRow(Modifier.fillMaxWidth()) {
                 TransientSource.entries.forEach { source ->
-                    CreativeButton(
-                        text = stringResource(sourceLabel(source)),
-                        selected = settings.source == source,
-                        tint = if (settings.source == source) CreativeColors.lavender else null,
+                    OpalineChip(
                         onClick = { settings = settings.copy(source = source) },
+                        label = { Text(stringResource(sourceLabel(source))) },
+                        selected = settings.source == source,
                     )
                 }
             }

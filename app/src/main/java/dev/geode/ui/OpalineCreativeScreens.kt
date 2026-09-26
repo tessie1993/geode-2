@@ -2,7 +2,6 @@ package dev.geode.ui
 
 import android.graphics.Rect
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,17 +12,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -55,11 +49,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.nav.Destination
@@ -78,11 +70,16 @@ import dev.geode.ui.opaline.OpalineIconButton
 import dev.geode.ui.opaline.OpalinePage
 import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRow
+import dev.geode.ui.opaline.OpalineSceneHost
 import dev.geode.ui.opaline.OpalineSlider
 import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.OpalineToggle
 import dev.geode.ui.opaline.creative.CreativeTabs
+import dev.geode.ui.opaline.kit.OpalineDepthCarousel
+import dev.geode.ui.opaline.kit.OpalineStyle
+import dev.geode.ui.opaline.kit.OpalineThreeWaySelector
 import dev.geode.ui.opaline.opalinePart
+import dev.geode.ui.opaline.rememberRecipeRail
 import dev.geode.ui.studio.TimelineEditor
 import kotlin.math.roundToInt
 
@@ -203,6 +200,9 @@ fun OpalineImmersive(
     secondScreenName: String?,
 ) {
     val playback by player.uiState.collectAsStateWithLifecycle()
+    val playLabel =
+        stringResource(if (playback.isPlaying) R.string.action_pause else R.string.action_play)
+    val playIcon = if (playback.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow
     DisposableEffect(renderer, secondScreenName) {
         VisualizerPipCoordinator.visualizerShowing = secondScreenName == null
         VisualizerPipCoordinator.canvasBoundsPx = null
@@ -213,58 +213,76 @@ fun OpalineImmersive(
     }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (secondScreenName == null) {
-            AndroidView(
-                factory = { renderer },
-                modifier =
-                    Modifier.fillMaxSize().onGloballyPositioned { coordinates ->
-                        val bounds = coordinates.boundsInWindow()
-                        VisualizerPipCoordinator.canvasBoundsPx =
-                            Rect(
-                                bounds.left.roundToInt(),
-                                bounds.top.roundToInt(),
-                                bounds.right.roundToInt(),
-                                bounds.bottom.roundToInt(),
-                            )
-                    },
+            VisualizerCanvasHost(
+                renderer,
+                Modifier.fillMaxSize().onGloballyPositioned { coordinates ->
+                    val bounds = coordinates.boundsInWindow()
+                    VisualizerPipCoordinator.canvasBoundsPx =
+                        Rect(
+                            bounds.left.roundToInt(),
+                            bounds.top.roundToInt(),
+                            bounds.right.roundToInt(),
+                            bounds.bottom.roundToInt(),
+                        )
+                },
             )
         } else {
-            Text(secondScreenName, Modifier.align(Alignment.Center), color = Color.White, style = MaterialTheme.typography.titleLarge)
+            Text(
+                secondScreenName,
+                Modifier.align(Alignment.Center),
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge,
+            )
         }
-        dev.geode.ui.opaline.OpalineSceneHost(Modifier.fillMaxSize(), environment = false, transparent = true) {
-            Box(Modifier.fillMaxSize()) {
-                Row(
-                    Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (!secondScreenName.isNullOrBlank()) {
-                        Text(secondScreenName, style = MaterialTheme.typography.labelMedium, color = Color.White)
+        // Picture-in-picture shows the engine surface alone.
+        if (!VisualizerPipCoordinator.inPictureInPicture) {
+            OpalineSceneHost(Modifier.fillMaxSize(), environment = false, transparent = true) {
+                Box(Modifier.fillMaxSize()) {
+                    Row(
+                        Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (!secondScreenName.isNullOrBlank()) {
+                            Text(
+                                secondScreenName,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White,
+                            )
+                        }
+                        OpalineIconButton(
+                            Icons.Filled.Close,
+                            stringResource(R.string.action_close),
+                            { navigator.close(Overlay.Visualizer) },
+                        )
                     }
-                    OpalineIconButton(Icons.Filled.Close, stringResource(R.string.action_close), { navigator.close(Overlay.Visualizer) })
-                }
-                Row(
-                    Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OpalineIconButton(
-                        Icons.Filled.SkipPrevious,
-                        stringResource(R.string.action_previous),
-                        player::previous,
-                        enabled = playback.hasMedia,
-                    )
-                    OpalineButton(
-                        stringResource(if (playback.isPlaying) R.string.action_pause else R.string.action_play),
-                        player::togglePlayPause,
-                        icon = if (playback.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        enabled = playback.hasMedia,
-                    )
-                    OpalineIconButton(
-                        Icons.Filled.SkipNext,
-                        stringResource(R.string.action_next),
-                        player::next,
-                        enabled = playback.hasMedia,
-                    )
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .safeDrawingPadding()
+                            .padding(bottom = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        OpalineIconButton(
+                            Icons.Filled.SkipPrevious,
+                            stringResource(R.string.action_previous),
+                            player::previous,
+                            enabled = playback.hasMedia,
+                        )
+                        OpalineButton(
+                            playLabel,
+                            player::togglePlayPause,
+                            icon = playIcon,
+                            enabled = playback.hasMedia,
+                        )
+                        OpalineIconButton(
+                            Icons.Filled.SkipNext,
+                            stringResource(R.string.action_next),
+                            player::next,
+                            enabled = playback.hasMedia,
+                        )
+                    }
                 }
             }
         }
@@ -284,7 +302,11 @@ private fun CreativeVisualsHome(
     }) {
         OpalinePanel(Modifier.padding(horizontal = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Box(Modifier.size(66.dp).opalinePart("B13", value = viz.params.motionAmount), contentAlignment = Alignment.Center) {
+                // UI023 Circular dial body (B13/gel) showing the scene's motion amount.
+                Box(
+                    Modifier.size(66.dp).opalinePart("UI023", value = viz.params.motionAmount),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(Icons.Filled.AutoAwesome, null, tint = OpalineColors.ink)
                 }
                 Column(Modifier.weight(1f)) {
@@ -349,39 +371,38 @@ private fun SceneGallery(
             5 -> VisualStyleCatalog.fluidIds + listOf(SceneIds.CURLFLOW, SceneIds.WATER)
             else -> VisualStyleCatalog.cymaticsIds
         }
-    LazyVerticalGrid(
-        GridCells.Adaptive(144.dp),
-        Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        items(ids, key = { it }) { id ->
-            val active = id == viz.sceneId
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .height(138.dp)
-                    .opalinePart("C01", selected = active)
-                    .background(OpalineColors.deep.copy(alpha = 0.64f), RoundedCornerShape(24.dp))
-                    .semantics { selected = active }
-                    .clickable(role = Role.RadioButton) { player.selectScene(id) }
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    var index by rememberSaveable(family) {
+        mutableIntStateOf(ids.indexOf(viz.sceneId).coerceAtLeast(0))
+    }
+    // UI059 Depth carousel: the scenes orbit the centre card; a tap on it selects that scene.
+    OpalineDepthCarousel(
+        ids,
+        index,
+        { index = it },
+        player::selectScene,
+        Modifier.fillMaxWidth().padding(16.dp),
+    ) { id ->
+        val active = id == viz.sceneId
+        Column(
+            Modifier.fillMaxSize().semantics { selected = active }.padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    null,
+                    Modifier.size(28.dp),
+                    tint = if (active) OpalineColors.accent else OpalineColors.lavender,
+                )
+                if (active) {
                     Icon(
-                        Icons.Filled.AutoAwesome,
-                        null,
-                        Modifier.size(28.dp),
-                        tint = if (active) OpalineColors.accent else OpalineColors.lavender,
+                        Icons.Filled.Check,
+                        stringResource(R.string.oc_selected),
+                        tint = OpalineColors.accent,
                     )
-                    if (active) {
-                        Icon(Icons.Filled.Check, stringResource(R.string.oc_selected), tint = OpalineColors.accent)
-                    }
                 }
-                Text(sceneDisplayLabel(id), style = MaterialTheme.typography.titleSmall)
             }
+            Text(sceneDisplayLabel(id), style = MaterialTheme.typography.titleSmall)
         }
     }
 }
@@ -519,7 +540,13 @@ private fun CreativeSettingsHome(navigator: Navigator) {
             Triple(R.string.oc_about, R.string.oc_about_subtitle, Destination.Settings.About),
         )
     OpalinePage(stringResource(R.string.nav_settings), stringResource(R.string.oc_settings_subtitle)) {
-        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // UI057 Selectable list: body C03/shell behind the row-* A05/gel rows.
+        val (padding, gap) = rememberRecipeRail("UI057", "body", "row-0")
+        LazyColumn(
+            Modifier.padding(16.dp).opalinePart("UI057"),
+            contentPadding = padding,
+            verticalArrangement = Arrangement.spacedBy(gap),
+        ) {
             items(rows.size) { index ->
                 val (title, subtitle, route) = rows[index]
                 OpalineRow(stringResource(title), stringResource(subtitle), { navigator.go(route) }, trailing = {
@@ -548,6 +575,15 @@ private fun CreativeLookSettings(
                         }
                     }
                 }
+                // Style (plan §12b): the Now Playing look worn with the colour pack above.
+                val styles = OpalineStyle.entries
+                OpalineThreeWaySelector(
+                    styles.map { style ->
+                        style.name.lowercase().replaceFirstChar { it.uppercase() }
+                    },
+                    styles.indexOfFirst { it.name == gui.opalineStyle }.coerceAtLeast(0),
+                    { settings.setGuiPrefs(gui.copy(opalineStyle = styles[it].name)) },
+                )
             }
             SettingsGroup(stringResource(R.string.oc_motion)) {
                 OpalineRow(stringResource(R.string.oc_reduced_motion), stringResource(R.string.oc_reduced_motion_subtitle), trailing = {

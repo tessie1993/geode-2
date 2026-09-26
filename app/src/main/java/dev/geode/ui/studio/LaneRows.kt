@@ -4,21 +4,23 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,8 +43,12 @@ import dev.geode.editor.MarkerId
 import dev.geode.ui.opaline.OpalineDropdownMenu
 import dev.geode.ui.opaline.OpalineDropdownMenuItem
 import dev.geode.ui.opaline.creative.CreativeColors
+import dev.geode.ui.opaline.kit.OpalineSplitView
 
-/** Header column beside the scrolling content column; every row height is fixed so the two stay aligned. */
+/**
+ * Lane headers ⇄ the timeline canvases in a UI067 resizable split; every row height is fixed and
+ * both panes share one vertical scroll, so the two stay aligned.
+ */
 @Composable
 internal fun Lanes(
     project: EditorProject,
@@ -59,105 +65,142 @@ internal fun Lanes(
     onResult: (EditResult) -> Unit,
     onAddClip: (Lane) -> Unit,
     onAddStill: (Lane) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val horizontal = rememberScrollState()
     val vertical = rememberScrollState()
-    Row(Modifier.fillMaxWidth().verticalScroll(vertical)) {
-        Column(Modifier.width(LANE_HEADER_WIDTH)) {
-            Spacer(Modifier.height(RULER_HEIGHT))
-            Box(Modifier.height(MARKER_LANE_HEIGHT), contentAlignment = Alignment.CenterStart) {
-                Text(
-                    stringResource(R.string.editor_markers),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CreativeColors.textSecondary,
-                )
-            }
-            project.timeline.lanes.forEach { lane ->
-                LaneHeader(lane, actions, onAddClip = { onAddClip(lane) }, onAddStill = { onAddStill(lane) })
-            }
-            keyTracks.forEach { track ->
-                Box(Modifier.height(KEYFRAME_LANE_HEIGHT), contentAlignment = Alignment.CenterStart) {
-                    Text(
-                        track.paramId.value,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CreativeColors.textSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-        Box(Modifier.weight(1f).horizontalScroll(horizontal)) {
-            Column {
-                TimeRuler(scale, onScrub = actions::setPlayhead)
-                LaneContentBox(scale, MARKER_LANE_HEIGHT) {
-                    MarkerLane(
-                        markers = project.markers,
-                        scale = scale,
-                        selected = selectedMarker,
-                        snapContext = project.snapContext(playheadMs),
-                        onSelect = onSelectMarker,
-                        onAdd = { ms -> actions.edit { p -> p.copy(markers = p.markers.add(Marker(actions.newMarkerId(), ms))) } },
-                        onMove = {
-                            id,
-                            ms,
-                            snap,
-                            context,
-                            ->
-                            actions.edit { p -> p.copy(markers = p.markers.moveTo(id, ms, snap, context)) }
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-                project.timeline.lanes.forEach { lane ->
-                    LaneContentBox(scale, LANE_HEIGHT, tint = laneTintFor(lane.kind)) {
-                        ClipStrip(
-                            timeline = project.timeline,
-                            lane = lane,
-                            scale = scale,
-                            selected = selectedClip,
-                            snapContext = { project.snapContext(playheadMs, excludeClip = it) },
-                            onSelect = onSelectClip,
-                            onSplit = { id, ms -> onResult(project.timeline.splitClip(id, ms, actions.newClipId())) },
-                            onResult = onResult,
-                            modifier = Modifier.fillMaxSize(),
+    // NaN until the divider is dragged: the headers open at their old width, which the split
+    // view clamps to the recipe's minimumFraction.
+    var split by rememberSaveable { mutableFloatStateOf(Float.NaN) }
+    BoxWithConstraints(modifier) {
+        OpalineSplitView(
+            fraction = if (split.isFinite()) split else LANE_HEADER_WIDTH / maxWidth,
+            onFractionChange = { split = it },
+            modifier = Modifier.fillMaxSize(),
+            first = {
+                Column(Modifier.fillMaxHeight().verticalScroll(vertical)) {
+                    Spacer(Modifier.height(RULER_HEIGHT))
+                    Box(
+                        Modifier.height(MARKER_LANE_HEIGHT),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Text(
+                            stringResource(R.string.editor_markers),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CreativeColors.textSecondary,
                         )
                     }
+                    project.timeline.lanes.forEach { lane ->
+                        LaneHeader(
+                            lane,
+                            actions,
+                            onAddClip = { onAddClip(lane) },
+                            onAddStill = { onAddStill(lane) },
+                        )
+                    }
+                    keyTracks.forEach { track ->
+                        Box(
+                            Modifier.height(KEYFRAME_LANE_HEIGHT),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            Text(
+                                track.paramId.value,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = CreativeColors.textSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                 }
-                keyTracks.forEach { track ->
-                    LaneContentBox(scale, KEYFRAME_LANE_HEIGHT) {
-                        KeyframeLane(
-                            track = track,
+            },
+        ) {
+            Box(Modifier.fillMaxHeight().verticalScroll(vertical).horizontalScroll(horizontal)) {
+                Column {
+                    TimeRuler(scale, onScrub = actions::setPlayhead)
+                    LaneContentBox(scale, MARKER_LANE_HEIGHT) {
+                        MarkerLane(
+                            markers = project.markers,
                             scale = scale,
-                            selected = selectedKey,
+                            selected = selectedMarker,
                             snapContext = project.snapContext(playheadMs),
-                            onSelect = onSelectKey,
+                            onSelect = onSelectMarker,
                             onAdd = { ms ->
                                 actions.edit { p ->
-                                    p.withKeyOn(
-                                        track,
-                                        Keyframe(
-                                            actions.newKeyframeId(),
-                                            ms,
-                                            track.valueAt(ms) ?: return@edit p,
-                                        ),
-                                    )
+                                    val marker = Marker(actions.newMarkerId(), ms)
+                                    p.copy(markers = p.markers.add(marker))
                                 }
                             },
-                            onMove = { id, ms, snap, context ->
+                            onMove = {
+                                id,
+                                ms,
+                                snap,
+                                context,
+                                ->
                                 actions.edit { p ->
-                                    when (val moved = track.moveKey(id, ms, snap, context)) {
-                                        is KeyframeResult.Applied -> p.copy(keyframes = p.keyframes.withTrack(moved.track))
-                                        is KeyframeResult.Rejected -> p
-                                    }
+                                    p.copy(markers = p.markers.moveTo(id, ms, snap, context))
                                 }
                             },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
+                    project.timeline.lanes.forEach { lane ->
+                        LaneContentBox(scale, LANE_HEIGHT, tint = laneTintFor(lane.kind)) {
+                            ClipStrip(
+                                timeline = project.timeline,
+                                lane = lane,
+                                scale = scale,
+                                selected = selectedClip,
+                                snapContext = { project.snapContext(playheadMs, excludeClip = it) },
+                                onSelect = onSelectClip,
+                                onSplit = { id, ms ->
+                                    onResult(
+                                        project.timeline.splitClip(id, ms, actions.newClipId()),
+                                    )
+                                },
+                                onResult = onResult,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+                    keyTracks.forEach { track ->
+                        LaneContentBox(scale, KEYFRAME_LANE_HEIGHT) {
+                            KeyframeLane(
+                                track = track,
+                                scale = scale,
+                                selected = selectedKey,
+                                snapContext = project.snapContext(playheadMs),
+                                onSelect = onSelectKey,
+                                onAdd = { ms ->
+                                    actions.edit { p ->
+                                        p.withKeyOn(
+                                            track,
+                                            Keyframe(
+                                                actions.newKeyframeId(),
+                                                ms,
+                                                track.valueAt(ms) ?: return@edit p,
+                                            ),
+                                        )
+                                    }
+                                },
+                                onMove = { id, ms, snap, context ->
+                                    actions.edit { p ->
+                                        when (val moved = track.moveKey(id, ms, snap, context)) {
+                                            is KeyframeResult.Applied ->
+                                                p.copy(
+                                                    keyframes = p.keyframes.withTrack(moved.track),
+                                                )
+                                            is KeyframeResult.Rejected -> p
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
                 }
+                Playhead(scale, playheadMs, Modifier.matchParentSize())
             }
-            Playhead(scale, playheadMs, Modifier.matchParentSize())
         }
     }
 }
@@ -189,7 +232,11 @@ private fun LaneHeader(
                 HeaderToggle(stringResource(R.string.editor_add_short), false) {
                     if (lane.kind == LaneKind.Media) menu = true else onAddClip()
                 }
-                OpalineDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                OpalineDropdownMenu(
+                    expanded = menu,
+                    onDismissRequest = { menu = false },
+                    recipe = "UI027",
+                ) {
                     OpalineDropdownMenuItem(
                         text = { Text(stringResource(R.string.editor_add_video)) },
                         onClick = {

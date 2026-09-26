@@ -3,15 +3,6 @@ package dev.geode.ui
 import android.content.Context
 import android.content.ContextWrapper
 import android.widget.Toast
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,33 +10,24 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MovieCreation
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,10 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -86,16 +65,18 @@ import dev.geode.nav.Presentation
 import dev.geode.nav.Routes
 import dev.geode.nav.Section
 import dev.geode.nav.connect.MotionPolicy
-import dev.geode.nav.connect.NavConnectors
 import dev.geode.render.VisualizerView
 import dev.geode.ui.opaline.OpalineAlertDialog
 import dev.geode.ui.opaline.OpalineButton
+import dev.geode.ui.opaline.OpalineColors
+import dev.geode.ui.opaline.OpalineEmptyState
 import dev.geode.ui.opaline.OpalineIconButton
-import dev.geode.ui.opaline.OpalinePage
-import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.OpalineSceneHost
 import dev.geode.ui.opaline.OpalineTheme
-import dev.geode.ui.opaline.opalinePart
+import dev.geode.ui.opaline.kit.OpalineBottomDock
+import dev.geode.ui.opaline.kit.OpalineDestination
+import dev.geode.ui.opaline.kit.OpalineMiniPlayerBar
+import dev.geode.ui.opaline.kit.OpalineNavigationRail
 import dev.geode.ui.opaline.opalineReady
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -105,7 +86,6 @@ import kotlinx.coroutines.withContext
 @Composable
 fun OpalineApp(
     navigator: Navigator,
-    connectors: NavConnectors,
     motion: MutableStateFlow<MotionPolicy>,
 ) {
     val player: PlayerViewModel = geodeViewModel()
@@ -166,7 +146,13 @@ fun OpalineApp(
                 // The engine view has a single parent. Remove the shell while immersive mode
                 // owns it, while retaining each section's saveable page state above the shell.
                 if (nav.overlay != Overlay.Visualizer && nav.gate == null) {
-                    OpalineShell(navigator, connectors, player, renderer, gui.reducedMotion || gui.liquidMotion <= 0f, routeStateHolder)
+                    OpalineShell(
+                        navigator,
+                        player,
+                        renderer,
+                        gui.reducedMotion || gui.liquidMotion <= 0f,
+                        routeStateHolder,
+                    )
                 }
                 when (nav.overlay.takeIf { nav.gate == null }) {
                     Overlay.Search ->
@@ -176,10 +162,8 @@ fun OpalineApp(
                             }
                         }
                     Overlay.Visualizer -> OpalineImmersive(player, renderer, navigator, secondScreen?.name)
-                    Overlay.Export ->
-                        OpalineOverlaySheet({ navigator.close(Overlay.Export) }) {
-                            OpalineExportOverlay(player, renderer, navigator)
-                        }
+                    // ExportHost is the UI043 full-height sheet in its own window and scene.
+                    Overlay.Export -> OpalineExportOverlay(player, renderer, navigator)
                     null -> Unit
                 }
                 if (loaded) OpalineGates(navigator, settings, gui)
@@ -191,29 +175,8 @@ fun OpalineApp(
 }
 
 @Composable
-private fun OpalineOverlaySheet(
-    onDismiss: () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.48f)).clickable(onClick = onDismiss))
-        OpalineSceneHost(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .heightIn(max = maxHeight * 0.9f)
-                .navigationBarsPadding()
-                .imePadding(),
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
 private fun OpalineShell(
     navigator: Navigator,
-    connectors: NavConnectors,
     player: PlayerViewModel,
     renderer: VisualizerView,
     reducedMotion: Boolean,
@@ -221,20 +184,6 @@ private fun OpalineShell(
 ) {
     val nav by navigator.state.collectAsStateWithLifecycle()
     val gesture by navigator.backGesture.collectAsStateWithLifecycle()
-    var direction by remember { mutableStateOf(1) }
-    LaunchedEffect(navigator) {
-        navigator.moves.collect { move ->
-            val transition = connectors.transition(move)
-            direction =
-                when (transition.direction) {
-                    dev.geode.nav.connect.Transition.Direction.BACKWARD,
-                    dev.geode.nav.connect.Transition.Direction.RIGHT,
-                    dev.geode.nav.connect.Transition.Direction.DOWN,
-                    -> -1
-                    else -> 1
-                }
-        }
-    }
     val page = nav.stack.lastOrNull { it.presentation != Presentation.SHEET } ?: nav.section.root
     val frame = OpalineRouteFrame(nav.section, page)
     BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -255,21 +204,10 @@ private fun OpalineShell(
                         }
                     },
                 ) {
-                    AnimatedContent(
-                        targetState = frame,
-                        transitionSpec = {
-                            if (reducedMotion) {
-                                EnterTransition.None togetherWith ExitTransition.None
-                            } else {
-                                (fadeIn() + slideInHorizontally(spring(stiffness = 420f)) { it / 10 * direction }) togetherWith
-                                    (fadeOut() + slideOutHorizontally { -it / 12 * direction })
-                            }
-                        },
-                        label = "opalineNavigation",
-                    ) { route ->
-                        stateHolder.SaveableStateProvider(route.saveableKey) {
-                            OpalineRoute(route.destination, navigator, player, renderer)
-                        }
+                    // Page changes are 3D choreography on the parts (plan ◆2, §12d): no Compose
+                    // slide or fade above the engine view and the clip preview.
+                    stateHolder.SaveableStateProvider(frame.saveableKey) {
+                        OpalineRoute(frame.destination, navigator, player, renderer)
                     }
                 }
                 if (nav.current != Destination.Player.NowPlaying) OpalineMiniPlayer(player, navigator)
@@ -277,27 +215,37 @@ private fun OpalineShell(
             }
         }
         if (nav.current.presentation == Presentation.SHEET && nav.overlay == null && nav.gate == null) {
-            Box(Modifier.fillMaxSize()) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.48f * (1f - (gesture?.progress ?: 0f))))
-                        .clickable { navigator.back() },
-                )
-                Box(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .heightIn(max = sheetMaxHeight)
-                        .navigationBarsPadding()
-                        .imePadding()
-                        .graphicsLayer {
-                            translationY = (gesture?.progress ?: 0f) * size.height * 0.8f
-                        },
-                ) {
-                    stateHolder.SaveableStateProvider(OpalineRouteFrame(nav.section, nav.current).saveableKey) {
-                        OpalineRoute(nav.current, navigator, player, renderer)
-                    }
+            val route = OpalineRouteFrame(nav.section, nav.current)
+            val sheet: @Composable () -> Unit = {
+                stateHolder.SaveableStateProvider(route.saveableKey) {
+                    OpalineRoute(route.destination, navigator, player, renderer)
+                }
+            }
+            // The tall loop render is ExportHost's UI043 sheet in its own window; every other
+            // sheet route draws its UI044 body (OpalineContextSheet) inside these bounds.
+            if (nav.current == Destination.Studio.LoopRender) {
+                sheet()
+            } else {
+                Box(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(
+                                Color.Black.copy(alpha = 0.48f * (1f - (gesture?.progress ?: 0f))),
+                            )
+                            .clickable { navigator.back() },
+                    )
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .heightIn(max = sheetMaxHeight)
+                            .navigationBarsPadding()
+                            .imePadding()
+                            .graphicsLayer {
+                                translationY = (gesture?.progress ?: 0f) * size.height * 0.8f
+                            },
+                    ) { sheet() }
                 }
             }
         }
@@ -361,10 +309,21 @@ private fun OpalineWorkspaceBar(navigator: Navigator) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        OpalineIconButton(Icons.Default.Search, stringResource(R.string.action_search), { navigator.open(Overlay.Search) })
-        OpalineIconButton(Icons.Default.Settings, stringResource(R.string.nav_settings), { navigator.show(Section.SETTINGS) })
+        OpalineIconButton(
+            Icons.Default.Search,
+            stringResource(R.string.action_search),
+            { navigator.open(Overlay.Search) },
+        )
+        OpalineIconButton(
+            Icons.Default.Settings,
+            stringResource(R.string.nav_settings),
+            { navigator.show(Section.SETTINGS) },
+        )
     }
 }
+
+/** The workspaces in the dock: UI038 rail on wide windows, UI034 bottom dock on phones. */
+private val DOCK_SECTIONS = listOf(Section.PLAYER, Section.LIBRARY, Section.VISUALS, Section.STUDIO)
 
 @Composable
 private fun OpalineDock(
@@ -372,74 +331,46 @@ private fun OpalineDock(
     vertical: Boolean,
 ) {
     val nav by navigator.state.collectAsStateWithLifecycle()
-    val modifier =
-        if (vertical) {
+    val destinations =
+        DOCK_SECTIONS.map { section ->
+            val icon =
+                when (section) {
+                    Section.PLAYER -> Icons.Default.Headphones
+                    Section.LIBRARY -> Icons.Default.LibraryMusic
+                    Section.VISUALS -> Icons.Default.AutoAwesome
+                    Section.STUDIO -> Icons.Default.MovieCreation
+                    Section.SETTINGS -> Icons.Default.Settings
+                }
+            OpalineDestination(icon, sectionLabel(section))
+        }
+    val selected = DOCK_SECTIONS.indexOf(nav.section)
+    val onSelect: (Int) -> Unit = { navigator.show(DOCK_SECTIONS[it]) }
+    if (vertical) {
+        OpalineNavigationRail(
+            destinations,
+            selected,
+            onSelect,
             Modifier
                 .width(104.dp)
                 .fillMaxHeight()
                 .navigationBarsPadding()
                 .padding(10.dp)
-        } else {
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)
-        }
-    val items: @Composable () -> Unit = {
-        listOf(Section.PLAYER, Section.LIBRARY, Section.VISUALS, Section.STUDIO).forEach { section ->
-            OpalineDockItem(
-                section,
-                section == nav.section,
-                navigator,
-            )
-        }
-    }
-    if (vertical) {
-        Column(
-            modifier.opalinePart("D07").selectableGroup().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items()
-        }
-    } else {
-        Row(modifier.opalinePart("D03").selectableGroup().padding(8.dp), horizontalArrangement = Arrangement.SpaceEvenly) { items() }
-    }
-}
-
-@Composable
-private fun OpalineDockItem(
-    section: Section,
-    selected: Boolean,
-    navigator: Navigator,
-) {
-    val view = LocalView.current
-    val icon =
-        when (section) {
-            Section.PLAYER -> Icons.Default.Headphones
-            Section.LIBRARY -> Icons.Default.LibraryMusic
-            Section.VISUALS -> Icons.Default.AutoAwesome
-            Section.STUDIO -> Icons.Default.MovieCreation
-            Section.SETTINGS -> Icons.Default.Settings
-        }
-    Column(
-        Modifier
-            .width(68.dp)
-            .opalinePart(if (selected) "N03" else "A03", selected = selected)
-            .selectable(selected = selected, role = Role.Tab, onClick = {
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
-                navigator.show(section)
-            })
-            .padding(vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        Icon(
-            icon,
-            null,
-            Modifier.size(23.dp),
-            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                .verticalScroll(rememberScrollState()),
         )
-        Text(sectionLabel(section), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    } else {
+        OpalineBottomDock(
+            destinations,
+            selected,
+            onSelect,
+            Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        )
     }
 }
 
+/** Mini player bar (plan §12a ◆1): open → Now Playing, play/pause, next, queue sheet. */
 @Composable
 private fun OpalineMiniPlayer(
     player: PlayerViewModel,
@@ -447,23 +378,17 @@ private fun OpalineMiniPlayer(
 ) {
     val state by player.uiState.collectAsStateWithLifecycle()
     if (!state.hasMedia) return
-    OpalineRow(
+    OpalineMiniPlayerBar(
         title = state.title ?: stringResource(R.string.title_untitled),
-        subtitle = state.artist.orEmpty(),
-        onClick = { navigator.show(Section.PLAYER) },
+        artist = state.artist.orEmpty(),
+        isPlaying = state.isPlaying,
+        progress = state.positionMs.toFloat() / state.durationMs,
+        onOpen = { navigator.show(Section.PLAYER) },
+        onPlayPause = player::togglePlayPause,
+        onNext = player::next,
+        onQueue = { navigator.go(Destination.Player.Queue) },
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        leading = { TrackArtwork(player.currentTrackUri(), Modifier.size(40.dp)) },
-        trailing = {
-            Row {
-                OpalineIconButton(
-                    if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    stringResource(R.string.action_play_pause),
-                    player::togglePlayPause,
-                )
-                OpalineIconButton(Icons.Default.SkipNext, stringResource(R.string.action_next), player::next)
-            }
-        },
-    )
+    ) { TrackArtwork(player.currentTrackUri(), Modifier.fillMaxSize()) }
 }
 
 @Composable
@@ -542,15 +467,20 @@ private fun OpalineGates(
         if (nav.gate == null && tutorialDismissed && !gui.tutorialSeen) settings.setGuiPrefs(gui.copy(tutorialSeen = true))
     }
     val gate = nav.gate ?: return
+    // UI071 immersive stage holding the gate's title, tagline and body; UI001 actions below.
     Box(
         Modifier
             .fillMaxSize()
             .background(
-                MaterialTheme.colorScheme.background.copy(alpha = if (opalineReady()) 0.3f else 0.97f),
+                MaterialTheme.colorScheme.background.copy(
+                    alpha = if (opalineReady()) 0.3f else 0.97f,
+                ),
             ).statusBarsPadding()
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 28.dp, vertical = 24.dp),
     ) {
-        OpalinePage(
+        OpalineEmptyState(
             title =
                 stringResource(
                     when (gate) {
@@ -560,47 +490,58 @@ private fun OpalineGates(
                         Gate.TUTORIAL -> R.string.opaline_tour_title
                     },
                 ),
-            subtitle = stringResource(R.string.opaline_tagline),
+            message = stringResource(R.string.opaline_tagline),
         ) {
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                Spacer(Modifier.height(24.dp))
-                Box(Modifier.fillMaxWidth().height(190.dp).opalinePart("C20"))
-                Text(
-                    stringResource(
-                        when (gate) {
-                            Gate.BOOT -> R.string.opaline_welcome
-                            Gate.SAFETY -> R.string.opaline_safety_body
-                            Gate.SETUP -> R.string.opaline_setup_body
-                            Gate.TUTORIAL -> R.string.opaline_tour_body
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                when (gate) {
-                    Gate.BOOT -> Unit
-                    Gate.SAFETY -> {
-                        OpalineButton(stringResource(R.string.opaline_reduce_motion), {
-                            settings.setGuiPrefs(gui.copy(reducedMotion = true, safetyAcknowledged = true))
+            Text(
+                stringResource(
+                    when (gate) {
+                        Gate.BOOT -> R.string.opaline_welcome
+                        Gate.SAFETY -> R.string.opaline_safety_body
+                        Gate.SETUP -> R.string.opaline_setup_body
+                        Gate.TUTORIAL -> R.string.opaline_tour_body
+                    },
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                color = OpalineColors.text,
+            )
+            when (gate) {
+                Gate.BOOT -> Unit
+                Gate.SAFETY -> {
+                    OpalineButton(
+                        stringResource(R.string.opaline_reduce_motion),
+                        {
+                            settings.setGuiPrefs(
+                                gui.copy(reducedMotion = true, safetyAcknowledged = true),
+                            )
                             navigator.clearGate(gate)
-                        })
-                        OpalineButton(stringResource(R.string.opaline_continue), {
+                        },
+                    )
+                    OpalineButton(
+                        stringResource(R.string.opaline_continue),
+                        {
                             settings.setGuiPrefs(gui.copy(safetyAcknowledged = true))
                             navigator.clearGate(gate)
-                        })
-                    }
-                    Gate.SETUP -> {
-                        OpalineImportActions()
-                        OpalineButton(stringResource(R.string.opaline_enter), {
+                        },
+                    )
+                }
+                Gate.SETUP -> {
+                    OpalineImportActions()
+                    OpalineButton(
+                        stringResource(R.string.opaline_enter),
+                        {
                             settings.setGuiPrefs(gui.copy(setupDone = true))
                             navigator.clearGate(gate)
-                        })
-                    }
-                    Gate.TUTORIAL ->
-                        OpalineButton(stringResource(R.string.opaline_start_listening), {
+                        },
+                    )
+                }
+                Gate.TUTORIAL ->
+                    OpalineButton(
+                        stringResource(R.string.opaline_start_listening),
+                        {
                             settings.setGuiPrefs(gui.copy(tutorialSeen = true))
                             navigator.clearGate(gate)
-                        })
-                }
+                        },
+                    )
             }
         }
     }

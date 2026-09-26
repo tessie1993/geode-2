@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,16 +20,27 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.data.BackgroundPrefsStore
 import dev.geode.render.UnderlayBlend
-import dev.geode.ui.opaline.creative.CreativeButton
+import dev.geode.ui.opaline.OpalineButton
 import dev.geode.ui.opaline.creative.CreativeSlider
+import dev.geode.ui.opaline.creative.CreativeTabs
 import kotlin.math.roundToInt
 
-/** Picks the background image behind the scene, and its blend/amount/blur/dim. */
-@OptIn(ExperimentalMaterial3Api::class)
+private val BLENDS =
+    listOf(
+        UnderlayBlend.SCREEN to R.string.background_blend_screen,
+        UnderlayBlend.MULTIPLY to R.string.background_blend_multiply,
+        UnderlayBlend.ADD to R.string.background_blend_add,
+    )
+
+/**
+ * Picks the background image behind the scene, and its blend/amount/blur/dim: the route sheet
+ * (UI044), UI001 actions, UI035 blend tabs and three UI019 sliders.
+ */
 @Composable
 fun BackgroundSheet(onDismiss: () -> Unit) {
     val visualsViewModel: VisualsViewModel = geodeViewModel()
     val prefs by visualsViewModel.backgroundPrefs.collectAsStateWithLifecycle()
+    val blur = BackgroundPrefsStore.BLUR_RANGE
 
     val picker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -39,10 +49,16 @@ fun BackgroundSheet(onDismiss: () -> Unit) {
 
     OpalineContextSheet(onDismiss = onDismiss) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.background_sheet_title), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.background_sheet_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
             if (prefs.uri == null) {
                 Text(
                     stringResource(R.string.background_none),
@@ -51,27 +67,27 @@ fun BackgroundSheet(onDismiss: () -> Unit) {
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CreativeButton(compact = true, filled = false, onClick = { picker.launch(arrayOf("image/*")) }) {
-                    Text(stringResource(R.string.background_pick))
-                }
+                OpalineButton(
+                    stringResource(R.string.background_pick),
+                    { picker.launch(arrayOf("image/*")) },
+                )
                 if (prefs.uri != null) {
-                    CreativeButton(compact = true, filled = false, onClick = visualsViewModel::clearBackgroundImage) {
-                        Text(stringResource(R.string.background_clear))
-                    }
+                    OpalineButton(
+                        stringResource(R.string.background_clear),
+                        visualsViewModel::clearBackgroundImage,
+                    )
                 }
             }
             Column {
-                Text(stringResource(R.string.background_blend), style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    blendOption(UnderlayBlend.SCREEN, R.string.background_blend_screen, prefs.blend, visualsViewModel::setBackgroundBlend)
-                    blendOption(
-                        UnderlayBlend.MULTIPLY,
-                        R.string.background_blend_multiply,
-                        prefs.blend,
-                        visualsViewModel::setBackgroundBlend,
-                    )
-                    blendOption(UnderlayBlend.ADD, R.string.background_blend_add, prefs.blend, visualsViewModel::setBackgroundBlend)
-                }
+                Text(
+                    stringResource(R.string.background_blend),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                CreativeTabs(
+                    BLENDS.map { stringResource(it.second) },
+                    BLENDS.indexOfFirst { it.first == prefs.blend },
+                    { visualsViewModel.setBackgroundBlend(BLENDS[it].first) },
+                )
             }
             Column {
                 Text(
@@ -85,11 +101,14 @@ fun BackgroundSheet(onDismiss: () -> Unit) {
                 )
             }
             Column {
-                Text(stringResource(R.string.background_blur, prefs.blurRadius), style = MaterialTheme.typography.labelMedium)
+                Text(
+                    stringResource(R.string.background_blur, prefs.blurRadius),
+                    style = MaterialTheme.typography.labelMedium,
+                )
                 CreativeSlider(
                     value = prefs.blurRadius.toFloat(),
                     onValueChange = { visualsViewModel.setBackgroundBlurRadius(it.roundToInt()) },
-                    valueRange = BackgroundPrefsStore.BLUR_RANGE.first.toFloat()..BackgroundPrefsStore.BLUR_RANGE.last.toFloat(),
+                    valueRange = blur.first.toFloat()..blur.last.toFloat(),
                 )
             }
             Column {
@@ -104,17 +123,5 @@ fun BackgroundSheet(onDismiss: () -> Unit) {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun blendOption(
-    option: UnderlayBlend,
-    labelRes: Int,
-    current: UnderlayBlend,
-    onSelect: (UnderlayBlend) -> Unit,
-) {
-    CreativeButton(compact = true, filled = current == option, onClick = { onSelect(option) }) {
-        Text(stringResource(labelRes), style = MaterialTheme.typography.bodySmall)
     }
 }

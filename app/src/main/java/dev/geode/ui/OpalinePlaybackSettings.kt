@@ -1,11 +1,9 @@
 package dev.geode.ui
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,8 +18,8 @@ import dev.geode.analysis.PlaybackMath
 import dev.geode.data.PlayerPrefs
 import dev.geode.playback.BitPerfectOutput
 import dev.geode.playback.ReplayGain
-import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
+import dev.geode.ui.opaline.creative.CreativeSegments
 import dev.geode.ui.opaline.creative.CreativeSlider
 import dev.geode.ui.opaline.creative.CreativeToggle
 
@@ -120,32 +118,31 @@ fun PlaybackSettingsSection(viewModel: SettingsViewModel) {
         )
         Column {
             Text(stringResource(R.string.playback_sleep_timer), style = MaterialTheme.typography.labelMedium)
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                val running = sleepRemainingMs != null
-                SLEEP_TIMER_CHOICES.forEach { minutes ->
-                    val selected =
-                        if (running) {
-                            minutes != 0 && minutes == prefs.sleepTimerMinutes
+            val running = sleepRemainingMs != null
+            CreativeSegments(
+                options =
+                    SLEEP_TIMER_CHOICES.map { minutes ->
+                        if (minutes == 0) {
+                            stringResource(R.string.playback_sleep_off)
                         } else {
-                            minutes == 0
+                            stringResource(R.string.playback_sleep_minutes, minutes)
                         }
-                    CreativeButton(
-                        text =
-                            if (minutes == 0) {
-                                stringResource(R.string.playback_sleep_off)
-                            } else {
-                                stringResource(R.string.playback_sleep_minutes, minutes)
-                            },
-                        selected = selected,
-                        onClick = {
-                            if (minutes == 0) playerViewModel.cancelSleepTimer() else playerViewModel.startSleepTimer(minutes)
-                        },
-                    )
-                }
-            }
+                    },
+                selected =
+                    if (running) {
+                        SLEEP_TIMER_CHOICES.indexOf(prefs.sleepTimerMinutes).takeIf { it > 0 } ?: -1
+                    } else {
+                        0
+                    },
+                onSelect = {
+                    val minutes = SLEEP_TIMER_CHOICES[it]
+                    if (minutes == 0) {
+                        playerViewModel.cancelSleepTimer()
+                    } else {
+                        playerViewModel.startSleepTimer(minutes)
+                    }
+                },
+            )
             PlaybackSwitchRow(stringResource(R.string.playback_sleep_finish_track), prefs.sleepFinishTrack) {
                 viewModel.setPlayerPrefs(prefs.copy(sleepFinishTrack = it))
             }
@@ -174,18 +171,14 @@ private fun ReplayGainSettings(
 ) {
     Column {
         Text(stringResource(R.string.playback_replaygain), style = MaterialTheme.typography.labelMedium)
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            REPLAYGAIN_MODES.forEach { (mode, label) ->
-                CreativeButton(
-                    text = stringResource(label),
-                    selected = prefs.replayGainMode == mode,
-                    onClick = { onChange(prefs.copy(replayGainMode = mode)) },
-                )
-            }
-        }
+        CreativeSegments(
+            options = REPLAYGAIN_MODES.map { stringResource(it.second) },
+            selected =
+                REPLAYGAIN_MODES
+                    .indexOfFirst { it.first == prefs.replayGainMode }
+                    .coerceAtLeast(0),
+            onSelect = { onChange(prefs.copy(replayGainMode = REPLAYGAIN_MODES[it].first)) },
+        )
         if (prefs.replayGainMode != ReplayGain.MODE_OFF) {
             Text(
                 stringResource(R.string.playback_replaygain_preamp, "%.1f".format(prefs.replayGainPreampDb)),
@@ -251,18 +244,14 @@ private fun NativeEngineSettings(
         )
         if (prefs.crossfadeMs > 0) {
             Text(stringResource(R.string.playback_crossfade_curve), style = MaterialTheme.typography.labelMedium)
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                CROSSFADE_CURVES.forEach { (curve, label) ->
-                    CreativeButton(
-                        text = stringResource(label),
-                        selected = prefs.crossfadeCurve == curve,
-                        onClick = { onChange(prefs.copy(crossfadeCurve = curve)) },
-                    )
-                }
-            }
+            CreativeSegments(
+                options = CROSSFADE_CURVES.map { stringResource(it.second) },
+                selected =
+                    CROSSFADE_CURVES
+                        .indexOfFirst { it.first == prefs.crossfadeCurve }
+                        .coerceAtLeast(0),
+                onSelect = { onChange(prefs.copy(crossfadeCurve = CROSSFADE_CURVES[it].first)) },
+            )
         }
     }
 }

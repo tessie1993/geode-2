@@ -1,14 +1,11 @@
 package dev.geode.ui.studio
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,11 +21,17 @@ import androidx.compose.ui.unit.dp
 import dev.geode.R
 import dev.geode.editor.ClipTransition
 import dev.geode.render.TransitionCatalog
+import dev.geode.ui.opaline.OpalineChip
+import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeSheet
+import dev.geode.ui.opaline.kit.OpalineFilterChipRow
 
-/** Picks the GL Transition a clip opens with, and how long it runs; "None" clears it. */
+/**
+ * Picks the GL Transition a clip opens with, and how long it runs; "None" clears it. A UI044
+ * sheet: durations as UI010 filter chips, transitions as UI057 rows (the current one lifted).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransitionSheet(
@@ -46,13 +49,14 @@ fun TransitionSheet(
                 style = MaterialTheme.typography.titleMedium,
                 color = CreativeColors.textPrimary,
             )
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OpalineFilterChipRow(Modifier.fillMaxWidth()) {
                 ClipTransition.DURATION_CHOICES_MS.forEach { choice ->
-                    CreativeButton(
-                        text = stringResource(R.string.editor_transition_seconds, choice / 1000f),
-                        selected = choice == durationMs,
-                        tint = if (choice == durationMs) CreativeColors.mint else null,
+                    OpalineChip(
                         onClick = { durationMs = choice },
+                        label = {
+                            Text(stringResource(R.string.editor_transition_seconds, choice / 1000f))
+                        },
+                        selected = choice == durationMs,
                     )
                 }
             }
@@ -63,10 +67,17 @@ fun TransitionSheet(
             )
             LazyColumn {
                 items(library, key = { it.name }) { def ->
-                    CreativeButton(
-                        text = if (def.name == current?.id) stringResource(R.string.editor_transition_current, def.name) else def.name,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    val chosen = def.name == current?.id
+                    OpalineRow(
+                        title =
+                            if (chosen) {
+                                stringResource(R.string.editor_transition_current, def.name)
+                            } else {
+                                def.name
+                            },
                         onClick = { onPick(ClipTransition(def.name, durationMs)) },
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        selected = chosen,
                     )
                 }
             }

@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,13 +21,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
-import dev.geode.ui.opaline.OpalineIconAction
+import dev.geode.ui.opaline.OpalineIconButton
+import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeIcons
+import dev.geode.ui.opaline.opalinePart
+import dev.geode.ui.opaline.rememberRecipeRail
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -118,23 +120,28 @@ internal fun MusicFoldersEditor(viewModel: LibraryViewModel) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        roots.sorted().forEach { root ->
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+        } else {
+            val (padding, gap) = rememberRecipeRail("UI057", "body", "row-0")
+            Column(
+                Modifier.fillMaxWidth().opalinePart("UI057").padding(padding),
+                verticalArrangement = Arrangement.spacedBy(gap),
             ) {
-                Text(
-                    java.net.URLDecoder
-                        .decode(root.substringAfterLast("%3A").substringAfterLast("/"), "UTF-8")
-                        .ifBlank { root },
-                    Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                OpalineIconAction(onClick = { viewModel.removeMediaRoot(root) }) {
-                    Icon(CreativeIcons.Close, contentDescription = stringResource(R.string.folders_remove))
+                roots.sorted().forEach { root ->
+                    OpalineRow(
+                        title =
+                            java.net.URLDecoder
+                                .decode(
+                                    root.substringAfterLast("%3A").substringAfterLast("/"),
+                                    "UTF-8",
+                                ).ifBlank { root },
+                        trailing = {
+                            OpalineIconButton(
+                                CreativeIcons.Close,
+                                stringResource(R.string.folders_remove),
+                                { viewModel.removeMediaRoot(root) },
+                            )
+                        },
+                    )
                 }
             }
         }

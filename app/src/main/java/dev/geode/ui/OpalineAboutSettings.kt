@@ -82,9 +82,7 @@ private fun LicensesDialog(onDismiss: () -> Unit) {
                 }.getOrElse { unavailable }
             }
     }
-    // CreativeDialog only carries a plain title/text/actions layout, no scrollable custom body, so
-    // this one long-form dialog stays on the stock AlertDialog; GlassMaterialTheme's colour scheme
-    // still applies to it.
+    // UI042 Dialog shell: the notices scroll in its `content` frame, Close on its primary action.
     OpalineAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.about_licenses)) },

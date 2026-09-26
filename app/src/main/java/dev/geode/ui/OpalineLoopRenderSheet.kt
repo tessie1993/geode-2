@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -32,7 +31,7 @@ import dev.geode.data.GeodePrefsFiles
 import dev.geode.export.ExportAspect
 import dev.geode.export.LoopSpec
 import dev.geode.export.TimeOfDayDrift
-import dev.geode.ui.opaline.OpalineAction
+import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeProgress
 import dev.geode.ui.opaline.creative.CreativeSlider
 import dev.geode.ui.opaline.creative.CreativeToggle
@@ -45,6 +44,9 @@ import kotlin.math.roundToInt
  * The visual source is always the currently loaded track's analysis — there is nothing else in
  * this build to loop. The soundtrack defaults to that same track; the clip picker lets it be
  * replaced with a longer mix so the finished file can run past the track's own length.
+ *
+ * Content only: ExportHost hosts it in the UI043 full-height sheet, whose secondary action
+ * dismisses. Sliders UI019, toggle UI008, progress UI049, actions UI001.
  */
 @Composable
 fun LoopRenderSheet(
@@ -52,7 +54,6 @@ fun LoopRenderSheet(
     onStart: (LoopRenderRequest) -> Unit,
     onStartToDestination: (LoopRenderRequest) -> Unit,
     onCancel: () -> Unit,
-    onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     val defaults = remember { ExportPrefsStore(GeodePrefsFiles(context).general).load() }
@@ -94,43 +95,44 @@ fun LoopRenderSheet(
             audioClips = audioClips.map { Uri.parse(it) },
         )
 
-    OpalineContextSheet(onDismiss = onDismiss) {
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(stringResource(R.string.export_loop_title), style = MaterialTheme.typography.titleLarge)
-            when (val phase = state.phase) {
-                is ExportPhase.Running -> LoopRenderRunning(phase.progress)
-                is ExportPhase.Done -> LoopRenderDone(phase.resultUri)
-                is ExportPhase.Failed ->
-                    Text(
-                        stringResource(R.string.export_failed, phase.message),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                ExportPhase.Idle, ExportPhase.Loading ->
-                    LoopRenderControls(
-                        loopSeconds = loopSeconds,
-                        onLoopSecondsChange = { loopSeconds = it },
-                        crossfadeSeconds = crossfadeSeconds,
-                        onCrossfadeSecondsChange = { crossfadeSeconds = it },
-                        driftEnabled = driftEnabled,
-                        onDriftEnabledChange = { driftEnabled = it },
-                        driftHueTurns = driftHueTurns,
-                        onDriftHueTurnsChange = { driftHueTurns = it },
-                        driftStops = driftStops,
-                        onDriftStopsChange = { driftStops = it },
-                        audioClips = audioClips,
-                        onAddClips = { clipPicker.launch(arrayOf("audio/*")) },
-                        onRemoveClip = { clip -> audioClips = audioClips - clip },
-                        onStart = { onStart(buildRequest()) },
-                        onStartToDestination = { onStartToDestination(buildRequest()) },
-                    )
-            }
+    Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            stringResource(R.string.export_loop_title),
+            style = MaterialTheme.typography.titleLarge,
+        )
+        when (val phase = state.phase) {
+            is ExportPhase.Running -> LoopRenderRunning(phase.progress)
+            is ExportPhase.Done -> LoopRenderDone(phase.resultUri)
+            is ExportPhase.Failed ->
+                Text(
+                    stringResource(R.string.export_failed, phase.message),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            ExportPhase.Idle, ExportPhase.Loading ->
+                LoopRenderControls(
+                    loopSeconds = loopSeconds,
+                    onLoopSecondsChange = { loopSeconds = it },
+                    crossfadeSeconds = crossfadeSeconds,
+                    onCrossfadeSecondsChange = { crossfadeSeconds = it },
+                    driftEnabled = driftEnabled,
+                    onDriftEnabledChange = { driftEnabled = it },
+                    driftHueTurns = driftHueTurns,
+                    onDriftHueTurnsChange = { driftHueTurns = it },
+                    driftStops = driftStops,
+                    onDriftStopsChange = { driftStops = it },
+                    audioClips = audioClips,
+                    onAddClips = { clipPicker.launch(arrayOf("audio/*")) },
+                    onRemoveClip = { clip -> audioClips = audioClips - clip },
+                    onStart = { onStart(buildRequest()) },
+                    onStartToDestination = { onStartToDestination(buildRequest()) },
+                )
+        }
 
-            if (state.phase.isRunning) {
-                OpalineAction(onClick = onCancel) { Text(stringResource(R.string.export_cancel)) }
-            }
+        if (state.phase.isRunning) {
+            CreativeButton(text = stringResource(R.string.export_cancel), onClick = onCancel)
         }
     }
 }
@@ -158,17 +160,18 @@ private fun LoopRenderDone(resultUri: Uri) {
         style = MaterialTheme.typography.bodyMedium,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OpalineAction(onClick = {
-            val share =
-                Intent(Intent.ACTION_SEND).apply {
-                    type = "video/mp4"
-                    putExtra(Intent.EXTRA_STREAM, resultUri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-            context.startActivity(Intent.createChooser(share, chooserTitle))
-        }) {
-            Text(stringResource(R.string.export_upload_drive))
-        }
+        CreativeButton(
+            text = stringResource(R.string.export_upload_drive),
+            onClick = {
+                val share =
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "video/mp4"
+                        putExtra(Intent.EXTRA_STREAM, resultUri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                context.startActivity(Intent.createChooser(share, chooserTitle))
+            },
+        )
     }
 }
 
@@ -219,7 +222,11 @@ private fun LoopRenderControls(
             stringResource(R.string.export_loop_drift_hue, (driftHueTurns * 360).roundToInt()),
             style = MaterialTheme.typography.labelMedium,
         )
-        CreativeSlider(value = driftHueTurns, onValueChange = onDriftHueTurnsChange, valueRange = -0.5f..0.5f)
+        CreativeSlider(
+            value = driftHueTurns,
+            onValueChange = onDriftHueTurnsChange,
+            valueRange = -0.5f..0.5f,
+        )
         Text(
             stringResource(R.string.export_loop_drift_stops, driftStops.roundToInt()),
             style = MaterialTheme.typography.labelMedium,
@@ -253,16 +260,25 @@ private fun LoopRenderControls(
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,
             )
-            OpalineAction(onClick = { onRemoveClip(clip) }) { Text(stringResource(R.string.action_delete)) }
+            CreativeButton(
+                text = stringResource(R.string.action_delete),
+                onClick = { onRemoveClip(clip) },
+            )
         }
     }
-    OpalineAction(onClick = onAddClips, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.export_loop_soundtrack_add))
-    }
-    OpalineAction(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.export_loop_start))
-    }
-    OpalineAction(onClick = onStartToDestination, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.export_render_to_folder))
-    }
+    CreativeButton(
+        text = stringResource(R.string.export_loop_soundtrack_add),
+        onClick = onAddClips,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    CreativeButton(
+        text = stringResource(R.string.export_loop_start),
+        onClick = onStart,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    CreativeButton(
+        text = stringResource(R.string.export_render_to_folder),
+        onClick = onStartToDestination,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }

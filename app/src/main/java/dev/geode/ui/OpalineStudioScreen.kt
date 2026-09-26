@@ -5,21 +5,21 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,7 +43,13 @@ import dev.geode.export.ClipLook
 import dev.geode.export.ExportQuality
 import dev.geode.export.ExportRatio
 import dev.geode.export.StudioClip
-import dev.geode.ui.opaline.OpalineDialog
+import dev.geode.ui.opaline.OpalineAlertDialog
+import dev.geode.ui.opaline.OpalineChip
+import dev.geode.ui.opaline.OpalineDropdownMenu
+import dev.geode.ui.opaline.OpalineDropdownMenuItem
+import dev.geode.ui.opaline.OpalineEmptyState
+import dev.geode.ui.opaline.OpalineIconButton
+import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRangeSlider
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
@@ -51,11 +57,11 @@ import dev.geode.ui.opaline.creative.CreativeProgress
 import dev.geode.ui.opaline.creative.CreativeShapes
 import dev.geode.ui.opaline.creative.CreativeSlider
 import dev.geode.ui.opaline.creative.CreativeTextField
-import dev.geode.ui.opaline.creative.CreativeTile
 import dev.geode.ui.opaline.creative.CreativeToggle
 import dev.geode.ui.opaline.creative.CreativeTopBar
-import dev.geode.ui.opaline.creative.creativeFloat
 import dev.geode.ui.opaline.creative.creativeSurface
+import dev.geode.ui.opaline.kit.OpalineCardGrid
+import dev.geode.ui.opaline.kit.OpalineFilterChipRow
 import dev.geode.ui.studio.EditorActions
 import dev.geode.ui.studio.TimelineEditor
 import kotlin.math.roundToInt
@@ -206,6 +212,7 @@ private fun ClipLibrary(
     }
 }
 
+/** The clip library: open a video, then the clips as UI058 cards, lazily. */
 @Composable
 private fun ClipList(
     studio: StudioUiState,
@@ -215,89 +222,85 @@ private fun ClipList(
     onRenameRequest: (StudioClip) -> Unit,
     onDeleteRequest: (StudioClip) -> Unit,
 ) {
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp),
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(vertical = 12.dp),
     ) {
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CreativeButton(text = stringResource(R.string.studio_open_video), tint = CreativeColors.mint, onClick = onPick)
-            }
-        }
+        CreativeButton(
+            text = stringResource(R.string.studio_open_video),
+            tint = CreativeColors.mint,
+            onClick = onPick,
+        )
         if (studio.clips.isEmpty() && studio.phase != ExportPhase.Loading) {
-            item { ClipLibraryEmpty() }
+            OpalineEmptyState(
+                stringResource(R.string.studio_empty_title),
+                stringResource(R.string.studio_empty_body),
+            )
         }
-        items(studio.clips.size) { index ->
-            val clip = studio.clips[index]
-            ClipRow(
+        OpalineCardGrid(studio.clips, onSelect = onOpen, modifier = Modifier.weight(1f)) { clip ->
+            ClipCard(
                 clip = clip,
-                onOpen = { onOpen(clip) },
                 onShare = { onShare(Uri.parse(clip.uri)) },
                 onRename = { onRenameRequest(clip) },
                 onDelete = { onDeleteRequest(clip) },
             )
         }
-        if (studio.clips.isNotEmpty()) {
-            item { ClipStorageFooter(studio.clips) }
-        }
+        if (studio.clips.isNotEmpty()) ClipStorageFooter(studio.clips)
     }
 }
 
+/** A clip's card content: its thumbnail, name and summary; Send, Rename, Delete in UI027. */
 @Composable
-private fun ClipLibraryEmpty() {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .creativeSurface(shape = CreativeShapes.tile)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(stringResource(R.string.studio_empty_title), style = MaterialTheme.typography.titleSmall, color = CreativeColors.textPrimary)
-        Text(
-            stringResource(R.string.studio_empty_body),
-            style = MaterialTheme.typography.bodyMedium,
-            color = CreativeColors.textSecondary,
-        )
-    }
-}
-
-/** A clip in the library, shown as a glass tile with its artwork thumbnail. */
-@Composable
-private fun ClipRow(
+private fun ColumnScope.ClipCard(
     clip: StudioClip,
-    onOpen: () -> Unit,
     onShare: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    CreativeTile(onClick = onOpen, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(10.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(96.dp).height(56.dp).creativeSurface(shape = RoundedCornerShape(12.dp))) {
-                VideoFrame(clip.uri, atMs = clip.durationMs / 3, modifier = Modifier.fillMaxSize())
-            }
-            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(
-                    clip.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CreativeColors.textPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    clip.summary(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CreativeColors.textSecondary,
-                )
-            }
-            CreativeButton(text = stringResource(R.string.studio_send), onClick = onShare)
-            CreativeButton(text = stringResource(R.string.action_rename), modifier = Modifier.padding(start = 6.dp), onClick = onRename)
-            CreativeButton(
-                text = stringResource(R.string.action_delete),
-                tint = CreativeColors.pink,
-                modifier = Modifier.padding(start = 6.dp),
-                onClick = onDelete,
+    var menu by remember { mutableStateOf(false) }
+    VideoFrame(clip.uri, atMs = clip.durationMs / 3, modifier = Modifier.fillMaxWidth().weight(1f))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                clip.name,
+                style = MaterialTheme.typography.bodyMedium,
+                color = CreativeColors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
+            Text(
+                clip.summary(),
+                style = MaterialTheme.typography.labelSmall,
+                color = CreativeColors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Box {
+            OpalineIconButton(
+                Icons.Filled.MoreVert,
+                stringResource(R.string.action_more),
+                { menu = true },
+            )
+            OpalineDropdownMenu(
+                expanded = menu,
+                onDismissRequest = { menu = false },
+                recipe = "UI027",
+            ) {
+                listOf(
+                    R.string.studio_send to onShare,
+                    R.string.action_rename to onRename,
+                    R.string.action_delete to onDelete,
+                ).forEach { (label, action) ->
+                    OpalineDropdownMenuItem(
+                        text = { Text(stringResource(label)) },
+                        onClick = {
+                            menu = false
+                            action()
+                        },
+                    )
+                }
+            }
         }
     }
 }
@@ -317,35 +320,6 @@ private fun ClipStorageFooter(clips: List<StudioClip>) {
     )
 }
 
-/** A glass card dialog with a title and a row of actions; used where the body needs more than a
- * plain message (here, a text field), so [dev.geode.ui.opaline.creative.CreativeDialog] does not fit. */
-@Composable
-private fun StudioCreativeDialog(
-    onDismissRequest: () -> Unit,
-    title: String,
-    modifier: Modifier = Modifier,
-    body: @Composable () -> Unit = {},
-    actions: @Composable () -> Unit,
-) {
-    OpalineDialog(onDismissRequest = onDismissRequest) {
-        Column(
-            modifier
-                .creativeSurface(shape = CreativeShapes.tile)
-                .padding(24.dp),
-        ) {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = CreativeColors.textPrimary)
-            body()
-            Row(
-                Modifier.padding(top = 20.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                actions()
-            }
-        }
-    }
-}
-
 @Composable
 private fun RenameClipDialog(
     clip: StudioClip,
@@ -353,26 +327,26 @@ private fun RenameClipDialog(
     onDismiss: () -> Unit,
 ) {
     var name by remember(clip.uri) { mutableStateOf(clip.name.substringBeforeLast('.')) }
-    StudioCreativeDialog(
+    OpalineAlertDialog(
         onDismissRequest = onDismiss,
-        title = stringResource(R.string.studio_rename_title),
-        body = {
+        title = { StudioDialogTitle(stringResource(R.string.studio_rename_title)) },
+        text = {
             CreativeTextField(
                 value = name,
                 onValueChange = { name = it },
                 placeholder = stringResource(R.string.studio_rename_field),
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                modifier = Modifier.fillMaxWidth(),
             )
         },
-        actions = {
-            CreativeButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
+        confirmButton = {
             CreativeButton(
                 text = stringResource(R.string.action_rename),
                 enabled = name.isNotBlank(),
-                tint = CreativeColors.mint,
-                modifier = Modifier.padding(start = 8.dp),
                 onClick = { onConfirm(name) },
             )
+        },
+        dismissButton = {
+            CreativeButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
         },
     )
 }
@@ -383,25 +357,15 @@ private fun DeleteClipDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    StudioCreativeDialog(
+    OpalineAlertDialog(
         onDismissRequest = onDismiss,
-        title = stringResource(R.string.studio_delete_title),
-        body = {
-            Text(
-                stringResource(R.string.studio_delete_body, clip.name),
-                Modifier.padding(top = 12.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = CreativeColors.textSecondary,
-            )
+        title = { StudioDialogTitle(stringResource(R.string.studio_delete_title)) },
+        text = { StudioDialogText(stringResource(R.string.studio_delete_body, clip.name)) },
+        confirmButton = {
+            CreativeButton(text = stringResource(R.string.action_delete), onClick = onConfirm)
         },
-        actions = {
+        dismissButton = {
             CreativeButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
-            CreativeButton(
-                text = stringResource(R.string.action_delete),
-                tint = CreativeColors.pink,
-                modifier = Modifier.padding(start = 8.dp),
-                onClick = onConfirm,
-            )
         },
     )
 }
@@ -411,14 +375,24 @@ private fun StudioNoticeDialog(
     message: String,
     onDismiss: () -> Unit,
 ) {
-    StudioCreativeDialog(
+    OpalineAlertDialog(
         onDismissRequest = onDismiss,
-        title = stringResource(R.string.studio_notice_title),
-        body = {
-            Text(message, Modifier.padding(top = 12.dp), style = MaterialTheme.typography.bodyMedium, color = CreativeColors.textSecondary)
+        title = { StudioDialogTitle(stringResource(R.string.studio_notice_title)) },
+        text = { StudioDialogText(message) },
+        confirmButton = {
+            CreativeButton(text = stringResource(R.string.action_ok), onClick = onDismiss)
         },
-        actions = { CreativeButton(text = stringResource(R.string.action_ok), onClick = onDismiss) },
     )
+}
+
+@Composable
+private fun StudioDialogTitle(title: String) {
+    Text(title, style = MaterialTheme.typography.titleLarge, color = CreativeColors.textPrimary)
+}
+
+@Composable
+private fun StudioDialogText(text: String) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = CreativeColors.textSecondary)
 }
 
 // ----------------------------------------------------------------- clip editor
@@ -508,7 +482,12 @@ private fun ClipEditorHeader(
         if (resettable) {
             CreativeButton(text = stringResource(R.string.studio_reset), onClick = onReset)
         }
-        CreativeButton(text = stringResource(R.string.action_back), modifier = Modifier.padding(start = 6.dp), onClick = onClose)
+        OpalineIconButton(
+            Icons.AutoMirrored.Filled.ArrowBack,
+            stringResource(R.string.action_back),
+            onClose,
+            Modifier.padding(start = 6.dp),
+        )
     }
 }
 
@@ -571,7 +550,6 @@ private fun ClipCutSection(
 }
 
 /** Original B04 dual-thumb geometry with native range and accessibility semantics. */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun ClipTrimSlider(
     value: ClosedFloatingPointRange<Float>,
@@ -618,10 +596,7 @@ private fun ClipLookSection(
             }
         }
     StudioSection(stringResource(R.string.studio_section_look)) {
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        OpalineFilterChipRow(Modifier.fillMaxWidth()) {
             ClipLook.entries.forEach { look ->
                 StudioChip(look.label, selected = edit.look == look) {
                     onEdit(look.applyTo(edit).copy(look = look))
@@ -690,10 +665,7 @@ private fun ClipFrameSection(
             onEdit(edit.copy(rotationDegrees = it))
         }
         Text(stringResource(R.string.studio_reframe), style = MaterialTheme.typography.labelMedium, color = CreativeColors.textSecondary)
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        OpalineFilterChipRow(Modifier.fillMaxWidth()) {
             StudioChip(stringResource(R.string.studio_as_shot), selected = edit.ratio == null) { onEdit(edit.copy(ratio = null)) }
             ExportRatio.entries.forEach { r ->
                 StudioChip(r.label, selected = edit.ratio == r) { onEdit(edit.copy(ratio = r)) }
@@ -710,7 +682,7 @@ private fun ClipQualityPicker(
     edit: ClipEdit,
     onEdit: (ClipEdit) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    OpalineFilterChipRow(Modifier.fillMaxWidth()) {
         ExportQuality.entries.forEach { q ->
             StudioChip("${q.shortSide}p", selected = edit.quality == q) { onEdit(edit.copy(quality = q)) }
         }
@@ -849,20 +821,13 @@ private fun ClipEditorIdle(
 
 private const val FILMSTRIP_FRAMES = 6
 
-/** A section of the clip editor: a glass tile with a title and its controls. */
+/** A section of the clip editor: a UI041 card with a title and its controls. */
 @Composable
 private fun StudioSection(
     title: String,
     content: @Composable () -> Unit,
 ) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .creativeSurface(shape = CreativeShapes.tile)
-            .creativeFloat(strength = 0.3f)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
+    OpalinePanel {
         Text(title, style = MaterialTheme.typography.titleSmall, color = CreativeColors.textPrimary)
         content()
     }
@@ -887,19 +852,14 @@ private fun StudioSlider(
     }
 }
 
-/** A pastel-tinted glass pill; selecting it swells the tint, matching a segmented choice chip. */
+/** UI010 filter chip, lifted while selected. */
 @Composable
 private fun StudioChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    CreativeButton(
-        text = label,
-        selected = selected,
-        tint = if (selected) CreativeColors.lavender else null,
-        onClick = onClick,
-    )
+    OpalineChip(onClick = onClick, label = { Text(label) }, selected = selected)
 }
 
 private fun clock(ms: Long): String = "%d:%02d".format(ms / 60_000, (ms / 1000) % 60)
