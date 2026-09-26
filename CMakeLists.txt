@@ -72,8 +72,9 @@ set(KISSFFT_TEST OFF CACHE BOOL "" FORCE)
 set(KISSFFT_TOOLS OFF CACHE BOOL "" FORCE)
 set(KISSFFT_PKGCONFIG OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/kissfft)
-# kissfft enables -Wcast-align itself. Its one hit (kiss_fftr.c tmpbuf) is aligned: the offset is a kiss_fft_state
-# plus kiss_fft_cpx entries, all 4-byte types.
+# kissfft enables -Wcast-align itself; it flags buffer casts in kiss_fftr.c, kiss_fftnd.c and kiss_fftndr.c. The one we
+# use (kiss_fftr.c tmpbuf) is aligned: the offset is a kiss_fft_state plus kiss_fft_cpx entries, all 4-byte types. The
+# N-d transforms are not called by geode.
 target_compile_options(kissfft PRIVATE -Wno-cast-align)
 
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
