@@ -72,6 +72,9 @@ set(KISSFFT_TEST OFF CACHE BOOL "" FORCE)
 set(KISSFFT_TOOLS OFF CACHE BOOL "" FORCE)
 set(KISSFFT_PKGCONFIG OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/kissfft)
+# kissfft enables -Wcast-align itself. Its one hit (kiss_fftr.c tmpbuf) is aligned: the offset is a kiss_fft_state
+# plus kiss_fft_cpx entries, all 4-byte types.
+target_compile_options(kissfft PRIVATE -Wno-cast-align)
 
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(BUILD_BINDINGS OFF CACHE BOOL "" FORCE)
