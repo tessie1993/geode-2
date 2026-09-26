@@ -1,8 +1,8 @@
 package dev.geode.ui.opaline.creative
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,29 +10,28 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,8 +39,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
@@ -53,12 +55,25 @@ import dev.geode.ui.opaline.OpalineButton
 import dev.geode.ui.opaline.OpalineColors
 import dev.geode.ui.opaline.OpalineDialog
 import dev.geode.ui.opaline.OpalinePanel
+import dev.geode.ui.opaline.OpalinePressable
+import dev.geode.ui.opaline.OpalineRecipeLayout
 import dev.geode.ui.opaline.OpalineSceneHost
-import dev.geode.ui.opaline.OpalineSlider
 import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.OpalineToggle
+import dev.geode.ui.opaline.binding
+import dev.geode.ui.opaline.kit.OpalineThreeWaySelector
 import dev.geode.ui.opaline.opalinePart
 import dev.geode.ui.opaline.opalineReady
+import dev.geode.ui.opaline.opalineSliderColors
+import dev.geode.ui.opaline.recipeFrame
+import dev.geode.ui.opaline.recipePart
+import dev.geode.ui.opaline.rememberOpalineComposition
+import dev.geode.ui.opaline.rememberOpalineDismiss
+import dev.geode.ui.opaline.rememberOpalinePartEvents
+import dev.geode.ui.opaline.rememberRecipeRail
+import dev.geode.ui.opaline.sibling
+import dev.geode.ui.opaline.stops
+import kotlin.math.atan2
 import kotlin.math.roundToInt
 
 /** Native content planes and semantics attached to the Opaline geometry world. */
@@ -84,17 +99,20 @@ object CreativeIcons {
     val Close = Icons.Filled.Close
 }
 
+/** UI039 Content card body (C01/shell) under this node. */
 @Suppress("UNUSED_PARAMETER")
 fun Modifier.creativeSurface(
     shape: Shape = CreativeShapes.tile,
     tint: Color? = null,
     selected: Boolean = false,
     glow: Float = 0f,
-): Modifier = opalinePart("C01", selected = selected).background((tint ?: Color.White).copy(alpha = 0.13f), shape)
+): Modifier = opalinePart("UI039", selected = selected)
 
 @Suppress("UNUSED_PARAMETER")
 fun Modifier.creativeFloat(strength: Float = 1f): Modifier = this
 
+/** UI010 chip A05/gel holding [content], lifted while selected; activate → toggle-filter. */
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun CreativeButton(
     onClick: () -> Unit,
@@ -106,14 +124,16 @@ fun CreativeButton(
     tint: Color? = null,
     content: @Composable () -> Unit,
 ) {
-    Box(
-        modifier
-            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-            .opalinePart("A05", selected = selected || filled && tint != null, enabled = enabled)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = if (compact) 14.dp else 20.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) { content() }
+    OpalinePressable(
+        "UI010",
+        "chip-0",
+        "chip-0",
+        onClick,
+        modifier,
+        enabled,
+        selected || filled && tint != null,
+        content = content,
+    )
 }
 
 @Composable
@@ -125,8 +145,20 @@ fun CreativeButton(
     enabled: Boolean = true,
     selected: Boolean = false,
     tint: Color? = null,
-) = OpalineButton(text, onClick, modifier, icon = icon, enabled = enabled, selected = selected || tint != null)
+) =
+    OpalineButton(
+        text,
+        onClick,
+        modifier,
+        icon = icon,
+        enabled = enabled,
+        selected = selected || tint != null,
+    )
 
+/**
+ * UI019 Horizontal slider (B01/gel), or UI022 Stepped slider (B05/gel) when [steps] gives its
+ * binding's stops. The Material slider keeps direct manipulation.
+ */
 @Composable
 fun CreativeSlider(
     value: Float,
@@ -135,23 +167,26 @@ fun CreativeSlider(
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
     enabled: Boolean = true,
+    onValueChangeFinished: (() -> Unit)? = null,
 ) {
     val span = valueRange.endInclusive - valueRange.start
-    val fraction = if (span > 0 && value.isFinite()) ((value - valueRange.start) / span).coerceIn(0f, 1f) else 0f
-    val ready = opalineReady()
+    val fraction =
+        if (span > 0 && value.isFinite()) (value - valueRange.start) / span else 0f
+    val stepped = rememberOpalineComposition("UI022").stops().size - 2 == steps
     Slider(
         value = if (value.isFinite()) value.coerceIn(valueRange) else valueRange.start,
         onValueChange = onValueChange,
-        modifier = modifier.opalinePart("B01", value = fraction, enabled = enabled),
+        modifier =
+            modifier.opalinePart(
+                if (stepped) "UI022" else "UI019",
+                value = fraction,
+                enabled = enabled,
+            ),
+        enabled = enabled,
         valueRange = valueRange,
         steps = steps,
-        enabled = enabled,
-        colors =
-            SliderDefaults.colors(
-                activeTrackColor = if (ready) Color.Transparent else OpalineColors.accent,
-                inactiveTrackColor = if (ready) Color.Transparent else OpalineColors.surface,
-                thumbColor = if (ready) Color.Transparent else OpalineColors.pearl,
-            ),
+        onValueChangeFinished = onValueChangeFinished,
+        colors = opalineSliderColors(),
     )
 }
 
@@ -162,9 +197,19 @@ fun CreativeToggle(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    OpalineToggle(checked, { onCheckedChange?.invoke(it) }, modifier, enabled && onCheckedChange != null)
+    OpalineToggle(
+        checked,
+        { onCheckedChange?.invoke(it) },
+        modifier,
+        enabled && onCheckedChange != null,
+    )
 }
 
+/**
+ * UI023 Circular dial: body B13/gel, value in the `value` frame. Drag follows motion.js
+ * MotionController.drag for rotary kinds: value += (dx − dy) · 2.4 over the host view's size; a
+ * tap sets the angular value on the binding's sweep, centred at 12 o'clock.
+ */
 @Composable
 fun CreativeKnob(
     value: Float,
@@ -178,38 +223,55 @@ fun CreativeKnob(
     val fraction = if (span > 0) ((value - valueRange.start) / span).coerceIn(0f, 1f) else 0f
     val latest = rememberUpdatedState(value)
     val change = rememberUpdatedState(onValueChange)
-    Box(
+    val view = LocalView.current
+    val sweep =
+        (rememberOpalineComposition("UI023").binding("angular-value")["sweepRadians"] as Number)
+            .toFloat()
+    OpalineRecipeLayout(
+        "UI023",
         modifier
             .size(knobSize)
-            .opalinePart("B13", value = fraction, enabled = enabled)
             .semantics {
                 progressBarRangeInfo = ProgressBarRangeInfo(value, valueRange)
                 if (!enabled) disabled()
                 setProgress {
-                    if (enabled) {
-                        change.value(it.coerceIn(valueRange))
-                        true
-                    } else {
-                        false
-                    }
+                    if (enabled) change.value(it.coerceIn(valueRange))
+                    enabled
                 }
             }.pointerInput(enabled, valueRange) {
                 if (enabled) {
-                    var accumulated = latest.value
-                    detectDragGestures(
-                        onDragStart = { accumulated = latest.value },
-                        onDrag = { contact, delta ->
-                            contact.consume()
-                            accumulated = (accumulated - delta.y * span / 220f).coerceIn(valueRange)
-                            change.value(accumulated)
-                        },
-                    )
+                    var turned = latest.value
+                    detectDragGestures(onDragStart = { turned = latest.value }) { contact, drag ->
+                        contact.consume()
+                        val dx = drag.x / view.width.coerceAtLeast(1)
+                        val dy = drag.y / view.height.coerceAtLeast(1)
+                        turned = (turned + (dx - dy) * 2.4f * span).coerceIn(valueRange)
+                        change.value(turned)
+                    }
+                }
+            }.pointerInput(enabled, valueRange, sweep) {
+                if (enabled) {
+                    detectTapGestures { at ->
+                        val angle = atan2(at.x - size.width / 2f, size.height / 2f - at.y)
+                        val turn = (angle / sweep + .5f).coerceIn(0f, 1f)
+                        change.value(valueRange.start + turn * span)
+                    }
                 }
             },
-        contentAlignment = Alignment.Center,
-    ) { Text("${(fraction * 100).roundToInt()}", style = MaterialTheme.typography.labelMedium) }
+    ) {
+        Box(Modifier.recipePart("body").opalinePart("UI023", value = fraction, enabled = enabled))
+        Text(
+            "${(fraction * 100).roundToInt()}",
+            Modifier.recipeFrame("value"),
+            style = MaterialTheme.typography.labelMedium,
+        )
+    }
 }
 
+/**
+ * UI035 Tab rail: body D02/shell, tab-* A05/gel (selected tab lifted); activate → select-tab.
+ * A tab that [enabled] rejects looks and acts disabled.
+ */
 @Composable
 fun CreativeTabs(
     titles: List<String>,
@@ -217,26 +279,51 @@ fun CreativeTabs(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     scrollable: Boolean = true,
+    enabled: (Int) -> Boolean = { true },
 ) {
-    val scrollState = rememberScrollState()
-    val rowModifier = if (scrollable) modifier.horizontalScroll(scrollState) else modifier
-    Row(rowModifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        titles.forEachIndexed { index, title -> CreativeButton(title, { onSelect(index) }, selected = index == selected) }
+    val recipe = rememberOpalineComposition("UI035")
+    val (padding, gap) = rememberRecipeRail("UI035", "body", "tab-0")
+    Box(if (scrollable) modifier.horizontalScroll(rememberScrollState()) else modifier) {
+        Box(Modifier.matchParentSize().opalinePart("UI035"))
+        Row(
+            Modifier.selectableGroup().padding(padding),
+            horizontalArrangement = Arrangement.spacedBy(gap),
+        ) {
+            titles.forEachIndexed { index, title ->
+                val tab = recipe.sibling("tab-", index)
+                OpalinePressable(
+                    "UI035",
+                    tab,
+                    tab,
+                    { onSelect(index) },
+                    enabled = enabled(index),
+                    selected = index == selected,
+                    checked = index == selected,
+                    role = Role.Tab,
+                ) { Text(title) }
+            }
+        }
     }
 }
 
+/** UI009 Three-way selector for as many options as it has frames, else the UI035 tab rail. */
 @Composable
 fun CreativeSegments(
     options: List<String>,
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-) = CreativeTabs(options, selected, onSelect, modifier)
+) {
+    if (options.size == rememberOpalineComposition("UI009").contentFrames.size) {
+        OpalineThreeWaySelector(options, selected, onSelect, modifier)
+    } else {
+        CreativeTabs(options, selected, onSelect, modifier)
+    }
+}
 
 /**
- * UI049/UI073 progress: the B07 liquid channel whose meniscus advances with [progress]. The
- * Material indicator underneath keeps progress semantics and is the visible fallback until the
- * native scene is ready.
+ * UI049 Linear progress channel: body E12/shell, progress → set-fill. The Material indicator
+ * keeps progress semantics and is the visible fallback until the scene is ready.
  */
 @Composable
 fun CreativeProgress(
@@ -245,14 +332,19 @@ fun CreativeProgress(
 ) {
     val fraction = if (progress.isFinite()) progress.coerceIn(0f, 1f) else 0f
     val ready = opalineReady()
-    LinearProgressIndicator(
-        progress = { fraction },
-        modifier = modifier.height(24.dp).opalinePart("B07", value = fraction),
-        color = if (ready) Color.Transparent else OpalineColors.accent,
-        trackColor = if (ready) Color.Transparent else OpalineColors.surface,
-    )
+    OpalineRecipeLayout("UI049", modifier, fitWidth = true) {
+        Box(Modifier.recipePart("body").opalinePart("UI049", value = fraction)) {
+            LinearProgressIndicator(
+                progress = { fraction },
+                modifier = Modifier.fillMaxSize(),
+                color = if (ready) Color.Transparent else OpalineColors.accent,
+                trackColor = if (ready) Color.Transparent else OpalineColors.surface,
+            )
+        }
+    }
 }
 
+/** UI011 / UI012 / UI014 through [OpalineTextField]. */
 @Composable
 fun CreativeTextField(
     value: String,
@@ -267,17 +359,20 @@ fun CreativeTextField(
     OpalineTextField(
         value,
         onValueChange,
-        modifier.opalinePart("C04"),
+        modifier,
         enabled = enabled,
         singleLine = singleLine,
         placeholder = placeholder?.let { { Text(it) } },
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         visualTransformation = visualTransformation,
-        shape = RoundedCornerShape(24.dp),
     )
 }
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+/**
+ * UI044 Bottom sheet: body C01/shell with the content in its `content` frame. Open → lift; a
+ * dismiss request plays close → return-to-mount first.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreativeSheet(
     onDismissRequest: () -> Unit,
@@ -285,19 +380,31 @@ fun CreativeSheet(
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     content: @Composable () -> Unit,
 ) {
+    val events = rememberOpalinePartEvents()
+    LaunchedEffect(events) { events.raise("open") }
     ModalBottomSheet(
-        onDismissRequest,
+        rememberOpalineDismiss(events, onDismissRequest),
         modifier,
         sheetState,
         containerColor = OpalineColors.surface,
         contentColor = CreativeColors.textPrimary,
     ) {
         OpalineSceneHost(Modifier.fillMaxWidth(), environment = false) {
-            Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) { content() }
+            OpalineRecipeLayout(
+                "UI044",
+                Modifier.fillMaxWidth(),
+                fitWidth = true,
+                flex = "content",
+                flexAlignment = Alignment.TopCenter,
+            ) {
+                Box(Modifier.recipePart("body").opalinePart("UI044", events = events))
+                Column(Modifier.recipeFrame("content").fillMaxWidth()) { content() }
+            }
         }
     }
 }
 
+/** UI042 Dialog shell holding the title, text and actions in its `content` frame. */
 @Composable
 fun CreativeDialog(
     onDismissRequest: () -> Unit,
@@ -307,14 +414,21 @@ fun CreativeDialog(
     actions: @Composable () -> Unit = {},
 ) {
     OpalineDialog(onDismissRequest) {
-        OpalinePanel(modifier.widthIn(min = 280.dp, max = 440.dp)) {
+        OpalinePanel(
+            modifier.widthIn(min = 280.dp, max = 440.dp).semantics { paneTitle = title },
+            recipe = "UI042",
+        ) {
             Text(title, style = MaterialTheme.typography.headlineSmall)
             text?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { actions() }
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) { actions() }
         }
     }
 }
 
+/** UI041 Portrait content card through [OpalinePanel]. */
 @Composable
 fun CreativeTile(
     onClick: () -> Unit,
@@ -322,7 +436,9 @@ fun CreativeTile(
     contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    OpalinePanel(modifier.clickable(onClick = onClick)) { Column(Modifier.padding(contentPadding), content = content) }
+    OpalinePanel(modifier.clickable(onClick = onClick)) {
+        Column(Modifier.padding(contentPadding), content = content)
+    }
 }
 
 @Composable
