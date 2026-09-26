@@ -328,7 +328,7 @@ private fun Modifier.opalineBody(
             }
     }
 
-private class PartHolder(
+internal class PartHolder(
     var body: OpalineBody,
 ) {
     var coordinates: LayoutCoordinates? = null
