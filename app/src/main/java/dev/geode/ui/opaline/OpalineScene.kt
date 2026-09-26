@@ -245,7 +245,7 @@ private val ORIGIN = OpalineVec3(0f, 0f, 0f)
 private val UNIT = OpalineVec3(1f, 1f, 1f)
 
 /** What the renderer fits to a node: see [OpalinePart]. */
-private data class OpalineBody(
+internal data class OpalineBody(
     val element: String,
     val material: String?,
     val dimensions: OpalineVec3?,
