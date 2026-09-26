@@ -1,13 +1,11 @@
 package dev.geode.ui
 
 import android.content.Intent
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +41,7 @@ import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeProgress
 import dev.geode.ui.opaline.creative.CreativeSegments
+import dev.geode.ui.opaline.creative.CreativeTabs
 
 @Composable
 fun SettingsDialog(
@@ -95,283 +94,290 @@ fun SettingsDialog(
     fun persistDefaults() = exportPrefs.save(ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId))
     val chooserTitle = stringResource(R.string.export_upload_share_to)
 
-    OpalineContextSheet(onDismiss = onDismiss) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            stringResource(R.string.export_title),
+            style = MaterialTheme.typography.titleLarge,
+            color = CreativeColors.textPrimary,
+        )
         Column(
             Modifier
-                .widthIn(min = 280.dp, max = 420.dp)
-                .padding(24.dp),
+                .padding(top = 16.dp)
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                stringResource(R.string.export_title),
-                style = MaterialTheme.typography.titleLarge,
-                color = CreativeColors.textPrimary,
-            )
-            Column(
-                Modifier
-                    .padding(top = 16.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                when (val phase = export.phase) {
-                    is ExportPhase.Running -> {
-                        val run by dev.geode.export.ExportRun.state
-                            .collectAsStateWithLifecycle()
-                        Text(
-                            listOfNotNull(
-                                stringResource(R.string.export_rendering_offline),
-                                run.secondsRemaining?.let {
-                                    dev.geode.export.RenderEta
-                                        .describe(it)
-                                },
-                            ).joinToString(" · "),
-                        )
-                        CreativeProgress(progress = phase.progress, modifier = Modifier.fillMaxWidth())
-                        Text(
-                            stringResource(R.string.export_leave_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    is ExportPhase.Done -> {
-                        Text(
+            when (val phase = export.phase) {
+                is ExportPhase.Running -> {
+                    val run by dev.geode.export.ExportRun.state
+                        .collectAsStateWithLifecycle()
+                    Text(
+                        listOfNotNull(
+                            stringResource(R.string.export_rendering_offline),
+                            run.secondsRemaining?.let {
+                                dev.geode.export.RenderEta
+                                    .describe(it)
+                            },
+                        ).joinToString(" · "),
+                    )
+                    CreativeProgress(progress = phase.progress, modifier = Modifier.fillMaxWidth())
+                    Text(
+                        stringResource(R.string.export_leave_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                is ExportPhase.Done -> ExportDoneStatus(export, phase, chooserTitle)
+                is ExportPhase.Failed -> {
+                    Text(
+                        stringResource(R.string.export_failed, phase.message),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                ExportPhase.Idle, ExportPhase.Loading -> {
+                    SettingsLabel(stringResource(R.string.export_platform_preset))
+                    CreativeSegments(
+                        options = ExportPresets.ALL.map { it.name },
+                        selected = ExportPresets.indexMatching(quality, ratio, fps, loopSafe),
+                        onSelect = {
+                            val preset = ExportPresets.ALL[it]
+                            quality = preset.quality
+                            ratio = preset.ratio
+                            fps = preset.fps
+                            loopSafe = preset.loopSafe
+                            persistDefaults()
+                        },
+                    )
+                    Text(
+                        presetCaption(
+                            ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId),
                             stringResource(
-                                if (export.customDestination) {
-                                    R.string.export_saved_folder
-                                } else {
-                                    R.string.export_saved_library
-                                },
+                                R.string.export_spec,
+                                ratio.label,
+                                exportQualityLabel(quality),
+                                fps,
                             ),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    SettingsLabel(stringResource(R.string.export_quality))
+                    CreativeSegments(
+                        options = ExportQuality.entries.map { exportQualityLabel(it) },
+                        selected = ExportQuality.entries.indexOf(quality),
+                        onSelect = {
+                            quality = ExportQuality.entries[it]
+                            persistDefaults()
+                        },
+                    )
+                    SettingsLabel(stringResource(R.string.export_frame_rate))
+                    CreativeSegments(
+                        options = fpsLabels(),
+                        selected = EXPORT_FPS_OPTIONS.indexOf(fps),
+                        onSelect = {
+                            fps = EXPORT_FPS_OPTIONS[it]
+                            persistDefaults()
+                        },
+                    )
+                    SettingsLabel(stringResource(R.string.export_codec))
+                    CreativeSegments(
+                        options = ExportCodec.entries.map { exportCodecLabel(it) },
+                        selected = ExportCodec.entries.indexOf(codec),
+                        onSelect = {
+                            codec = ExportCodec.entries[it]
+                            persistDefaults()
+                        },
+                    )
+                    SettingsLabel(stringResource(R.string.export_loudness_target))
+                    CreativeSegments(
+                        options = LoudnessTarget.ALL.map { it.label },
+                        selected = LoudnessTarget.ALL.indexOf(loudnessTarget),
+                        onSelect = {
+                            loudnessTargetId = LoudnessTarget.ALL[it].id
+                            persistDefaults()
+                        },
+                    )
+                    Text(
+                        stringResource(R.string.export_loudness_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    SettingsLabel(stringResource(R.string.export_aspect_ratio))
+                    CreativeSegments(
+                        options = ExportRatio.entries.map { it.label },
+                        selected = ExportRatio.entries.indexOf(ratio),
+                        onSelect = {
+                            ratio = ExportRatio.entries[it]
+                            persistDefaults()
+                        },
+                    )
+                    if (trackDurationMs > 0) {
+                        SettingsLabel(stringResource(R.string.export_length))
+                        CreativeSegments(
+                            options =
+                                listOf(
+                                    stringResource(R.string.export_whole_track),
+                                    stringResource(R.string.export_segment),
+                                ),
+                            selected = if (segment) 1 else 0,
+                            onSelect = { segment = it == 1 },
                         )
-                        export.loudnessAdvice?.let { advice ->
-                            Text(advice.headline, style = MaterialTheme.typography.labelMedium)
+                        if (segment) {
+                            OpalineRangeSlider(
+                                value = rangeStart..rangeEnd,
+                                onValueChange = { r ->
+                                    rangeStart = r.start
+                                    rangeEnd = r.endInclusive
+                                },
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
                             Text(
-                                advice.detail,
+                                if (range == null) {
+                                    stringResource(
+                                        R.string.export_segment_hint,
+                                        (ExportRange.MIN_DURATION_MS / 1000).toInt(),
+                                    )
+                                } else {
+                                    stringResource(
+                                        R.string.export_segment_summary,
+                                        formatClock(range.startMs),
+                                        formatClock(range.endMs),
+                                        formatClock(range.durationMs),
+                                    )
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // No track title reaches this dialog, so the rendered file's own
-                            // name (e.g. "geode_1234567890.mp4") stands in for EXTRA_TITLE/SUBJECT.
-                            val resultName = phase.resultUri.lastPathSegment?.substringAfterLast('/')
-                            CreativeButton(
-                                text = stringResource(R.string.export_upload_drive),
-                                onClick = {
-                                    context.shareVideo(phase.resultUri, chooserTitle, title = resultName, subject = resultName)
-                                },
-                            )
-                        }
                     }
-                    is ExportPhase.Failed -> {
-                        Text(stringResource(R.string.export_failed, phase.message), color = MaterialTheme.colorScheme.error)
-                    }
-                    ExportPhase.Idle, ExportPhase.Loading -> {
-                        Text(stringResource(R.string.export_platform_preset), style = MaterialTheme.typography.labelMedium)
-                        Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            CreativeSegments(
-                                options = ExportPresets.ALL.map { it.name },
-                                selected = ExportPresets.indexMatching(quality, ratio, fps, loopSafe),
-                                onSelect = {
-                                    val preset = ExportPresets.ALL[it]
-                                    quality = preset.quality
-                                    ratio = preset.ratio
-                                    fps = preset.fps
-                                    loopSafe = preset.loopSafe
-                                    persistDefaults()
-                                },
-                            )
-                        }
-                        Text(
-                            presetCaption(
-                                ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId),
-                                stringResource(R.string.export_spec, ratio.label, exportQualityLabel(quality), fps),
+                    val barUs =
+                        dev.geode.analysis.BarTrim
+                            .barDurationUs(bpm)
+                    SettingsLabel(stringResource(R.string.export_looping))
+                    // Loop-safe needs a tempo: without one only the full length can be picked.
+                    CreativeTabs(
+                        titles =
+                            listOf(
+                                stringResource(R.string.export_full_length),
+                                stringResource(R.string.export_loop_safe),
                             ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        selected = if (loopSafe) 1 else 0,
+                        onSelect = {
+                            loopSafe = it == 1
+                            persistDefaults()
+                        },
+                        enabled = { it == 0 || barUs != null },
+                    )
+                    Text(
+                        if (barUs != null) {
+                            stringResource(
+                                R.string.export_loop_safe_bar_hint,
+                                "%.0f".format(bpm),
+                                "%.1f".format(barUs / 1_000_000f),
+                            )
+                        } else {
+                            stringResource(R.string.export_loop_safe_needs_tempo)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                    if (takes.isNotEmpty()) {
+                        SettingsLabel(stringResource(R.string.export_group_performance))
+                        CreativeSegments(
+                            options = listOf(stringResource(R.string.export_live_settings)) + takes,
+                            selected = selectedTake?.let { takes.indexOf(it) + 1 } ?: 0,
+                            onSelect = { onSelectTake(takes.getOrNull(it - 1)) },
                         )
-                        Text(stringResource(R.string.export_quality), style = MaterialTheme.typography.labelMedium)
-                        Row(
-                            modifier = Modifier.horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            ExportQuality.entries.forEach { q ->
-                                QualityChip(exportQualityLabel(q), quality == q) {
-                                    quality = q
-                                    persistDefaults()
-                                }
-                            }
-                        }
-                        Text(stringResource(R.string.export_frame_rate), style = MaterialTheme.typography.labelMedium)
-                        Row(
-                            modifier = Modifier.horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            EXPORT_FPS_OPTIONS.zip(fpsLabels()).forEach { (option, label) ->
-                                QualityChip(label, fps == option) {
-                                    fps = option
-                                    persistDefaults()
-                                }
-                            }
-                        }
-                        Text(stringResource(R.string.export_codec), style = MaterialTheme.typography.labelMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            ExportCodec.entries.forEach { c ->
-                                QualityChip(exportCodecLabel(c), codec == c) {
-                                    codec = c
-                                    persistDefaults()
-                                }
-                            }
-                        }
-                        Text(stringResource(R.string.export_loudness_target), style = MaterialTheme.typography.labelMedium)
-                        Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            LoudnessTarget.ALL.forEach { target ->
-                                QualityChip(target.label, loudnessTarget.id == target.id) {
-                                    loudnessTargetId = target.id
-                                    persistDefaults()
-                                }
-                            }
-                        }
-                        Text(
-                            stringResource(R.string.export_loudness_hint),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(stringResource(R.string.export_aspect_ratio), style = MaterialTheme.typography.labelMedium)
-                        Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            ExportRatio.entries.forEach { r ->
-                                QualityChip(r.label, ratio == r) {
-                                    ratio = r
-                                    persistDefaults()
-                                }
-                            }
-                        }
-                        if (trackDurationMs > 0) {
-                            Text(stringResource(R.string.export_length), style = MaterialTheme.typography.labelMedium)
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                QualityChip(stringResource(R.string.export_whole_track), !segment) { segment = false }
-                                QualityChip(stringResource(R.string.export_segment), segment) { segment = true }
-                            }
-                            if (segment) {
-                                OpalineRangeSlider(
-                                    value = rangeStart..rangeEnd,
-                                    onValueChange = { r ->
-                                        rangeStart = r.start
-                                        rangeEnd = r.endInclusive
-                                    },
-                                    modifier = Modifier.padding(top = 4.dp),
-                                )
-                                Text(
-                                    if (range == null) {
-                                        stringResource(
-                                            R.string.export_segment_hint,
-                                            (ExportRange.MIN_DURATION_MS / 1000).toInt(),
-                                        )
-                                    } else {
-                                        stringResource(
-                                            R.string.export_segment_summary,
-                                            formatClock(range.startMs),
-                                            formatClock(range.endMs),
-                                            formatClock(range.durationMs),
-                                        )
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                        val barUs =
-                            dev.geode.analysis.BarTrim
-                                .barDurationUs(bpm)
-                        Text(stringResource(R.string.export_looping), style = MaterialTheme.typography.labelMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            QualityChip(stringResource(R.string.export_full_length), !loopSafe) {
-                                loopSafe = false
-                                persistDefaults()
-                            }
-                            QualityChip(stringResource(R.string.export_loop_safe), loopSafe, enabled = barUs != null) {
-                                loopSafe = true
-                                persistDefaults()
-                            }
-                        }
-                        Text(
-                            if (barUs != null) {
-                                stringResource(
-                                    R.string.export_loop_safe_bar_hint,
-                                    "%.0f".format(bpm),
-                                    "%.1f".format(barUs / 1_000_000f),
-                                )
-                            } else {
-                                stringResource(R.string.export_loop_safe_needs_tempo)
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                        if (takes.isNotEmpty()) {
-                            Text(stringResource(R.string.export_group_performance), style = MaterialTheme.typography.labelMedium)
-                            Row(
-                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                QualityChip(stringResource(R.string.export_live_settings), selectedTake == null) { onSelectTake(null) }
-                                takes.forEach { name ->
-                                    QualityChip(name, selectedTake == name) { onSelectTake(name) }
-                                }
-                            }
-                            if (selectedTake != null) {
-                                Text(
-                                    stringResource(R.string.export_take_explainer),
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            }
-                        }
-                        if (quality == ExportQuality.UHD4K) {
+                        if (selectedTake != null) {
                             Text(
-                                stringResource(R.string.export_4k_fallback),
+                                stringResource(R.string.export_take_explainer),
                                 style = MaterialTheme.typography.labelSmall,
                             )
                         }
-                        CreativeButton(
-                            text = stringResource(R.string.export_render_button, quality.shortSide, ratio.label, fps),
-                            onClick = { onStart(ExportAspect.of(quality, ratio), fps, loopSafe, range, codec) },
-                            enabled = hasMedia,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        CreativeButton(
-                            text = stringResource(R.string.export_render_to_folder),
-                            onClick = { onStartToDestination(ExportAspect.of(quality, ratio), fps, loopSafe, range, codec) },
-                            enabled = hasMedia,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        CreativeButton(
-                            text = stringResource(R.string.export_still_button),
-                            onClick = { onSaveFrame(ExportAspect.of(quality, ratio)) },
-                            enabled = hasMedia && !stillPhase.isBusy,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        StillPhaseStatus(stillPhase, chooserTitle)
                     }
-                }
-            }
-            Row(
-                Modifier.padding(top = 20.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                if (export.phase.isRunning) {
-                    CreativeButton(text = stringResource(R.string.export_cancel), onClick = onCancel)
-                } else {
-                    CreativeButton(text = stringResource(R.string.action_close), onClick = onDismiss)
+                    if (quality == ExportQuality.UHD4K) {
+                        Text(
+                            stringResource(R.string.export_4k_fallback),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                    val aspect = ExportAspect.of(quality, ratio)
+                    CreativeButton(
+                        text =
+                            stringResource(
+                                R.string.export_render_button,
+                                quality.shortSide,
+                                ratio.label,
+                                fps,
+                            ),
+                        onClick = { onStart(aspect, fps, loopSafe, range, codec) },
+                        enabled = hasMedia,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    CreativeButton(
+                        text = stringResource(R.string.export_render_to_folder),
+                        onClick = { onStartToDestination(aspect, fps, loopSafe, range, codec) },
+                        enabled = hasMedia,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    CreativeButton(
+                        text = stringResource(R.string.export_still_button),
+                        onClick = { onSaveFrame(aspect) },
+                        enabled = hasMedia && !stillPhase.isBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    StillPhaseStatus(stillPhase, chooserTitle)
                 }
             }
         }
+        Row(
+            Modifier.padding(top = 20.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            if (export.phase.isRunning) {
+                CreativeButton(text = stringResource(R.string.export_cancel), onClick = onCancel)
+            } else {
+                CreativeButton(text = stringResource(R.string.action_close), onClick = onDismiss)
+            }
+        }
     }
+}
+
+@Composable
+private fun SettingsLabel(text: String) = Text(text, style = MaterialTheme.typography.labelMedium)
+
+@Composable
+private fun ExportDoneStatus(
+    export: ExportUiState,
+    phase: ExportPhase.Done,
+    chooserTitle: String,
+) {
+    val context = LocalContext.current
+    Text(
+        stringResource(
+            if (export.customDestination) {
+                R.string.export_saved_folder
+            } else {
+                R.string.export_saved_library
+            },
+        ),
+    )
+    export.loudnessAdvice?.let { advice ->
+        Text(advice.headline, style = MaterialTheme.typography.labelMedium)
+        Text(
+            advice.detail,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    // No track title reaches this dialog, so the rendered file's own
+    // name (e.g. "geode_1234567890.mp4") stands in for EXTRA_TITLE/SUBJECT.
+    val resultName = phase.resultUri.lastPathSegment?.substringAfterLast('/')
+    CreativeButton(
+        text = stringResource(R.string.export_upload_drive),
+        onClick = {
+            context.shareVideo(phase.resultUri, chooserTitle, resultName, resultName)
+        },
+    )
 }
 
 @Composable
@@ -413,14 +419,4 @@ private fun StillPhaseStatus(
             )
         StillPhase.Idle -> Unit
     }
-}
-
-@Composable
-private fun QualityChip(
-    label: String,
-    selected: Boolean,
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-) {
-    CreativeButton(text = label, onClick = onClick, selected = selected, enabled = enabled)
 }

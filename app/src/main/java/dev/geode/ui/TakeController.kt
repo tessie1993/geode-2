@@ -164,7 +164,12 @@ internal class TakeController(
         storeScope.launch {
             takes.delete(name)
             val listed = takes.list()
-            _state.update { it.copy(takes = listed) }
+            _state.update {
+                it.copy(
+                    takes = listed,
+                    exportTake = it.exportTake.takeIf { take -> take != name },
+                )
+            }
         }
     }
 
@@ -175,6 +180,7 @@ internal class TakeController(
         storeScope.launch {
             if (!takes.rename(from, to)) return@launch
             if (_state.value.replaying == from) stopReplay()
+            _state.update { if (it.exportTake == from) it.copy(exportTake = to) else it }
             refresh()
         }
     }

@@ -2,7 +2,6 @@ package dev.geode.ui.studio
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,8 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,27 +29,26 @@ import dev.geode.editor.EaseShape
 import dev.geode.editor.Interpolation
 import dev.geode.editor.Keyframe
 import dev.geode.editor.ParamValue
-import dev.geode.ui.opaline.creative.CreativeButton
+import dev.geode.ui.opaline.OpalineChip
+import dev.geode.ui.opaline.OpalinePanel
+import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeSheet
 import dev.geode.ui.opaline.creative.CreativeSlider
 import dev.geode.ui.opaline.creative.CreativeToggle
-import dev.geode.ui.opaline.creative.creativeSurface
+import dev.geode.ui.opaline.kit.OpalineFilterChipRow
 
-/** Interpolation, curve handles and the value of one key. Every change is a new [Keyframe]. */
+/**
+ * Interpolation, curve handles and the value of one key on a UI039 content card. Every change is a
+ * new [Keyframe].
+ */
 @Composable
 fun KeyEditor(
     key: Keyframe,
     param: AnimatableParam?,
     onChange: (Keyframe) -> Unit,
 ) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .creativeSurface(shape = RoundedCornerShape(20.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    OpalinePanel(recipe = "UI039") {
         Text(
             stringResource(R.string.curve_key_at, paramLabel(param), clockLabel(key.atMs)),
             style = MaterialTheme.typography.labelMedium,
@@ -82,16 +78,11 @@ private fun InterpolationChips(
             R.string.curve_smooth to Interpolation.Ease(EaseShape.SMOOTH),
             R.string.curve_custom to Interpolation.Custom(custom),
         )
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    OpalineFilterChipRow(Modifier.fillMaxWidth()) {
         choices.forEach { (label, interpolation) ->
             val selected =
                 if (interpolation is Interpolation.Custom) current is Interpolation.Custom else interpolation == current
-            CreativeButton(
-                text = stringResource(label),
-                selected = selected,
-                tint = if (selected) CreativeColors.lavender else null,
-                onClick = { onPick(interpolation) },
-            )
+            ChoiceChip(stringResource(label), selected) { onPick(interpolation) }
         }
     }
 }
@@ -182,20 +173,26 @@ private fun ValueEditor(
             }
         is ParamValue.Choice -> {
             val labels = param?.choices.orEmpty()
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OpalineFilterChipRow(Modifier.fillMaxWidth()) {
                 val count = if (labels.isEmpty()) value.index + 2 else labels.size
                 repeat(count) { index ->
-                    val selected = value.index == index
-                    CreativeButton(
-                        text = labels.getOrNull(index) ?: index.toString(),
-                        selected = selected,
-                        tint = if (selected) CreativeColors.lavender else null,
-                        onClick = { onChange(ParamValue.Choice(index)) },
-                    )
+                    ChoiceChip(labels.getOrNull(index) ?: index.toString(), value.index == index) {
+                        onChange(ParamValue.Choice(index))
+                    }
                 }
             }
         }
     }
+}
+
+/** UI010 filter chip, lifted while [selected]. */
+@Composable
+private fun ChoiceChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    OpalineChip(onClick = onClick, label = { Text(label) }, selected = selected)
 }
 
 @Composable
@@ -212,7 +209,7 @@ private fun LabeledValueSlider(
     }
 }
 
-/** Picks the parameter a new track will animate. */
+/** Picks the parameter a new track will animate: a UI044 sheet of UI057 rows. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTrackSheet(
@@ -225,7 +222,7 @@ fun AddTrackSheet(
             Text(stringResource(R.string.curve_add_track), style = MaterialTheme.typography.titleMedium, color = CreativeColors.textPrimary)
             LazyColumn {
                 items(params, key = { it.id.value }) { param ->
-                    CreativeButton(text = paramLabel(param), modifier = Modifier.fillMaxWidth(), onClick = { onPick(param) })
+                    OpalineRow(title = paramLabel(param), onClick = { onPick(param) })
                 }
             }
         }

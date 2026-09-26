@@ -133,10 +133,8 @@ internal fun EqualizerCard(
 }
 
 /**
- * The ten bands as pastel glass dials (docs/design/liquid-glass/README.md "Sliders … Charts …
- * Knobs: glass dials with an arc"): one [CreativeKnob] per band, dragged vertically, with the band's
- * frequency label under it and its current level above — reads as a row of pastel EQ pots rather
- * than a single horizontal slider list.
+ * The bands as UI023 circular dials (plan §12 ◆7): one [CreativeKnob] per band at the 48 dp
+ * touch floor (plan Part B), its level above and its frequency label under it.
  */
 @Composable
 private fun EqualizerBands(
@@ -160,7 +158,7 @@ private fun EqualizerBands(
                     onValueChange = { onBand(i, it.toInt()) },
                     valueRange = band.minMb.toFloat()..band.maxMb.toFloat(),
                     enabled = controlsOn,
-                    knobSize = 44.dp,
+                    knobSize = 48.dp,
                 )
                 Text(
                     band.label,

@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,7 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
-import dev.geode.ui.opaline.creative.CreativeButton
+import dev.geode.ui.opaline.OpalineButton
+import dev.geode.ui.opaline.creative.CreativeSegments
 import dev.geode.ui.opaline.creative.CreativeSlider
 import dev.geode.ui.opaline.creative.CreativeToggle
 import dev.geode.viz.ArtTitleOptions
@@ -72,9 +71,9 @@ private fun lyricSizeLabel(size: LyricSize) =
 
 /**
  * Toggles and choices for the cover-art/title, synced-lyric, and watermark overlays drawn into
- * the visualizer and its exports.
+ * the visualizer and its exports: the route sheet (UI044), UI008 switches, UI009/UI035 choices,
+ * UI001 actions and UI019 sliders.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LayersSheet(
     options: ArtTitleOptions,
@@ -108,28 +107,19 @@ internal fun LayersSheet(
             }
 
             Text(stringResource(R.string.overlay_position_label), style = MaterialTheme.typography.labelLarge)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                OverlayPosition.entries.forEach { position ->
-                    CreativeButton(
-                        compact = true,
-                        filled = position == options.position,
-                        onClick = { onOptionsChange(options.copy(position = position)) },
-                    ) { Text(stringResource(positionLabel(position))) }
-                }
-            }
+            CreativeSegments(
+                OverlayPosition.entries.map { stringResource(positionLabel(it)) },
+                options.position.ordinal,
+                { onOptionsChange(options.copy(position = OverlayPosition.entries[it])) },
+            )
 
             Text(stringResource(R.string.overlay_size_label), style = MaterialTheme.typography.labelLarge)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                OverlaySize.entries.forEach { size ->
-                    CreativeButton(
-                        compact = true,
-                        filled = size == options.size,
-                        onClick = { onOptionsChange(options.copy(size = size)) },
-                    ) { Text(stringResource(sizeLabel(size))) }
-                }
-            }
+            CreativeSegments(
+                OverlaySize.entries.map { stringResource(sizeLabel(it)) },
+                options.size.ordinal,
+                { onOptionsChange(options.copy(size = OverlaySize.entries[it])) },
+            )
 
-            HorizontalDivider()
             Text(stringResource(R.string.overlay_lyric_sheet_title), style = MaterialTheme.typography.titleMedium)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(stringResource(R.string.overlay_lyric_enable))
@@ -140,28 +130,19 @@ internal fun LayersSheet(
             }
 
             Text(stringResource(R.string.overlay_position_label), style = MaterialTheme.typography.labelLarge)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                LyricPosition.entries.forEach { position ->
-                    CreativeButton(
-                        compact = true,
-                        filled = position == lyricOptions.position,
-                        onClick = { onLyricOptionsChange(lyricOptions.copy(position = position)) },
-                    ) { Text(stringResource(lyricPositionLabel(position))) }
-                }
-            }
+            CreativeSegments(
+                LyricPosition.entries.map { stringResource(lyricPositionLabel(it)) },
+                lyricOptions.position.ordinal,
+                { onLyricOptionsChange(lyricOptions.copy(position = LyricPosition.entries[it])) },
+            )
 
             Text(stringResource(R.string.overlay_size_label), style = MaterialTheme.typography.labelLarge)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                LyricSize.entries.forEach { size ->
-                    CreativeButton(
-                        compact = true,
-                        filled = size == lyricOptions.size,
-                        onClick = { onLyricOptionsChange(lyricOptions.copy(size = size)) },
-                    ) { Text(stringResource(lyricSizeLabel(size))) }
-                }
-            }
+            CreativeSegments(
+                LyricSize.entries.map { stringResource(lyricSizeLabel(it)) },
+                lyricOptions.size.ordinal,
+                { onLyricOptionsChange(lyricOptions.copy(size = LyricSize.entries[it])) },
+            )
 
-            HorizontalDivider()
             WatermarkSection(watermarkOptions, onWatermarkOptionsChange, onPickWatermarkImage, onClearWatermarkImage)
         }
     }
@@ -189,13 +170,12 @@ private fun WatermarkSection(
     Text(stringResource(R.string.overlay_watermark_section), style = MaterialTheme.typography.titleMedium)
 
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        CreativeButton(compact = true, filled = false, onClick = { picker.launch(arrayOf("image/*")) }) {
-            Text(stringResource(R.string.overlay_watermark_pick))
-        }
+        OpalineButton(
+            stringResource(R.string.overlay_watermark_pick),
+            { picker.launch(arrayOf("image/*")) },
+        )
         if (options.uri != null) {
-            CreativeButton(compact = true, filled = false, onClick = onClearImage) {
-                Text(stringResource(R.string.overlay_watermark_clear))
-            }
+            OpalineButton(stringResource(R.string.overlay_watermark_clear), onClearImage)
         }
     }
     if (options.uri == null) {
@@ -215,16 +195,15 @@ private fun WatermarkSection(
         )
     }
 
-    Text(stringResource(R.string.overlay_watermark_corner_label), style = MaterialTheme.typography.labelLarge)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        WatermarkCorner.entries.forEach { corner ->
-            CreativeButton(
-                compact = true,
-                filled = corner == options.corner,
-                onClick = { onOptionsChange(options.copy(corner = corner)) },
-            ) { Text(stringResource(watermarkCornerLabel(corner))) }
-        }
-    }
+    Text(
+        stringResource(R.string.overlay_watermark_corner_label),
+        style = MaterialTheme.typography.labelLarge,
+    )
+    CreativeSegments(
+        WatermarkCorner.entries.map { stringResource(watermarkCornerLabel(it)) },
+        options.corner.ordinal,
+        { onOptionsChange(options.copy(corner = WatermarkCorner.entries[it])) },
+    )
 
     Column {
         Text(

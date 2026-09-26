@@ -71,7 +71,8 @@ internal class BackgroundController(
         runCatching {
             application.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        releasePermission(_prefs.value.uri)
+        // Re-picking the same image must not release the grant just taken for it.
+        if (_prefs.value.uri != uri.toString()) releasePermission(_prefs.value.uri)
         setPrefs(_prefs.value.copy(uri = uri.toString()))
     }
 

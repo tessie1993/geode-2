@@ -2,11 +2,20 @@ package dev.geode.ui.studio
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,14 +31,15 @@ import dev.geode.R
 import dev.geode.editor.EditError
 import dev.geode.editor.LaneKind
 import dev.geode.editor.TapInSession
-import dev.geode.ui.opaline.OpalineDialog
+import dev.geode.ui.opaline.OpalineAlertDialog
+import dev.geode.ui.opaline.OpalineChip
+import dev.geode.ui.opaline.OpalineIconButton
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
-import dev.geode.ui.opaline.creative.CreativeShapes
 import dev.geode.ui.opaline.creative.CreativeTextField
-import dev.geode.ui.opaline.creative.creativeSurface
+import dev.geode.ui.opaline.kit.OpalineFilterChipRow
 
-/** Back, title, undo/redo and zoom, as a row of bubble buttons. */
+/** Back, undo/redo and zoom as UI003 circular actions, the playhead, and export (UI001). */
 @Composable
 fun EditorHeader(
     canUndo: Boolean,
@@ -47,17 +57,39 @@ fun EditorHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        CreativeButton(text = stringResource(R.string.action_back), onClick = onClose)
+        OpalineIconButton(
+            Icons.AutoMirrored.Filled.ArrowBack,
+            stringResource(R.string.action_back),
+            onClose,
+        )
         Text(
             stringResource(R.string.editor_playhead, clockLabel(playheadMs)),
             style = MaterialTheme.typography.labelMedium,
             color = CreativeColors.textSecondary,
             modifier = Modifier.padding(horizontal = 8.dp),
         )
-        CreativeButton(text = stringResource(R.string.editor_undo), enabled = canUndo, onClick = onUndo)
-        CreativeButton(text = stringResource(R.string.editor_redo), enabled = canRedo, onClick = onRedo)
-        CreativeButton(text = stringResource(R.string.editor_zoom_out), onClick = { onZoom(1f / ZOOM_STEP) })
-        CreativeButton(text = stringResource(R.string.editor_zoom_in), onClick = { onZoom(ZOOM_STEP) })
+        OpalineIconButton(
+            Icons.AutoMirrored.Filled.Undo,
+            stringResource(R.string.editor_undo),
+            onUndo,
+            enabled = canUndo,
+        )
+        OpalineIconButton(
+            Icons.AutoMirrored.Filled.Redo,
+            stringResource(R.string.editor_redo),
+            onRedo,
+            enabled = canRedo,
+        )
+        OpalineIconButton(
+            Icons.Filled.ZoomOut,
+            stringResource(R.string.editor_zoom_out),
+            { onZoom(1f / ZOOM_STEP) },
+        )
+        OpalineIconButton(
+            Icons.Filled.ZoomIn,
+            stringResource(R.string.editor_zoom_in),
+            { onZoom(ZOOM_STEP) },
+        )
         CreativeButton(
             text = stringResource(R.string.editor_export),
             enabled = !exporting,
@@ -67,7 +99,7 @@ fun EditorHeader(
     }
 }
 
-/** Lane creation, markers and auto-cut. */
+/** Lane creation, markers, auto-cut and captions as UI010 chips; in tap-in mode Tap is UI001. */
 @Composable
 fun EditorToolbar(
     tapSession: TapInSession?,
@@ -85,36 +117,49 @@ fun EditorToolbar(
     onExportSrt: () -> Unit,
     onExportChapters: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    OpalineFilterChipRow(Modifier.fillMaxWidth()) {
         if (tapSession == null) {
             LANE_KINDS.forEach { (kind, label) ->
-                CreativeButton(text = stringResource(R.string.editor_add_lane, stringResource(label)), onClick = { onAddLane(kind) })
+                ToolChip(stringResource(R.string.editor_add_lane, stringResource(label))) {
+                    onAddLane(kind)
+                }
             }
-            CreativeButton(text = stringResource(R.string.editor_add_marker), onClick = onAddMarker)
-            CreativeButton(text = stringResource(R.string.editor_tap_in), onClick = onTapStart)
-            CreativeButton(text = stringResource(R.string.editor_auto_cut), onClick = onAutoCut)
+            ToolChip(stringResource(R.string.editor_add_marker), onClick = onAddMarker)
+            ToolChip(stringResource(R.string.editor_tap_in), onClick = onTapStart)
+            ToolChip(stringResource(R.string.editor_auto_cut), onClick = onAutoCut)
             if (hasLyrics) {
-                CreativeButton(text = stringResource(R.string.editor_lyric_captions), onClick = onLyricCaptions)
+                ToolChip(stringResource(R.string.editor_lyric_captions), onClick = onLyricCaptions)
             }
-            CreativeButton(text = stringResource(R.string.editor_import_srt), onClick = onImportSrt)
-            CreativeButton(text = stringResource(R.string.editor_export_srt), onClick = onExportSrt)
-            CreativeButton(text = stringResource(R.string.editor_export_chapters), onClick = onExportChapters)
+            ToolChip(stringResource(R.string.editor_import_srt), onClick = onImportSrt)
+            ToolChip(stringResource(R.string.editor_export_srt), onClick = onExportSrt)
+            ToolChip(stringResource(R.string.editor_export_chapters), onClick = onExportChapters)
         } else {
-            CreativeButton(text = stringResource(R.string.editor_tap), tint = CreativeColors.mint, onClick = onTap)
+            CreativeButton(
+                text = stringResource(R.string.editor_tap),
+                tint = CreativeColors.mint,
+                onClick = onTap,
+            )
             Text(
                 stringResource(R.string.editor_tap_count, tapSession.count),
                 style = MaterialTheme.typography.labelMedium,
                 color = CreativeColors.textSecondary,
                 modifier = Modifier.align(Alignment.CenterVertically),
             )
-            CreativeButton(text = stringResource(R.string.editor_tap_undo), enabled = tapSession.count > 0, onClick = onTapUndo)
-            CreativeButton(text = stringResource(R.string.editor_tap_done), onClick = onTapDone)
-            CreativeButton(text = stringResource(R.string.action_cancel), onClick = onTapCancel)
+            ToolChip(
+                stringResource(R.string.editor_tap_undo),
+                enabled = tapSession.count > 0,
+                onClick = onTapUndo,
+            )
+            ToolChip(stringResource(R.string.editor_tap_done), onClick = onTapDone)
+            ToolChip(stringResource(R.string.action_cancel), onClick = onTapCancel)
         }
     }
 }
 
-/** What can be done to the selected clip or marker. */
+/**
+ * What can be done to the selected clip, marker or key: split, delete, ripple delete and
+ * duplicate as UI003 circular actions, the rest as UI010 chips.
+ */
 @Composable
 fun SelectionToolbar(
     clipSelected: Boolean,
@@ -133,62 +178,92 @@ fun SelectionToolbar(
     onAnimateProgramme: () -> Unit,
     onAnimateClip: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        CreativeButton(text = stringResource(R.string.curve_animate_scene), onClick = onAnimateProgramme)
+    OpalineFilterChipRow(Modifier.fillMaxWidth()) {
+        ToolChip(stringResource(R.string.curve_animate_scene), onClick = onAnimateProgramme)
         if (clipSelected) {
-            CreativeButton(text = stringResource(R.string.curve_animate_clip), onClick = onAnimateClip)
+            ToolChip(stringResource(R.string.curve_animate_clip), onClick = onAnimateClip)
             if (canTransition) {
-                CreativeButton(text = stringResource(R.string.editor_transition_ellipsis), onClick = onTransition)
+                ToolChip(
+                    stringResource(R.string.editor_transition_ellipsis),
+                    onClick = onTransition,
+                )
             }
-            CreativeButton(text = stringResource(R.string.editor_split), onClick = onSplit)
-            CreativeButton(text = stringResource(R.string.editor_delete), tint = CreativeColors.pink, onClick = onDelete)
-            CreativeButton(text = stringResource(R.string.editor_ripple_delete), tint = CreativeColors.pink, onClick = onRippleDelete)
-            CreativeButton(text = stringResource(R.string.editor_duplicate), onClick = onDuplicate)
-            CreativeButton(
-                text = stringResource(if (clipEnabled) R.string.editor_disable else R.string.editor_enable),
-                onClick = onToggleEnabled,
+            OpalineIconButton(
+                Icons.Filled.ContentCut,
+                stringResource(R.string.editor_split),
+                onSplit,
             )
+            OpalineIconButton(
+                Icons.Filled.Delete,
+                stringResource(R.string.editor_delete),
+                onDelete,
+            )
+            OpalineIconButton(
+                Icons.Filled.DeleteSweep,
+                stringResource(R.string.editor_ripple_delete),
+                onRippleDelete,
+            )
+            OpalineIconButton(
+                Icons.Filled.ContentCopy,
+                stringResource(R.string.editor_duplicate),
+                onDuplicate,
+            )
+            val toggle = if (clipEnabled) R.string.editor_disable else R.string.editor_enable
+            ToolChip(stringResource(toggle), onClick = onToggleEnabled)
         }
         if (markerSelected) {
-            CreativeButton(text = stringResource(R.string.editor_delete_marker), tint = CreativeColors.pink, onClick = onDeleteMarker)
+            ToolChip(stringResource(R.string.editor_delete_marker), onClick = onDeleteMarker)
         }
         if (keySelected) {
-            CreativeButton(text = stringResource(R.string.editor_delete_key), tint = CreativeColors.pink, onClick = onDeleteKey)
+            ToolChip(stringResource(R.string.editor_delete_key), onClick = onDeleteKey)
         }
     }
 }
 
+/** UI010 action chip holding a text label. */
+@Composable
+private fun ToolChip(
+    label: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    OpalineChip(onClick = onClick, label = { Text(label) }, enabled = enabled)
+}
+
+/** UI042 dialog with a UI011 field for a new text clip. */
 @Composable
 fun TextClipDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var text by remember { mutableStateOf("") }
-    OpalineDialog(onDismissRequest = onDismiss) {
-        Column(
-            Modifier
-                .creativeSurface(shape = CreativeShapes.tile)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    OpalineAlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
             Text(
                 stringResource(R.string.editor_text_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = CreativeColors.textPrimary,
             )
-            CreativeTextField(value = text, onValueChange = { text = it }, modifier = Modifier.fillMaxWidth())
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                CreativeButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
-                CreativeButton(
-                    text = stringResource(R.string.action_save),
-                    enabled = text.isNotBlank(),
-                    tint = CreativeColors.mint,
-                    modifier = Modifier.padding(start = 8.dp),
-                    onClick = { onConfirm(text.trim()) },
-                )
-            }
-        }
-    }
+        },
+        text = {
+            CreativeTextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            CreativeButton(
+                text = stringResource(R.string.action_save),
+                enabled = text.isNotBlank(),
+                onClick = { onConfirm(text.trim()) },
+            )
+        },
+        dismissButton = {
+            CreativeButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
+        },
+    )
 }
 
 @Composable

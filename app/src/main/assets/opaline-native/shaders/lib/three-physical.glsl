@@ -7,6 +7,7 @@
 
 // --- common.glsl.js ---
 #define PI 3.141592653589793
+#define PI2 6.283185307179586
 #define RECIPROCAL_PI 0.3183098861837907
 #define EPSILON 1e-6
 #define saturate(a) clamp(a, 0.0, 1.0)
@@ -328,8 +329,6 @@ void computeMultiscatteringIridescence(const in vec2 fab, const in vec3 specular
     multiScatter += Fms * Ems;
 }
 
-// Every Opaline family is dielectric (metalness 0), so the metallic branches of the three.js
-// equations are multiplied by zero; they are omitted rather than evaluated and discarded.
 void RE_Direct_Physical(const in IncidentLight directLight, const in vec3 geometryNormal, const in vec3 geometryViewDir,
     const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight) {
     float dotNL = saturate(dot(geometryNormal, directLight.direction));
@@ -370,11 +369,19 @@ void RE_IndirectSpecular_Physical(const in vec3 radiance, const in vec3 irradian
     clearcoatSpecularIndirect += clearcoatRadiance * EnvironmentBRDF(geometryClearcoatNormal, geometryViewDir,
         material.clearcoatF0, material.clearcoatF90, material.clearcoatRoughness);
     sheenSpecularIndirect += irradiance * material.sheenColor * IBLSheenBRDF(geometryNormal, geometryViewDir, material.sheenRoughness) * RECIPROCAL_PI;
-    vec3 singleScattering = vec3(0.0);
-    vec3 multiScattering = vec3(0.0);
+    // Multiscattering for the dielectric and the metallic layer, mixed by metalness. No family is
+    // both iridescent and metallic, so the metallic layer reuses the dielectric film Fresnel.
+    vec3 singleScatteringDielectric = vec3(0.0);
+    vec3 multiScatteringDielectric = vec3(0.0);
+    vec3 singleScatteringMetallic = vec3(0.0);
+    vec3 multiScatteringMetallic = vec3(0.0);
     computeMultiscatteringIridescence(material.dfg, material.specularColor, material.specularF90, material.iridescence,
-        material.iridescenceF0Dielectric, singleScattering, multiScattering);
-    vec3 diffuse = material.diffuseContribution * (1.0 - (singleScattering + multiScattering));
+        material.iridescenceF0Dielectric, singleScatteringDielectric, multiScatteringDielectric);
+    computeMultiscatteringIridescence(material.dfg, material.diffuseColor, material.specularF90, material.iridescence,
+        material.iridescenceF0Dielectric, singleScatteringMetallic, multiScatteringMetallic);
+    vec3 singleScattering = mix(singleScatteringDielectric, singleScatteringMetallic, material.metalness);
+    vec3 multiScattering = mix(multiScatteringDielectric, multiScatteringMetallic, material.metalness);
+    vec3 diffuse = material.diffuseContribution * (1.0 - (singleScatteringDielectric + multiScatteringDielectric));
     vec3 cosineWeightedIrradiance = irradiance * RECIPROCAL_PI;
     vec3 indirectSpecular = radiance * singleScattering;
     indirectSpecular += multiScattering * cosineWeightedIrradiance;
@@ -400,6 +407,43 @@ vec3 getHemisphereLightIrradiance(const in vec3 skyColor, const in vec3 groundCo
     float dotNL = dot(normal, direction);
     float hemiDiffuseWeight = 0.5 * dotNL + 0.5;
     return mix(groundColor, skyColor, hemiDiffuseWeight);
+}
+
+// --- shadowmap_pars_fragment.glsl.js (SHADOWMAP_TYPE_PCF, one directional shadow) ---
+precision highp sampler2DShadow;
+uniform sampler2DShadow uShadowMap;
+uniform vec2 uShadowMapSize;
+uniform float uShadowBias;
+uniform float uShadowRadius;
+
+float interleavedGradientNoise(vec2 position) {
+    return fract(52.9829189 * fract(dot(position, vec2(0.06711056, 0.00583715))));
+}
+
+vec2 vogelDiskSample(int sampleIndex, int samplesCount, float phi) {
+    const float goldenAngle = 2.399963229728653;
+    float r = sqrt((float(sampleIndex) + 0.5) / float(samplesCount));
+    float theta = float(sampleIndex) * goldenAngle + phi;
+    return vec2(cos(theta), sin(theta)) * r;
+}
+
+// shadowIntensity is 1, so the result is the filtered visibility itself.
+float getShadow(vec4 shadowCoord) {
+    float shadow = 1.0;
+    shadowCoord.xyz /= shadowCoord.w;
+    shadowCoord.z += uShadowBias;
+    bool inFrustum = shadowCoord.x >= 0.0 && shadowCoord.x <= 1.0 && shadowCoord.y >= 0.0 && shadowCoord.y <= 1.0;
+    if (inFrustum && shadowCoord.z <= 1.0) {
+        vec2 texelSize = vec2(1.0) / uShadowMapSize;
+        float radius = uShadowRadius * texelSize.x;
+        float phi = interleavedGradientNoise(gl_FragCoord.xy) * PI2;
+        shadow = 0.0;
+        for (int i = 0; i < 5; i++) {
+            shadow += texture(uShadowMap, vec3(shadowCoord.xy + vogelDiskSample(i, 5, phi) * radius, shadowCoord.z));
+        }
+        shadow *= 0.2;
+    }
+    return shadow;
 }
 
 // --- envmap_physical_pars_fragment.glsl.js (cube map instead of the PMREM cube-UV atlas) ---

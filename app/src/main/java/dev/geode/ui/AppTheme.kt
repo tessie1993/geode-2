@@ -113,6 +113,8 @@ data class GuiPrefs(
     val tutorialOnFirstRun: Boolean = true,
     val reducedMotion: Boolean = false,
     val opalinePalette: String = "TIDAL",
+    /** Settings › Look style theme: `GLASS`, `BUBBLE` or `DROP` (plan §12b). */
+    val opalineStyle: String = "GLASS",
     val micReactive: Boolean = false,
     val touchSmear: Boolean = false,
     val touchSmearStrength: Float = 1f,
@@ -204,6 +206,7 @@ class ThemeStore(
             tutorialOnFirstRun = prefs.getBoolean(KEY_TUTORIAL_ON_FIRST_RUN, true),
             reducedMotion = loadReducedMotion(),
             opalinePalette = prefs.getString("opaline_palette", "TIDAL") ?: "TIDAL",
+            opalineStyle = prefs.getString("opaline_style", "GLASS") ?: "GLASS",
             touchSmear = prefs.getBoolean(KEY_TOUCH_SMEAR, false),
             touchSmearStrength = prefs.getFloat(KEY_TOUCH_SMEAR_STRENGTH, 1f).coerceIn(0.2f, 2f),
             touchTransform = prefs.getBoolean(KEY_TOUCH_TRANSFORM, true),
@@ -266,6 +269,7 @@ class ThemeStore(
             putBoolean(KEY_TUTORIAL_ON_FIRST_RUN, gui.tutorialOnFirstRun)
             putBoolean(KEY_REDUCED_MOTION, gui.reducedMotion)
             putString("opaline_palette", gui.opalinePalette)
+            putString("opaline_style", gui.opalineStyle)
             putBoolean(KEY_TOUCH_SMEAR, gui.touchSmear)
             putFloat(KEY_TOUCH_SMEAR_STRENGTH, gui.touchSmearStrength)
             putBoolean(KEY_TOUCH_TRANSFORM, gui.touchTransform)

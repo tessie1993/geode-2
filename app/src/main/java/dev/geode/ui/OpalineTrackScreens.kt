@@ -7,6 +7,7 @@ import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,12 +38,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
@@ -56,13 +60,17 @@ import dev.geode.nav.Navigator
 import dev.geode.nav.Overlay
 import dev.geode.ui.opaline.OpalineAlertDialog
 import dev.geode.ui.opaline.OpalineButton
+import dev.geode.ui.opaline.OpalineColors
 import dev.geode.ui.opaline.OpalineEmptyState
 import dev.geode.ui.opaline.OpalineIconButton
 import dev.geode.ui.opaline.OpalinePage
-import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.OpalineTextField
-import dev.geode.ui.opaline.opalinePart
+import dev.geode.ui.opaline.kit.OpalineAccordionStack
+import dev.geode.ui.opaline.kit.OpalineImageFrame
+import dev.geode.ui.opaline.kit.OpalineNumberStepper
+import dev.geode.ui.opaline.kit.OpalineReorderRow
+import dev.geode.ui.opaline.kit.OpalineSearchField
 import kotlinx.coroutines.delay
 
 @Composable
@@ -94,11 +102,12 @@ internal fun OpalineSearch(
         OpalinePage(stringResource(R.string.action_search), stringResource(R.string.opaline_search_subtitle), onBack = {
             navigator.close(Overlay.Search)
         }) {
-            OpalineTextField(query, {
-                query = it
-            }, singleLine = true, modifier = Modifier.fillMaxWidth().focusRequester(focus), label = {
-                Text(stringResource(R.string.opaline_search_hint))
-            })
+            OpalineSearchField(
+                query,
+                { query = it },
+                Modifier.fillMaxWidth().focusRequester(focus),
+                placeholder = stringResource(R.string.opaline_search_hint),
+            )
             LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (query.isBlank()) {
                     item {
@@ -213,34 +222,25 @@ private fun OpalineTrackInfo(
         val edit = track
         if (edit != null) {
             LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item { TrackArtwork(uri, Modifier.size(96.dp)) }
+                item {
+                    OpalineImageFrame(Modifier.size(96.dp)) {
+                        TrackArtwork(uri, Modifier.fillMaxSize())
+                    }
+                }
                 item { OpalineEditField(stringResource(R.string.opaline_title), edit.title) { track = edit.copy(title = it) } }
                 item { OpalineEditField(stringResource(R.string.opaline_artist), edit.artist) { track = edit.copy(artist = it) } }
                 item { OpalineEditField(stringResource(R.string.opaline_album), edit.album) { track = edit.copy(album = it) } }
                 item { OpalineEditField(stringResource(R.string.opaline_genre), edit.genre) { track = edit.copy(genre = it) } }
                 item {
-                    OpalineEditField(
-                        stringResource(R.string.opaline_year),
-                        edit.year
-                            .takeIf { it > 0 }
-                            ?.toString()
-                            .orEmpty(),
-                    ) {
-                        track =
-                            edit.copy(year = it.filter(Char::isDigit).toIntOrNull() ?: 0)
+                    OpalineNumberField(stringResource(R.string.opaline_year), edit.year) {
+                        track = edit.copy(year = it)
                     }
                 }
                 item {
-                    OpalineEditField(
+                    OpalineNumberField(
                         stringResource(R.string.opaline_track_number),
-                        edit.trackNo
-                            .takeIf { it > 0 }
-                            ?.toString()
-                            .orEmpty(),
-                    ) {
-                        track =
-                            edit.copy(trackNo = it.filter(Char::isDigit).toIntOrNull() ?: 0)
-                    }
+                        edit.trackNo,
+                    ) { track = edit.copy(trackNo = it) }
                 }
                 item { OpalineEditField(stringResource(R.string.opaline_comment), edit.comment) { track = edit.copy(comment = it) } }
                 item { Text(uri, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -271,9 +271,22 @@ private fun OpalineEditField(
         value,
         onValueChange,
         label = { Text(label) },
-        modifier = Modifier.fillMaxWidth().opalinePart("A05"),
+        modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
+}
+
+/** UI016 Number stepper under its [label]; 0 (below the range) is the unset tag, shown blank. */
+@Composable
+private fun OpalineNumberField(
+    label: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = OpalineColors.muted)
+        OpalineNumberStepper(value, onValueChange, label, 1..Int.MAX_VALUE, Modifier.fillMaxWidth())
+    }
 }
 
 @Composable
@@ -298,13 +311,48 @@ internal fun OpalinePlaylistDetail(
             OpalineButton(stringResource(R.string.library_play_all), {
                 library.playPlaylist(id)
             }, icon = Icons.Default.PlayArrow, enabled = playlist.trackUris.isNotEmpty())
+            // Stable per-occurrence keys, so a dragged row keeps its gesture as it moves.
+            val keys =
+                remember(playlist.trackUris) {
+                    val seen = mutableMapOf<String, Int>()
+                    playlist.trackUris.map { uri ->
+                        val n = seen[uri] ?: 0
+                        seen[uri] = n + 1
+                        "$uri#$n"
+                    }
+                }
             LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                itemsIndexed(playlist.trackUris) { index, uri ->
+                itemsIndexed(playlist.trackUris, key = { index, _ -> keys[index] }) { index, uri ->
                     val track = tracks.firstOrNull { it.uri == uri }
-                    OpalineRow(track?.title ?: stringResource(R.string.title_untitled), track?.artist.orEmpty(), onClick = {
-                        library.playPlaylist(id, index)
-                    }, trailing = {
-                        Row {
+                    val artist = track?.artist.orEmpty()
+                    OpalineReorderRow({ rows ->
+                        val to = (index + rows).coerceIn(0, playlist.trackUris.lastIndex)
+                        if (to != index) library.moveMusicPlaylistTrack(id, index, to)
+                    }) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(role = Role.Button) { library.playPlaylist(id, index) },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    track?.title ?: stringResource(R.string.title_untitled),
+                                    color = OpalineColors.text,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                if (artist.isNotBlank()) {
+                                    Text(
+                                        artist,
+                                        color = OpalineColors.muted,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
                             OpalineIconButton(Icons.Default.ArrowUpward, stringResource(R.string.action_up), {
                                 library.moveMusicPlaylistTrack(
                                     id,
@@ -325,7 +373,7 @@ internal fun OpalinePlaylistDetail(
                                 { library.removeTrackFromPlaylist(id, uri) },
                             )
                         }
-                    })
+                    }
                 }
             }
         }
@@ -375,6 +423,7 @@ internal fun OpalineSmartPlaylist(
         )
     }
     var deleting by remember { mutableStateOf(false) }
+    var collapsed by remember { mutableStateOf(emptySet<Int>()) }
     val valid = draft.name.isNotBlank() && state.smartPlaylists.none { it.name != id && it.name.equals(draft.name.trim(), true) }
     OpalinePage(stringResource(if (id == null) R.string.smart_new else R.string.smart_edit), onBack = { navigator.back() }) {
         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -393,13 +442,32 @@ internal fun OpalineSmartPlaylist(
                     )
                 }
             }
-            itemsIndexed(draft.rules) { index, rule ->
-                OpalineSmartRule(rule, { changed ->
-                    draft =
-                        draft.copy(rules = draft.rules.mapIndexed { i, existing -> if (i == index) changed else existing })
-                }, {
-                    draft = draft.copy(rules = draft.rules.filterIndexed { i, _ -> i != index })
-                })
+            item {
+                OpalineAccordionStack(
+                    draft.rules.map {
+                        "${ruleLabel(it.field.name)} ${ruleLabel(it.op.name)} ${it.value}".trim()
+                    },
+                    { it !in collapsed },
+                    { collapsed = if (it in collapsed) collapsed - it else collapsed + it },
+                ) { index ->
+                    OpalineSmartRule(
+                        draft.rules[index],
+                        { changed ->
+                            val rules = draft.rules.toMutableList().also { it[index] = changed }
+                            draft = draft.copy(rules = rules)
+                        },
+                        {
+                            val rules = draft.rules.filterIndexed { i, _ -> i != index }
+                            draft = draft.copy(rules = rules)
+                            // Rules carry no id: shift the collapsed indices past the removed one.
+                            collapsed =
+                                collapsed
+                                    .filter { it != index }
+                                    .map { if (it > index) it - 1 else it }
+                                    .toSet()
+                        },
+                    )
+                }
             }
             item {
                 OpalineButton(stringResource(R.string.smart_add_rule), {
@@ -447,10 +515,10 @@ private fun OpalineSmartRule(
     onChange: (SmartRule) -> Unit,
     onRemove: () -> Unit,
 ) {
-    OpalinePanel {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             RuleField.entries.forEach { field ->
-                OpalineButton(field.name.lowercase().replace('_', ' '), {
+                OpalineButton(ruleLabel(field.name), {
                     onChange(rule.copy(field = field, op = if (field.isText) RuleOp.CONTAINS else RuleOp.IS))
                 }, selected = rule.field == field)
             }
@@ -466,7 +534,11 @@ private fun OpalineSmartRule(
                         it.forNumber
                     }
                 }.forEach { op ->
-                    OpalineButton(op.name.lowercase().replace('_', ' '), { onChange(rule.copy(op = op)) }, selected = rule.op == op)
+                    OpalineButton(
+                        ruleLabel(op.name),
+                        { onChange(rule.copy(op = op)) },
+                        selected = rule.op == op,
+                    )
                 }
         }
         if (!rule.field.isFlag) {
@@ -478,3 +550,5 @@ private fun OpalineSmartRule(
         OpalineButton(stringResource(R.string.action_remove), onRemove)
     }
 }
+
+private fun ruleLabel(name: String): String = name.lowercase().replace('_', ' ')

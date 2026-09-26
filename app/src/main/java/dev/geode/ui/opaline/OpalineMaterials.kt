@@ -29,6 +29,7 @@ internal data class OpalineMaterial(
     val sheenRoughness: Float = 1f,
     val emissive: Int = 0x000000,
     val emissiveIntensity: Float = 1f,
+    val metalness: Float = 0f,
     val doubleSided: Boolean = false,
     val cloud: Float = 0f,
     val flow: Float = 0f,
@@ -218,6 +219,21 @@ internal enum class OpalineMaterialTheme(
     }
 
     companion object {
+        /** The `createMaterials(theme)` keys: the families a GLB piece or a selector may name. */
+        val FAMILIES =
+            setOf(
+                "gel",
+                "blue",
+                "water",
+                "shell",
+                "pigment",
+                "film",
+                "nacre",
+                "stone",
+                "leaf",
+                "glow",
+            )
+
         fun of(palette: OpalinePalette): OpalineMaterialTheme = valueOf(palette.name)
     }
 }
@@ -226,5 +242,9 @@ internal enum class OpalineMaterialTheme(
 internal fun linearRgb(color: Int): FloatArray =
     FloatArray(3) { channel ->
         val value = (color shr (16 - channel * 8) and 0xFF) / 255f
-        if (value <= 0.04045f) value * 0.0773993808f else (value * 0.9478672986f + 0.0521327014f).pow(2.4f)
+        if (value <= 0.04045f) {
+            value * 0.0773993808f
+        } else {
+            (value * 0.9478672986f + 0.0521327014f).pow(2.4f)
+        }
     }

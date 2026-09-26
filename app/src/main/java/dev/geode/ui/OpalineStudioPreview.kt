@@ -1,12 +1,13 @@
 package dev.geode.ui
 
-import android.view.SurfaceView
+import android.view.TextureView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -14,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -94,19 +96,19 @@ internal fun ClipPreview(
         modifier
             .fillMaxWidth()
             .aspectRatio(aspect.coerceIn(0.3f, 3.4f))
-            .clip(
-                androidx.compose.foundation.shape
-                    .RoundedCornerShape(8.dp),
-            ).background(Color.Black)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black)
             .clickable { playing = !playing },
         contentAlignment = Alignment.Center,
     ) {
-        AndroidView(
-            factory = { ctx ->
-                SurfaceView(ctx).also { player.setVideoSurfaceView(it) }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // A TextureView composes (and clips) like any view; a new clip builds a new player, so the
+        // view is rebuilt with it and bound to that player.
+        key(clip.uri) {
+            AndroidView(
+                factory = { ctx -> TextureView(ctx).also(player::setVideoTextureView) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         if (!playing) {
             Icon(
                 Icons.Filled.PlayArrow,

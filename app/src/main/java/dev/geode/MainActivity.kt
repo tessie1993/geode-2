@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
         connectors = NavConnectors(motion = motion, gravity = SensorGravitySource(this))
         navigator.bindBack(onBackPressedDispatcher, this)
         route(intent)
-        setContent { OpalineApp(navigator, connectors, motion) }
+        setContent { OpalineApp(navigator, motion) }
     }
 
     override fun onNewIntent(intent: Intent) {

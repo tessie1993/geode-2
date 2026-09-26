@@ -12,6 +12,8 @@ in vec3 vViewPosition;
 in vec3 vNormal;
 in vec3 vOpPosition;
 in vec3 vWorldPosition;
+in vec4 vShadowCoord;
+in float vOpFilmThickness;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -35,7 +37,25 @@ uniform vec3 uAttenuationColor;
 uniform float uAttenuationDistance;
 uniform float uDispersion;
 uniform bool uDoubleSide;
+uniform float uMetalness;
 uniform float uEnabled;
+
+// The pass: depth only (shadow maps), linear radiance (receiver, reflection, HDR target) or
+// ACES + sRGB output; the sun's shadow; realm FogExp2; the realm's background-dim factor (uLight).
+uniform bool uDepthOnly;
+uniform bool uLinearOutput;
+uniform bool uReceiveShadow;
+uniform float uFogDensity;
+uniform vec3 uFogColor;
+uniform float uLight;
+
+// enableFilmThickness: the simulated film's live thickness drives the interference.
+uniform bool uFilmThickness;
+
+// attachCaustics on the water: the caustic receiver texture over the patch (x, z, size) it covers.
+uniform sampler2D uOpCaustics;
+uniform float uOpCausticStrength;
+uniform vec3 uCausticPatch;
 
 // The workbench light rig from src/workbench.js, in view space.
 uniform vec3 uHemisphereSky, uHemisphereGround, uHemisphereDirection;
@@ -47,6 +67,10 @@ uniform float uPointDistance[2];
 uniform float uPointDecay[2];
 
 void main() {
+    if (uDepthOnly) {
+        fragColor = vec4(0.0);
+        return;
+    }
     vec4 diffuseColor = vec4(uDiffuse, 1.0);
     ReflectedLight reflectedLight = ReflectedLight(vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
     vec3 totalEmissiveRadiance = uEmissive;
@@ -56,7 +80,7 @@ void main() {
 
     // <roughnessmap_fragment> + SURFACE_ROUGHNESS, <metalnessmap_fragment>
     float roughnessFactor = opSurfaceRoughness(vOpPosition, uRoughness);
-    float metalnessFactor = 0.0;
+    float metalnessFactor = uMetalness;
 
     // <normal_fragment_begin>, <clearcoat_normal_fragment_begin>
     float faceDirection = gl_FrontFacing ? 1.0 : -1.0;
@@ -101,6 +125,7 @@ void main() {
     if (uIridescence > 0.0) {
         material.iridescenceThickness = opSurfaceFilm(vOpPosition, opCloud, material.iridescenceThickness,
             uIridescenceThickness.x, uIridescenceThickness.y);
+        if (uFilmThickness) material.iridescenceThickness = max(0.0, vOpFilmThickness * 1.0e9);
     }
 
     // <lights_fragment_begin>
@@ -131,7 +156,8 @@ void main() {
         RE_Direct_Physical(directLight, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight);
     }
     for (int i = 0; i < 2; i++) {
-        directLight.color = uDirectionalColor[i];
+        // The sun (index 0) casts the rig's only shadow.
+        directLight.color = uDirectionalColor[i] * (i == 0 && uReceiveShadow ? getShadow(vShadowCoord) : 1.0);
         directLight.direction = uDirectionalDirection[i];
         RE_Direct_Physical(directLight, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight);
     }
@@ -180,6 +206,17 @@ void main() {
     // A disabled control stays visibly inert; this is host state, not a library material.
     outgoingLight = mix(outgoingLight * .48, outgoingLight, uEnabled);
 
+    if (uOpCausticStrength > 0.0) {
+        vec2 causticUv = vec2(vOpPosition.x - uCausticPatch.x, uCausticPatch.y - vOpPosition.z) / uCausticPatch.z + 0.5;
+        if (all(greaterThanEqual(causticUv, vec2(0.0))) && all(lessThanEqual(causticUv, vec2(1.0)))) {
+            outgoingLight += diffuseColor.rgb * texture(uOpCaustics, causticUv).rgb * uOpCausticStrength / 3.14159265;
+        }
+    }
+
+    // <fog_fragment> in the composer's linear target, before OutputPass tone maps it.
+    float fogFactor = 1.0 - exp(-uFogDensity * uFogDensity * vViewPosition.z * vViewPosition.z);
+    outgoingLight = mix(outgoingLight, uFogColor, fogFactor) * uLight;
+
     // <tonemapping_fragment>, <colorspace_fragment>. Surfaces are opaque draws, as in three.js.
-    fragColor = vec4(sRGBTransferOETF(ACESFilmicToneMapping(outgoingLight)), 1.0);
+    fragColor = vec4(uLinearOutput ? outgoingLight : sRGBTransferOETF(ACESFilmicToneMapping(outgoingLight)), 1.0);
 }

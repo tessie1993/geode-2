@@ -60,6 +60,8 @@ endif()
 set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 set(ENABLE_PLAYLIST OFF CACHE BOOL "" FORCE)
+# projectm-eval defaults to -ffast-math, which lets the compiler drop the isnan() guards of its preset pow/invsqrt.
+set(ENABLE_FAST_MATH OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/projectm)
 
 # kissfft refuses BUILD_SHARED_LIBS together with KISSFFT_STATIC; the normal variable shadows the forced cache entry projectM needed.
@@ -70,6 +72,10 @@ set(KISSFFT_TEST OFF CACHE BOOL "" FORCE)
 set(KISSFFT_TOOLS OFF CACHE BOOL "" FORCE)
 set(KISSFFT_PKGCONFIG OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/kissfft)
+# kissfft enables -Wcast-align itself; it flags buffer casts in kiss_fftr.c, kiss_fftnd.c and kiss_fftndr.c. The one we
+# use (kiss_fftr.c tmpbuf) is aligned: the offset is a kiss_fft_state plus kiss_fft_cpx entries, all 4-byte types. The
+# N-d transforms are not called by geode.
+target_compile_options(kissfft PRIVATE -Wno-cast-align)
 
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(BUILD_BINDINGS OFF CACHE BOOL "" FORCE)
@@ -79,6 +85,9 @@ set(VISIBILITY_HIDDEN ON CACHE BOOL "" FORCE)
 add_subdirectory(third_party/taglib)
 
 add_subdirectory(third_party/oboe)
+# System headers for consumers, so our -Wextra doesn't report oboe's own unused parameters.
+set_property(TARGET oboe APPEND PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
+    "$<TARGET_PROPERTY:oboe,INTERFACE_INCLUDE_DIRECTORIES>")
 
 add_subdirectory(core)
 

@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.LibraryAdd
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
@@ -37,6 +37,7 @@ import dev.geode.data.VideoTemplate
 import dev.geode.render.VisualizerView
 import dev.geode.ui.opaline.OpalineAction
 import dev.geode.ui.opaline.OpalineIconAction
+import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.creative.CreativeButton
 
@@ -185,12 +186,15 @@ fun TemplatesSheet(
                     visualsViewModel.deleteTemplate(t.id)
                     deleting = null
                 }) { Text(stringResource(R.string.template_delete)) }
-                OpalineAction(onClick = { deleting = null }) { Text(stringResource(R.string.action_cancel)) }
+                OpalineAction(onClick = { deleting = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             }
         }
     }
 }
 
+/** UI057 row: the template's name, then its UI003 apply, share and delete / use actions. */
 @Composable
 private fun TemplateRow(
     template: VideoTemplate,
@@ -202,24 +206,27 @@ private fun TemplateRow(
     onTrailing: () -> Unit,
     trailingIsDestructive: Boolean,
 ) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(template.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        OpalineIconAction(onClick = onApply) {
-            Icon(Icons.Outlined.PlayArrow, applyLabel, tint = MaterialTheme.colorScheme.primary)
-        }
-        if (shareLabel != null && onShare != null) {
-            OpalineIconAction(onClick = onShare) {
-                Icon(Icons.Outlined.Share, shareLabel)
+    OpalineRow(
+        title = template.name,
+        trailing = {
+            OpalineIconAction(onClick = onApply) {
+                Icon(Icons.Outlined.PlayArrow, applyLabel, tint = MaterialTheme.colorScheme.primary)
             }
-        }
-        if (trailingIsDestructive) {
+            if (shareLabel != null && onShare != null) {
+                OpalineIconAction(onClick = onShare) {
+                    Icon(Icons.Outlined.Share, shareLabel)
+                }
+            }
             OpalineIconAction(onClick = onTrailing) {
-                Icon(Icons.Outlined.Delete, trailingLabel, tint = MaterialTheme.colorScheme.error)
+                val error = MaterialTheme.colorScheme.error
+                if (trailingIsDestructive) {
+                    Icon(Icons.Outlined.Delete, trailingLabel, tint = error)
+                } else {
+                    Icon(Icons.Outlined.LibraryAdd, trailingLabel)
+                }
             }
-        } else {
-            OpalineAction(onClick = onTrailing) { Text(trailingLabel) }
-        }
-    }
+        },
+    )
 }
 
 private fun messageFor(outcome: TemplateImport): String =

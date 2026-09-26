@@ -4,8 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,7 +33,8 @@ import dev.geode.render.scene.SceneParams
 import dev.geode.ui.opaline.OpalineAction
 import dev.geode.ui.opaline.OpalineChip
 import dev.geode.ui.opaline.OpalineTextField
-import dev.geode.ui.opaline.creative.CreativeSlider
+import dev.geode.ui.opaline.kit.OpalineColourPicker
+import dev.geode.ui.opaline.kit.OpalineFilterChipRow
 
 internal fun paletteChipIndex(
     p: SceneParams,
@@ -63,7 +62,7 @@ internal fun paletteChipSelected(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** UI010 Filter chip row: one chip per built-in and saved palette, the slot's own chip lifted. */
 @Composable
 internal fun PaletteSlotSelector(
     p: SceneParams,
@@ -74,7 +73,7 @@ internal fun PaletteSlotSelector(
     val saved = palettes.items
     val labels = SceneParams.PALETTES.map { it.first } + saved.map { it.name }
     val selected = paletteChipIndex(p, saved, second)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    OpalineFilterChipRow(Modifier.fillMaxWidth()) {
         labels.forEachIndexed { index, label ->
             OpalineChip(
                 selected = index == selected,
@@ -105,6 +104,7 @@ internal fun GradientPreview(
     )
 }
 
+/** The gradient maker: UI063 colour picker, hue ring = base hue, plane across = hue span. */
 @Composable
 internal fun PaletteMakerCard(
     p: SceneParams,
@@ -127,23 +127,24 @@ internal fun PaletteMakerCard(
             stringResource(R.string.palette_base_hue, "%.2f".format(baseHue)),
             style = MaterialTheme.typography.labelSmall,
         )
-        CreativeSlider(
-            value = baseHue,
-            onValueChange = { baseHue = it },
-            valueRange = 0f..1f,
-            modifier = Modifier.fillMaxWidth(),
-        )
         Text(
             stringResource(R.string.palette_hue_span, "%.2f".format(hueSpan)),
             style = MaterialTheme.typography.labelSmall,
         )
-        CreativeSlider(
-            value = hueSpan,
-            onValueChange = { hueSpan = it },
-            valueRange = 0f..1f,
-            modifier = Modifier.fillMaxWidth(),
+        OpalineColourPicker(
+            baseHue,
+            hueSpan,
+            1f,
+            { hue, span, _ ->
+                baseHue = hue
+                hueSpan = span
+            },
+            Modifier.fillMaxWidth(),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             OpalineAction(onClick = { onChange(PaletteStore.applyGradient(p, baseHue, hueSpan)) }) {
                 Text(stringResource(R.string.palette_apply_gradient))
             }

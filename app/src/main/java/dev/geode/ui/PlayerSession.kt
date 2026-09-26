@@ -242,10 +242,15 @@ class PlayerSession internal constructor(
     val vizState: StateFlow<VizUiState> get() = vizStateStore.state
 
     init {
-        engine.beatSensitivity = settings.guiPrefs.value.beatSensitivity
-        engine.beatMinIntervalMs = settings.guiPrefs.value.effectiveBeatMinIntervalMs
         engine.attack = _vizState.value.attack
         engine.decay = _vizState.value.decay
+        // The user data loads off the main thread and can land after this session is built.
+        scope.launch {
+            settings.guiPrefs.collect { gui ->
+                engine.beatSensitivity = gui.beatSensitivity
+                engine.beatMinIntervalMs = gui.effectiveBeatMinIntervalMs
+            }
+        }
     }
 
     val exportState: StateFlow<ExportUiState> get() = exportController.exportState
@@ -1300,7 +1305,6 @@ class PlayerSession internal constructor(
         // Last init block in the class, so every field above is assigned by now — which is what
         // the capture controller needs before it may call back into this session.
         captureController.start()
-        musicLibrary.refreshNumericTitles()
         takeController.refresh()
         presetLibrary.refreshInitial()
         templateLibrary.refreshInitial()
@@ -1409,7 +1413,8 @@ class PlayerSession internal constructor(
         sleepTimer.onFadeVolume = fades.sleepFadeHook
         playback.exoPlayer?.let { audioFxController.attach(it.audioSessionId) }
         settings.refreshAudioFx()
-        if (alreadyLoaded) onTrackChanged()
+        // A restored queue was set before the listener existed, so no transition announced it.
+        if (alreadyLoaded || currentUri != null) onTrackChanged()
     }
 
     private suspend fun pollPlaybackState(): Nothing {

@@ -11,22 +11,19 @@ import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.coroutines.cancellation.CancellationException
 
 private const val DISMISS_MIN_SCALE = 0.92f
-private const val DISMISS_MAX_ALPHA_DROP = 0.4f
 
 class DismissProgress internal constructor() {
     var fraction by mutableFloatStateOf(0f)
         internal set
 
     val scale: Float get() = 1f - (1f - DISMISS_MIN_SCALE) * fraction
-
-    val alpha: Float get() = 1f - DISMISS_MAX_ALPHA_DROP * fraction
 }
 
+/** Scale only: the clip preview's video surface must never sit under a graphicsLayer alpha. */
 fun Modifier.dismissTransform(progress: DismissProgress): Modifier =
     graphicsLayer {
         scaleX = progress.scale
         scaleY = progress.scale
-        alpha = progress.alpha
     }
 
 @Composable

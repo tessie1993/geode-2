@@ -62,6 +62,7 @@ internal class AutoVisualsController(
     private var lastNoveltyUpdateMs = 0L
 
     private var cachedMilkFiles: List<MilkFile> = emptyList()
+    private var milkCacheRequested = false
 
     fun addToVizPlaylist(entry: VizPlaylistEntry) {
         val s = host.vizState.value
@@ -172,6 +173,7 @@ internal class AutoVisualsController(
     }
 
     private fun refreshMilkCache() {
+        milkCacheRequested = true
         host.milkFilesAsync { cachedMilkFiles = it }
     }
 
@@ -259,6 +261,8 @@ internal class AutoVisualsController(
     fun randomStepNow() {
         if (host.presetLocked) return
         val s = host.vizState.value
+        // A random mode restored from prefs never went through the toggles that fill the cache.
+        if (s.randomIncludeMilk && !milkCacheRequested) refreshMilkCache()
         lastRandomSwitchMs = android.os.SystemClock.elapsedRealtime()
         val choices = mutableListOf<VizPlaylistEntry>()
         val sceneIds =

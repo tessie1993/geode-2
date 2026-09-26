@@ -2,11 +2,7 @@ package dev.geode.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,8 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Casino
@@ -42,6 +38,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -60,14 +57,22 @@ import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.VisualStyleCatalog
 import dev.geode.ui.opaline.OpalineAction
+import dev.geode.ui.opaline.OpalineButton
+import dev.geode.ui.opaline.OpalineChip
 import dev.geode.ui.opaline.OpalineIconAction
+import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.creative.CreativeButton
-import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeProgress
 import dev.geode.ui.opaline.creative.CreativeSlider
 import dev.geode.ui.opaline.creative.CreativeTabs
+import dev.geode.ui.opaline.kit.OpalineFilterChipRow
+import dev.geode.ui.opaline.kit.OpalineInlineValidation
+import dev.geode.ui.opaline.kit.OpalineSearchField
+import dev.geode.ui.opaline.kit.OpalineSelectableList
+import dev.geode.ui.opaline.kit.OpalineTreeNavigation
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal fun vizPlaylistIndexOf(
@@ -116,6 +121,12 @@ internal fun PresetsTreeTab(
     var showBackground by remember { mutableStateOf(false) }
     val userPresets = viz.presets.filterNot { BuiltInPresets.isBuiltIn(it.name) }.distinctBy { it.name }
     val byFolder = userPresets.groupBy { presetFolders.folderOf(it.name) }
+    val branches =
+        (listOf("") + folders).filter { it.isNotEmpty() || byFolder[it].orEmpty().isNotEmpty() }
+    // Lazy index of each branch header (after the controls item), then of the Built-in header.
+    val branchIndex = branches.runningFold(1) { at, f -> at + 1 + byFolder[f].orEmpty().size }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     var importNote by remember { mutableStateOf<String?>(null) }
     val presetFilePicker =
@@ -127,9 +138,13 @@ internal fun PresetsTreeTab(
             }
         }
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        state = listState,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+            OpalineFilterChipRow(Modifier.padding(bottom = 6.dp)) {
                 CreativeButton(compact = true, filled = false, onClick = {
                     val pasted = clipboardText(context)
                     importNote =
@@ -173,67 +188,57 @@ internal fun PresetsTreeTab(
                     }
                 }) { Text("Add") }
             }
+            OpalineTreeNavigation(
+                nodes = branches.map { it.ifEmpty { "Presets" } } + "Built-in",
+                onNavigate = { scope.launch { listState.animateScrollToItem(branchIndex[it]) } },
+                modifier = Modifier.padding(top = 6.dp),
+            )
         }
-        (listOf("") + folders).forEach { folder ->
-            val inFolder = byFolder[folder].orEmpty()
-            if (folder.isNotEmpty() || inFolder.isNotEmpty()) {
-                item(key = "hdr_$folder") {
-                    Row(
-                        Modifier.fillMaxWidth().padding(top = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            if (folder.isEmpty()) "Presets" else "📁 $folder",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = accentTextColor(),
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (folder.isNotEmpty()) {
-                            OpalineIconAction(onClick = {
-                                renamingFolder = folder
-                                folderRenameText = folder
-                            }) { Icon(Icons.Outlined.Edit, "Rename this folder") }
-                        }
+        branches.forEach { folder ->
+            item(key = "hdr_$folder") {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        if (folder.isEmpty()) "Presets" else "📁 $folder",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = accentTextColor(),
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (folder.isNotEmpty()) {
+                        OpalineIconAction(onClick = {
+                            renamingFolder = folder
+                            folderRenameText = folder
+                        }) { Icon(Icons.Outlined.Edit, "Rename this folder") }
                     }
                 }
             }
-            items(inFolder, key = { "p_${it.name}" }) { p ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(p.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    OpalineIconAction(onClick = { applyPresetLive(viewModel, visualizerView, p) }) {
-                        Icon(Icons.Outlined.PlayArrow, "Apply", tint = MaterialTheme.colorScheme.primary)
-                    }
-                    OpalineIconAction(onClick = { sharePreset(context, visualsViewModel, p.name) }) {
-                        Icon(Icons.Outlined.Share, "Share this preset")
-                    }
-                    val playlistIndex = vizPlaylistIndexOf(viz.vizPlaylist, p.name)
-                    val inPlaylist = playlistIndex >= 0
-                    OpalineIconAction(
-                        onClick = {
-                            if (inPlaylist) {
-                                viewModel.removeVizPlaylistAt(playlistIndex)
-                            } else {
-                                viewModel.addToVizPlaylist(
-                                    VizPlaylistEntry(sceneId = p.sceneId, presetName = p.name, label = p.name),
-                                )
-                            }
-                        },
-                    ) {
-                        Icon(
-                            if (inPlaylist) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                            if (inPlaylist) "Remove from visual playlist" else "Add to visual playlist",
-                            tint = if (inPlaylist) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                        )
-                    }
-                    OpalineIconAction(onClick = { movingPreset = p.name }) {
-                        Icon(Icons.Outlined.Folder, "Move to another folder")
-                    }
-                    OpalineIconAction(onClick = { deletingPreset = p.name }) {
-                        Icon(Icons.Outlined.Delete, "Remove", tint = MaterialTheme.colorScheme.error)
-                    }
-                }
+            items(byFolder[folder].orEmpty(), key = { "p_${it.name}" }) { p ->
+                val playlistIndex = vizPlaylistIndexOf(viz.vizPlaylist, p.name)
+                PresetRow(
+                    name = p.name,
+                    inPlaylist = playlistIndex >= 0,
+                    onApply = { applyPresetLive(viewModel, visualizerView, p) },
+                    onShare = { sharePreset(context, visualsViewModel, p.name) },
+                    onPlaylist = {
+                        if (playlistIndex >= 0) {
+                            viewModel.removeVizPlaylistAt(playlistIndex)
+                        } else {
+                            viewModel.addToVizPlaylist(
+                                VizPlaylistEntry(
+                                    sceneId = p.sceneId,
+                                    presetName = p.name,
+                                    label = p.name,
+                                ),
+                            )
+                        }
+                    },
+                    onMove = { movingPreset = p.name },
+                    onDelete = { deletingPreset = p.name },
+                )
             }
         }
         item {
@@ -248,12 +253,18 @@ internal fun PresetsTreeTab(
             viz.presets.filter { BuiltInPresets.isBuiltIn(it.name) && builtInPresetMatchesScene(it.sceneId, viz.sceneId) },
             key = { "b_${it.name}" },
         ) { p ->
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(p.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                OpalineIconAction(onClick = { applyPresetLive(viewModel, visualizerView, p) }) {
-                    Icon(Icons.Outlined.PlayArrow, "Apply", tint = MaterialTheme.colorScheme.primary)
-                }
-            }
+            OpalineRow(
+                title = p.name,
+                trailing = {
+                    OpalineIconAction(onClick = { applyPresetLive(viewModel, visualizerView, p) }) {
+                        Icon(
+                            Icons.Outlined.PlayArrow,
+                            "Apply",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                },
+            )
         }
         item {
             Row(
@@ -285,12 +296,8 @@ internal fun PresetsTreeTab(
                 }) { Text("Save") }
             }
             if (folders.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 12.dp)) {
-                    (listOf("") + folders).forEach { f ->
-                        CreativeButton(compact = true, filled = saveFolder == f, onClick = { saveFolder = f }) {
-                            Text(f.ifEmpty { "root" }, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
+                FolderChips(folders, saveFolder, Modifier.padding(bottom = 12.dp)) {
+                    saveFolder = it
                 }
             }
         }
@@ -309,10 +316,9 @@ internal fun PresetsTreeTab(
                         singleLine = true,
                     )
                     if (collides) {
-                        Text(
+                        OpalineInlineValidation(
                             "There is already a folder called \"$proposed\".",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
+                            isError = true,
                         )
                     }
                 }
@@ -333,16 +339,9 @@ internal fun PresetsTreeTab(
             onDismissRequest = { movingPreset = null },
             title = { Text("Move \"$name\"") },
             text = {
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    (listOf("") + folders).forEach { f ->
-                        CreativeButton(compact = true, filled = f == current, onClick = {
-                            visualsViewModel.movePresetToFolder(name, f)
-                            movingPreset = null
-                        }) { Text(f.ifEmpty { "root" }, style = MaterialTheme.typography.bodySmall) }
-                    }
+                FolderChips(folders, current) { f ->
+                    visualsViewModel.movePresetToFolder(name, f)
+                    movingPreset = null
                 }
             },
             confirmButton = { OpalineAction(onClick = { movingPreset = null }) { Text("Close") } },
@@ -399,6 +398,73 @@ internal fun PresetsTreeTab(
     if (showBackground) {
         BackgroundSheet(onDismiss = { showBackground = false })
     }
+}
+
+/** UI010 filter chips over the preset folders, root first. */
+@Composable
+private fun FolderChips(
+    folders: List<String>,
+    selected: String,
+    modifier: Modifier = Modifier,
+    onSelect: (String) -> Unit,
+) {
+    OpalineFilterChipRow(modifier) {
+        (listOf("") + folders).forEach { f ->
+            OpalineChip(
+                onClick = { onSelect(f) },
+                label = { Text(f.ifEmpty { "root" }, style = MaterialTheme.typography.bodySmall) },
+                selected = f == selected,
+            )
+        }
+    }
+}
+
+/** A user preset leaf of the tree: UI057 row carrying its UI003 row actions. */
+@Composable
+private fun PresetRow(
+    name: String,
+    inPlaylist: Boolean,
+    onApply: () -> Unit,
+    onShare: () -> Unit,
+    onPlaylist: () -> Unit,
+    onMove: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    OpalineRow(
+        title = name,
+        trailing = {
+            Row {
+                OpalineIconAction(onClick = onApply) {
+                    Icon(
+                        Icons.Outlined.PlayArrow,
+                        "Apply",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                OpalineIconAction(onClick = onShare) {
+                    Icon(Icons.Outlined.Share, "Share this preset")
+                }
+                OpalineIconAction(onClick = onPlaylist) {
+                    Icon(
+                        if (inPlaylist) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                        if (inPlaylist) "Remove from visual playlist" else "Add to visual playlist",
+                        tint =
+                            if (inPlaylist) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                LocalContentColor.current
+                            },
+                    )
+                }
+                OpalineIconAction(onClick = onMove) {
+                    Icon(Icons.Outlined.Folder, "Move to another folder")
+                }
+                OpalineIconAction(onClick = onDelete) {
+                    Icon(Icons.Outlined.Delete, "Remove", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+    )
 }
 
 internal fun clipboardText(context: android.content.Context): String? =
@@ -509,24 +575,13 @@ private fun SceneList(
     current: String,
     onPick: (String) -> Unit,
 ) {
-    LazyColumn(Modifier.fillMaxSize()) {
-        items(ids) { id ->
-            val sel = id == current
-            Row(
-                Modifier.fillMaxWidth().clickable { onPick(id) }.padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(Modifier.size(6.dp), contentAlignment = Alignment.Center) {
-                    if (sel) Box(Modifier.size(6.dp).background(CreativeColors.mint, CircleShape))
-                }
-                Text(
-                    sceneDisplayLabel(id),
-                    Modifier.padding(start = 10.dp),
-                    color = if (sel) accentTextColor() else LocalContentColor.current,
-                )
-            }
-        }
-    }
+    OpalineSelectableList(
+        items = ids,
+        isSelected = { it == current },
+        onSelect = onPick,
+        title = ::sceneDisplayLabel,
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+    )
 }
 
 @Composable
@@ -592,7 +647,7 @@ internal fun MilkDropTab(
         return
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OpalineFilterChipRow {
             CreativeButton(onClick = { milkPicker.launch(arrayOf("*/*")) }) { Text("Load .milk file") }
             CreativeButton(filled = false, onClick = { milkFolderPicker.launch(null) }) { Text("Import folder…") }
             CreativeButton(filled = false, onClick = onOpenTextures) { Text("Textures…") }
@@ -651,25 +706,14 @@ internal fun MilkDropTab(
             Text("None yet — load a .milk file or save one from the milkdrop scene.", style = MaterialTheme.typography.bodySmall)
         }
         milkFiles.forEach { f ->
-            val active = f.absolutePath == loaded
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        selectMilk(viewModel, visualizerView, f.absolutePath)
-                        refresh++
-                    }.padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(Modifier.size(6.dp), contentAlignment = Alignment.Center) {
-                    if (active) Box(Modifier.size(6.dp).background(CreativeColors.mint, CircleShape))
-                }
-                Text(
-                    f.nameWithoutExtension,
-                    Modifier.padding(start = 10.dp),
-                    color = if (active) accentTextColor() else LocalContentColor.current,
-                )
-            }
+            OpalineRow(
+                title = f.nameWithoutExtension,
+                onClick = {
+                    selectMilk(viewModel, visualizerView, f.absolutePath)
+                    refresh++
+                },
+                selected = f.absolutePath == loaded,
+            )
         }
     }
 }
@@ -699,22 +743,25 @@ private fun MilkTextureLinkPanel(
                 dev.geode.data.MilkTextureLinkKind.SUBSTITUTED -> "stand-in - tap to change"
                 dev.geode.data.MilkTextureLinkKind.MISSING -> "missing - import an image via Textures…"
             }
-        Row(
-            Modifier.fillMaxWidth().clickable { onPick(link.expected) }.padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(link.expected, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
-            Text(
-                link.texture?.let { "$it  ($note)" } ?: note,
-                style = MaterialTheme.typography.labelSmall,
-                color =
-                    when (link.kind) {
-                        dev.geode.data.MilkTextureLinkKind.MISSING -> MaterialTheme.colorScheme.error
-                        dev.geode.data.MilkTextureLinkKind.SUBSTITUTED -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-            )
-        }
+        val error =
+            link.kind == dev.geode.data.MilkTextureLinkKind.MISSING ||
+                link.kind == dev.geode.data.MilkTextureLinkKind.SUBSTITUTED
+        OpalineRow(
+            title = link.expected,
+            onClick = { onPick(link.expected) },
+            trailing = {
+                Text(
+                    link.texture?.let { "$it  ($note)" } ?: note,
+                    style = MaterialTheme.typography.labelSmall,
+                    color =
+                        if (error) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                )
+            },
+        )
     }
 }
 
@@ -731,7 +778,7 @@ private fun MilkTexturePickerDialog(
         dismissButton = { CreativeButton(filled = false, onClick = onDismiss) { Text("Cancel") } },
         title = { Text("Texture for \"$expected\"") },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column {
                 Text(
                     "The preset asks for \"$expected\". Pick any imported image to load it with - " +
                         "the choice is remembered for this preset.",
@@ -740,16 +787,9 @@ private fun MilkTexturePickerDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 textures.forEach { tex ->
-                    Text(
-                        tex.name,
-                        Modifier.fillMaxWidth().clickable { onChoose(tex.name) }.padding(vertical = 8.dp),
-                    )
+                    OpalineRow(title = tex.name, onClick = { onChoose(tex.name) })
                 }
-                Text(
-                    "Use automatic matching",
-                    Modifier.fillMaxWidth().clickable { onChoose(null) }.padding(vertical = 8.dp),
-                    color = accentTextColor(),
-                )
+                OpalineRow(title = "Use automatic matching", onClick = { onChoose(null) })
             }
         },
     )
@@ -917,26 +957,23 @@ private fun CustomizeToolbar(
     var presetName by remember { mutableStateOf("") }
     val changed = remember(params) { CustomizeSummary.changedCount(params) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-        OpalineTextField(
-            value = query,
-            onValueChange = onQuery,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text("Search every parameter", style = MaterialTheme.typography.labelSmall) },
+        OpalineSearchField(
+            query,
+            onQuery,
+            Modifier.fillMaxWidth(),
+            placeholder = "Search every parameter",
         )
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        OpalineFilterChipRow(Modifier.fillMaxWidth().padding(top = 6.dp)) {
             CreativeButton(
                 compact = true,
                 enabled = tab != null,
                 onClick = { tab?.let(visualsViewModel::randomizeParams) },
             ) {
-                Icon(Icons.Filled.Casino, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(if (tab == null) "Randomize" else "Randomize ${tab.title}")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Casino, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (tab == null) "Randomize" else "Randomize ${tab.title}")
+                }
             }
             CreativeButton(compact = true, filled = false, enabled = history.canUndo, onClick = visualsViewModel::undoParams) {
                 Text("Undo")
@@ -958,16 +995,18 @@ private fun CustomizeToolbar(
             CreativeButton(compact = true, filled = false, onClick = { savingPreset = true }) { Text("Save as preset") }
             Text(
                 if (changed == 0) "defaults" else "$changed changed",
+                Modifier.align(Alignment.CenterVertically),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text("A/B", style = MaterialTheme.typography.labelSmall, color = accentTextColor())
+        OpalineFilterChipRow(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+            Text(
+                "A/B",
+                Modifier.align(Alignment.CenterVertically),
+                style = MaterialTheme.typography.labelSmall,
+                color = accentTextColor(),
+            )
             CreativeButton(compact = true, filled = false, onClick = visualsViewModel::captureSnapshotA) { Text("Set A") }
             CreativeButton(
                 compact = true,
@@ -1103,50 +1142,61 @@ internal fun TakesTab(viewModel: StudioViewModel) {
         }
         items(takes.takes, key = { "take_${it.name}" }) { take ->
             val playing = takes.replaying == take.name
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
-                    Text(take.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        "${formatTakeTime(take.durationMs)} · ${take.eventCount} keyframes · " +
-                            "${take.sizeBytes / 1024} KB" +
-                            if (takes.exportTake == take.name) " · exports this" else "",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                OpalineIconAction(onClick = {
-                    if (playing) studioViewModel.stopReplay() else studioViewModel.playTake(take.name)
-                }) {
-                    if (playing) {
-                        Icon(Icons.Filled.Stop, "Stop replay", tint = MaterialTheme.colorScheme.primary)
-                    } else {
-                        Icon(Icons.Outlined.PlayArrow, "Replay this take", tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                OpalineIconAction(onClick = {
-                    studioViewModel.setExportTake(if (takes.exportTake == take.name) null else take.name)
-                }) {
-                    Icon(
-                        if (takes.exportTake == take.name) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                        "Render this take on the next export",
-                        tint =
-                            if (takes.exportTake == take.name) {
-                                MaterialTheme.colorScheme.primary
+            val exporting = takes.exportTake == take.name
+            OpalineRow(
+                title = take.name,
+                subtitle =
+                    "${formatTakeTime(take.durationMs)} · ${take.eventCount} keyframes · " +
+                        "${take.sizeBytes / 1024} KB" +
+                        if (exporting) " · exports this" else "",
+                selected = playing,
+                trailing = {
+                    Row {
+                        OpalineIconAction(onClick = {
+                            if (playing) {
+                                studioViewModel.stopReplay()
                             } else {
-                                LocalContentColor.current
-                            },
-                    )
-                }
-                OpalineIconAction(onClick = {
-                    renaming = take.name
-                    renameText = take.name
-                }) { Icon(Icons.Outlined.Edit, "Rename") }
-                OpalineIconAction(onClick = { deleting = take.name }) {
-                    Icon(Icons.Outlined.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
-                }
-            }
+                                studioViewModel.playTake(take.name)
+                            }
+                        }) {
+                            Icon(
+                                if (playing) Icons.Filled.Stop else Icons.Outlined.PlayArrow,
+                                if (playing) "Stop replay" else "Replay this take",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        OpalineIconAction(onClick = {
+                            studioViewModel.setExportTake(if (exporting) null else take.name)
+                        }) {
+                            Icon(
+                                if (exporting) {
+                                    Icons.Outlined.Favorite
+                                } else {
+                                    Icons.Outlined.FavoriteBorder
+                                },
+                                "Render this take on the next export",
+                                tint =
+                                    if (exporting) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        LocalContentColor.current
+                                    },
+                            )
+                        }
+                        OpalineIconAction(onClick = {
+                            renaming = take.name
+                            renameText = take.name
+                        }) { Icon(Icons.Outlined.Edit, "Rename") }
+                        OpalineIconAction(onClick = { deleting = take.name }) {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                "Delete",
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                },
+            )
         }
         if (takes.takes.isEmpty() && !takes.recording) {
             item {
@@ -1163,13 +1213,7 @@ internal fun TakesTab(viewModel: StudioViewModel) {
             text = {
                 Column {
                     OpalineTextField(value = renameText, onValueChange = { renameText = it }, singleLine = true)
-                    renameError?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
+                    renameError?.let { OpalineInlineValidation(it, isError = true) }
                 }
             },
             confirmButton = {
@@ -1218,15 +1262,23 @@ internal fun TexturesHubTab(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         CreativeButton(onClick = { picker.launch(arrayOf("image/*")) }) { Text("Import images") }
         textures.forEach { tex ->
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(tex.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                CreativeButton(compact = true, filled = false, onClick = {
-                    visualsViewModel.useTexture(tex.name) { path -> selectMilk(viewModel, visualizerView, path) }
-                }) { Text("Use") }
-                OpalineIconAction(onClick = { deletingTexture = tex.name }) {
-                    Icon(Icons.Outlined.Delete, "Delete this texture", tint = MaterialTheme.colorScheme.error)
-                }
-            }
+            OpalineRow(
+                title = tex.name,
+                trailing = {
+                    CreativeButton(compact = true, filled = false, onClick = {
+                        visualsViewModel.useTexture(tex.name) { path ->
+                            selectMilk(viewModel, visualizerView, path)
+                        }
+                    }) { Text("Use") }
+                    OpalineIconAction(onClick = { deletingTexture = tex.name }) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            "Delete this texture",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                },
+            )
         }
         if (textures.isEmpty()) Text("No textures imported yet.", style = MaterialTheme.typography.bodySmall)
     }
@@ -1289,10 +1341,13 @@ internal fun GlslHubTab(
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CreativeButton(onClick = { viewModel.applyCustomShader(source) }) { Text("Apply shader") }
-            OpalineAction(onClick = {
-                source = visualizerView.visualizerRenderer.customShaderFor(viz.sceneId) ?: ""
-            }) { Text("Revert") }
+            OpalineButton("Apply shader", { viewModel.applyCustomShader(source) })
+            OpalineButton(
+                text = "Revert",
+                onClick = {
+                    source = visualizerView.visualizerRenderer.customShaderFor(viz.sceneId) ?: ""
+                },
+            )
         }
     }
 }

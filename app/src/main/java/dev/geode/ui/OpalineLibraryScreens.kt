@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -61,10 +62,14 @@ import dev.geode.ui.opaline.OpalineDropdownMenuItem
 import dev.geode.ui.opaline.OpalineEmptyState
 import dev.geode.ui.opaline.OpalineIconButton
 import dev.geode.ui.opaline.OpalinePage
-import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.OpalineTextField
-import dev.geode.ui.opaline.opalinePart
+import dev.geode.ui.opaline.creative.CreativeTabs
+import dev.geode.ui.opaline.kit.OpalineBreadcrumbPath
+import dev.geode.ui.opaline.kit.OpalineDropRow
+import dev.geode.ui.opaline.kit.OpalineDropTabs
+import dev.geode.ui.opaline.kit.OpalineSearchField
+import dev.geode.ui.opaline.kit.OpalineStyle
 import kotlinx.coroutines.launch
 
 @Composable
@@ -97,6 +102,7 @@ internal fun OpalineLibraryRoute(
                 tracks.filter { it.folder == destination.path },
                 navigator,
                 player,
+                folder = true,
             )
         is Destination.Library.Playlist -> OpalinePlaylistDetail(destination.id, library, navigator)
         is Destination.Library.SmartPlaylist -> OpalineSmartPlaylist(destination.id, library, navigator)
@@ -164,9 +170,11 @@ private fun OpalineLibraryPermission(library: LibraryViewModel) {
     }
     LaunchedEffect(allowed) { if (allowed) library.refreshDeviceTracks() }
     if (!allowed) {
-        OpalinePanel {
-            Text(stringResource(R.string.library_permission_rationale), style = MaterialTheme.typography.bodyMedium)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OpalineEmptyState(stringResource(R.string.library_permission_rationale), "") {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 OpalineButton(stringResource(R.string.library_permission_allow), { request.launch(permission) })
                 OpalineButton(stringResource(R.string.nav_settings), {
                     context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
@@ -199,33 +207,19 @@ private fun OpalineLibraryBrowse(
             val searched = LibraryBrowse.search(filtered, state.query)
             if (view == LibraryView.RECENT) searched else LibraryBrowse.sort(searched, state.sort)
         }
+    val drop = libraryDrop()
     OpalinePage(stringResource(R.string.nav_library), stringResource(R.string.opaline_library_subtitle, tracks.size), actions = {
         OpalineIconButton(Icons.Default.Refresh, stringResource(R.string.folders_rescan), library::refreshDeviceTracks)
     }) {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LibraryView.entries.forEach { option ->
-                OpalineButton(
-                    libraryViewLabel(option),
-                    { navigator.go(Destination.Library.Browse(option)) },
-                    selected =
-                        option == view,
-                )
-            }
-        }
+        LibraryTabs(drop, view) { navigator.go(Destination.Library.Browse(it)) }
         if (view == LibraryView.PLAYLISTS) {
             OpalinePlaylists(library, navigator)
         } else {
-            OpalineTextField(
+            OpalineSearchField(
                 state.query,
                 library::setQuery,
-                singleLine = true,
-                modifier =
-                    Modifier.fillMaxWidth().opalinePart(
-                        "A05",
-                    ),
-                label = {
-                    Text(stringResource(R.string.library_search_hint))
-                },
+                Modifier.fillMaxWidth(),
+                placeholder = stringResource(R.string.library_search_hint),
             )
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 LibrarySort.entries.forEach { sort ->
@@ -269,11 +263,15 @@ private fun OpalineLibraryBrowse(
                                 }
                             }
                         items(groups.keys.sorted(), key = { it }) { name ->
-                            OpalineRow(
+                            val group = groups.getValue(name)
+                            LibraryRow(
+                                drop,
                                 folderLabel(name, view).ifBlank {
                                     stringResource(R.string.library_group_unnamed)
                                 },
-                                stringResource(R.string.opaline_tracks_count, groups.getValue(name).size),
+                                stringResource(R.string.opaline_tracks_count, group.size),
+                                group.first().uri,
+                                54.dp,
                                 onClick = {
                                     navigator.go(
                                         when (view) {
@@ -283,11 +281,13 @@ private fun OpalineLibraryBrowse(
                                         },
                                     )
                                 },
-                                leading = { TrackArtwork(groups.getValue(name).first().uri, Modifier.size(54.dp)) },
                             )
                         }
                     }
-                    else -> items(results, key = { it.uri }) { track -> OpalineTrackRow(track, results, navigator, player) }
+                    else ->
+                        items(results, key = { it.uri }) { track ->
+                            OpalineTrackRow(track, results, navigator, player, drop)
+                        }
                 }
                 if (results.isEmpty()) {
                     item {
@@ -349,28 +349,88 @@ private fun libraryViewLabel(view: LibraryView): String =
         },
     )
 
+/** Whether Settings › Look › Style is Drop (plan §12b). */
+@Composable
+private fun libraryDrop(): Boolean {
+    val settings: SettingsViewModel = geodeViewModel()
+    val gui by settings.guiPrefs.collectAsStateWithLifecycle()
+    return gui.opalineStyle == OpalineStyle.DROP.name
+}
+
+/** The view switcher in the chosen style (plan §12b): Drop's V3 text tabs, else UI035 tab rail. */
+@Composable
+private fun LibraryTabs(
+    drop: Boolean,
+    view: LibraryView,
+    onSelect: (LibraryView) -> Unit,
+) {
+    val titles = LibraryView.entries.map { libraryViewLabel(it) }
+    val select = { index: Int -> onSelect(LibraryView.entries[index]) }
+    if (drop) {
+        OpalineDropTabs(
+            titles,
+            view.ordinal,
+            select,
+            Modifier.horizontalScroll(rememberScrollState()),
+        )
+    } else {
+        CreativeTabs(titles, view.ordinal, select, Modifier.fillMaxWidth())
+    }
+}
+
+/** A library row in the chosen style (plan §12b): Drop's V3 glass tile row, else a UI057 row. */
+@Composable
+private fun LibraryRow(
+    drop: Boolean,
+    title: String,
+    subtitle: String,
+    uri: String,
+    art: Dp,
+    onClick: () -> Unit,
+    selected: Boolean = false,
+    trailing: @Composable () -> Unit = {},
+) {
+    if (drop) {
+        OpalineDropRow(title, subtitle, onClick, selected = selected, trailing = trailing) {
+            TrackArtwork(uri, Modifier.fillMaxSize())
+        }
+    } else {
+        OpalineRow(
+            title,
+            subtitle,
+            onClick,
+            leading = { TrackArtwork(uri, Modifier.size(art)) },
+            trailing = trailing,
+            selected = selected,
+        )
+    }
+}
+
 @Composable
 internal fun OpalineTrackRow(
     track: DeviceTrack,
     tracks: List<DeviceTrack>,
     navigator: Navigator,
     player: PlayerViewModel,
+    drop: Boolean,
 ) {
     var menu by remember { mutableStateOf(false) }
     val favourites by player.favourites.collectAsStateWithLifecycle()
     val queue by player.queue.collectAsStateWithLifecycle()
-    OpalineRow(
+    LibraryRow(
+        drop,
         track.title.ifBlank {
             stringResource(R.string.title_untitled)
         },
         listOf(track.artist, formatClock(track.durationMs)).filter { it.isNotBlank() }.joinToString(" · "),
+        track.uri,
+        44.dp,
         onClick = { player.playFrom(tracks.toQueue(), track.uri) },
-        modifier = Modifier.opalinePart("C01", selected = queue.tracks.getOrNull(queue.index)?.uri == track.uri),
-        leading = { TrackArtwork(track.uri, Modifier.size(44.dp)) },
+        selected = queue.tracks.getOrNull(queue.index)?.uri == track.uri,
         trailing = {
             Column {
                 OpalineIconButton(Icons.Default.MoreVert, stringResource(R.string.opaline_track_actions), { menu = true })
-                OpalineDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                OpalineDropdownMenu(menu, { menu = false }, recipe = "UI027") {
                     OpalineDropdownMenuItem(text = { Text(stringResource(R.string.opaline_play_next)) }, onClick = {
                         player.playNext(track.uri)
                         menu =
@@ -420,7 +480,9 @@ private fun OpalineTrackGroup(
     tracks: List<DeviceTrack>,
     navigator: Navigator,
     player: PlayerViewModel,
+    folder: Boolean = false,
 ) {
+    val drop = libraryDrop()
     OpalinePage(
         title.ifBlank {
             stringResource(R.string.library_group_unnamed)
@@ -428,6 +490,7 @@ private fun OpalineTrackGroup(
         stringResource(R.string.opaline_tracks_count, tracks.size),
         onBack = { navigator.back() },
     ) {
+        if (folder && title.isNotBlank()) OpalineFolderPath(title, navigator)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OpalineButton(stringResource(R.string.library_play_all), {
                 player.playAll(tracks.toQueue())
@@ -437,9 +500,33 @@ private fun OpalineTrackGroup(
             }, enabled = tracks.isNotEmpty(), icon = Icons.Default.Shuffle)
         }
         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(tracks, key = { it.uri }) { OpalineTrackRow(it, tracks, navigator, player) }
+            items(tracks, key = { it.uri }) { OpalineTrackRow(it, tracks, navigator, player, drop) }
         }
     }
+}
+
+/** UI036 Breadcrumb path of a folder: activate an ancestor crumb → open that folder. */
+@Composable
+private fun OpalineFolderPath(
+    path: String,
+    navigator: Navigator,
+) {
+    val ancestors =
+        remember(path) {
+            if (path.startsWith("content://")) {
+                listOf(path)
+            } else {
+                path
+                    .split('/')
+                    .runningReduce { parent, name -> "$parent/$name" }
+                    .filter { it.substringAfterLast('/').isNotEmpty() }
+            }
+        }
+    OpalineBreadcrumbPath(
+        ancestors.map { folderLabel(it, LibraryView.FOLDERS).substringAfterLast('/') },
+        { if (it < ancestors.lastIndex) navigator.go(Destination.Library.Folder(ancestors[it])) },
+        Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable

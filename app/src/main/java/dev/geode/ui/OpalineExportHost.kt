@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,7 +16,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -30,7 +28,11 @@ import dev.geode.export.ExportRange
 import dev.geode.export.TimeOfDayDrift
 import dev.geode.render.SceneFactory
 import dev.geode.render.VisualizerView
+import dev.geode.ui.opaline.OpalineAction
+import dev.geode.ui.opaline.OpalineAlertDialog
+import dev.geode.ui.opaline.OpalineColors
 import dev.geode.ui.opaline.creative.CreativeButton
+import dev.geode.ui.opaline.kit.OpalineFullHeightSheet
 
 private data class PendingExport(
     val aspect: ExportAspect,
@@ -284,23 +286,89 @@ fun ExportHost(
             }
         }
     val takes by studioViewModel.takeState.collectAsStateWithLifecycle()
-    if (!notificationRationaleVisible) {
+    if (notificationRationaleVisible) {
+        OpalineAlertDialog(
+            onDismissRequest = { notificationRationaleVisible = false },
+            confirmButton = {
+                OpalineAction(
+                    onClick = {
+                        notificationRationaleVisible = false
+                        notificationPermission.launch(
+                            android.Manifest.permission.POST_NOTIFICATIONS,
+                        )
+                    },
+                ) { Text(stringResource(R.string.action_ok)) }
+            },
+            dismissButton = {
+                OpalineAction(onClick = { notificationRationaleVisible = false }) {
+                    Text(stringResource(R.string.export_notification_permission_skip))
+                }
+            },
+            title = {
+                Text(
+                    stringResource(R.string.export_notification_permission_title),
+                    color = OpalineColors.text,
+                )
+            },
+            text = {
+                Text(
+                    stringResource(R.string.export_notification_permission_body),
+                    color = OpalineColors.text,
+                )
+            },
+        )
+        return
+    }
+    val closeLoop = {
+        studioViewModel.clearLoopResult()
+        onDismiss()
+    }
+    // The UI043 secondary action is the mode's own close path; SettingsDialog ends with its own
+    // close / cancel row, so the Standard sheet leaves the slot empty.
+    val close =
+        when (mode) {
+            ExportEntryMode.Menu -> onDismiss
+            ExportEntryMode.Loop -> closeLoop
+            ExportEntryMode.Standard -> null
+        }
+    OpalineFullHeightSheet(
+        title =
+            stringResource(
+                when (mode) {
+                    ExportEntryMode.Menu -> R.string.export_loop_menu_title
+                    ExportEntryMode.Loop -> R.string.export_loop_title
+                    ExportEntryMode.Standard -> R.string.export_title
+                },
+            ),
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        dismissButton = {
+            close?.let {
+                OpalineAction(onClick = it) { Text(stringResource(R.string.action_close)) }
+            }
+        },
+    ) {
         when (mode) {
             ExportEntryMode.Menu ->
-                OpalineContextSheet(onDismiss = onDismiss) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(stringResource(R.string.export_loop_menu_title), style = MaterialTheme.typography.titleLarge)
-                        Text(stringResource(R.string.export_loop_menu_subtitle))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CreativeButton(
-                                text = stringResource(R.string.export_loop_menu_loop),
-                                onClick = { chosenMode = ExportEntryMode.Loop },
-                            )
-                            CreativeButton(
-                                text = stringResource(R.string.export_loop_menu_standard),
-                                onClick = { chosenMode = ExportEntryMode.Standard },
-                            )
-                        }
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        stringResource(R.string.export_loop_menu_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = OpalineColors.text,
+                    )
+                    Text(
+                        stringResource(R.string.export_loop_menu_subtitle),
+                        color = OpalineColors.text,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CreativeButton(
+                            text = stringResource(R.string.export_loop_menu_loop),
+                            onClick = { chosenMode = ExportEntryMode.Loop },
+                        )
+                        CreativeButton(
+                            text = stringResource(R.string.export_loop_menu_standard),
+                            onClick = { chosenMode = ExportEntryMode.Standard },
+                        )
                     }
                 }
             ExportEntryMode.Loop ->
@@ -330,10 +398,6 @@ fun ExportHost(
                         loopDestinationPicker.launch("geode_loop_${System.currentTimeMillis()}.mp4")
                     },
                     onCancel = studioViewModel::cancelLoopRender,
-                    onDismiss = {
-                        studioViewModel.clearLoopResult()
-                        onDismiss()
-                    },
                 )
             ExportEntryMode.Standard ->
                 SettingsDialog(
@@ -399,28 +463,6 @@ fun ExportHost(
                     stillPhase = stillPhase,
                     onSaveFrame = onSaveFrame,
                 )
-        }
-    }
-
-    if (notificationRationaleVisible) {
-        OpalineContextSheet(onDismiss = { notificationRationaleVisible = false }) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.export_notification_permission_title), style = MaterialTheme.typography.titleLarge)
-                Text(stringResource(R.string.export_notification_permission_body))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CreativeButton(
-                        text = stringResource(R.string.export_notification_permission_skip),
-                        onClick = { notificationRationaleVisible = false },
-                    )
-                    CreativeButton(
-                        text = stringResource(R.string.action_ok),
-                        onClick = {
-                            notificationRationaleVisible = false
-                            notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                        },
-                    )
-                }
-            }
         }
     }
 }

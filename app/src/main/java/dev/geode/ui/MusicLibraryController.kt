@@ -58,6 +58,9 @@ internal class MusicLibraryController(
     private val musicPlaylists = MusicPlaylistStore(application)
     private val smartPlaylists = SmartPlaylistStore(application)
 
+    /** The playlist stores read, modify and write whole files: one edit at a time, in call order. */
+    private val playlistIo = Dispatchers.IO.limitedParallelism(1)
+
     private val _library = MutableStateFlow(LibraryState())
     val library: StateFlow<LibraryState> = _library
 
@@ -83,6 +86,8 @@ internal class MusicLibraryController(
                         it.copy(tracks = tracks, playlists = playlists, smartPlaylists = smart)
                     }
                 }
+                // Only now are there loaded tracks for the numeric-title repair to look at.
+                refreshNumericTitles()
             }
         }
     }
@@ -381,7 +386,7 @@ internal class MusicLibraryController(
         if (name.isBlank()) return
         scope.launch {
             val fresh =
-                withContext(Dispatchers.IO) {
+                withContext(playlistIo) {
                     musicPlaylists.save(MusicPlaylist(name.trim()))
                     if (uris.isNotEmpty()) {
                         musicPlaylists.addTracks(name.trim(), uris)
@@ -404,7 +409,7 @@ internal class MusicLibraryController(
     ): Boolean {
         scope.launch {
             val fresh =
-                withContext(Dispatchers.IO) {
+                withContext(playlistIo) {
                     val renamed = musicPlaylists.rename(oldName, newName.trim())
                     if (renamed) musicPlaylists.list() else null
                 }
@@ -422,7 +427,7 @@ internal class MusicLibraryController(
     ) {
         scope.launch {
             val fresh =
-                withContext(Dispatchers.IO) {
+                withContext(playlistIo) {
                     musicPlaylists.move(name, from, to)
                     musicPlaylists.list()
                 }
@@ -433,7 +438,7 @@ internal class MusicLibraryController(
     fun deleteMusicPlaylist(name: String) {
         scope.launch {
             val fresh =
-                withContext(Dispatchers.IO) {
+                withContext(playlistIo) {
                     musicPlaylists.delete(name)
                     musicPlaylists.list()
                 }
@@ -447,7 +452,7 @@ internal class MusicLibraryController(
     ) {
         scope.launch {
             val fresh =
-                withContext(Dispatchers.IO) {
+                withContext(playlistIo) {
                     musicPlaylists.addTrack(playlist, uri)
                     musicPlaylists.list()
                 }
@@ -461,7 +466,7 @@ internal class MusicLibraryController(
     ) {
         scope.launch {
             val fresh =
-                withContext(Dispatchers.IO) {
+                withContext(playlistIo) {
                     musicPlaylists.removeTrack(playlist, uri)
                     musicPlaylists.list()
                 }
@@ -472,7 +477,7 @@ internal class MusicLibraryController(
     fun saveSmartPlaylist(playlist: SmartPlaylist) {
         scope.launch {
             val fresh =
-                withContext(Dispatchers.IO) {
+                withContext(playlistIo) {
                     smartPlaylists.save(playlist)
                     smartPlaylists.list()
                 }
@@ -483,7 +488,7 @@ internal class MusicLibraryController(
     fun deleteSmartPlaylist(name: String) {
         scope.launch {
             val fresh =
-                withContext(Dispatchers.IO) {
+                withContext(playlistIo) {
                     smartPlaylists.delete(name)
                     smartPlaylists.list()
                 }
@@ -497,7 +502,7 @@ internal class MusicLibraryController(
      * file nothing in the library has stay unresolved and are only reported, never guessed at.
      */
     suspend fun importPlaylistFile(uri: Uri): PlaylistImportResult =
-        withContext(Dispatchers.IO) {
+        withContext(playlistIo) {
             val fileName = openableInfoFor(uri).first.ifBlank { uri.lastPathSegment.orEmpty() }
             val text =
                 runCatching {

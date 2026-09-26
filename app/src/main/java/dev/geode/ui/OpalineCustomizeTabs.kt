@@ -1,8 +1,6 @@
 package dev.geode.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,12 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,15 +52,19 @@ import dev.geode.render.scene.SceneParams
 import dev.geode.render.scene.VisualStyleCatalog
 import dev.geode.ui.opaline.OpalineAction
 import dev.geode.ui.opaline.OpalineAlertDialog
+import dev.geode.ui.opaline.OpalineButton
 import dev.geode.ui.opaline.OpalineCheckbox
 import dev.geode.ui.opaline.OpalineChip
 import dev.geode.ui.opaline.OpalineDropdownMenu
 import dev.geode.ui.opaline.OpalineDropdownMenuItem
+import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.OpalineTextField
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeSlider
 import dev.geode.ui.opaline.creative.CreativeToggle
+import dev.geode.ui.opaline.kit.OpalineFilterChipRow
+import dev.geode.ui.opaline.kit.OpalineSearchField
 import kotlin.math.ln
 import kotlin.math.pow
 
@@ -154,32 +155,25 @@ private fun LockChip(label: String) {
     if (label !in ParamRandomizer.LOCKABLE_LABELS) return
     val (locked, toggle) = LocalParamLocks.current
     val on = label in locked
-    val text = if (on) "🔒 locked" else "lock"
-    Layout(
-        content = {
+    OpalineChip(
+        onClick = { toggle(label) },
+        label = {
             Text(
-                text,
+                if (on) "🔒 locked" else "lock",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (on) accentTextColor() else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                 modifier = Modifier.clearAndSetSemantics {},
             )
-            Box(
-                modifier =
-                    Modifier
-                        .semantics { contentDescription = if (on) "$label locked" else "Lock $label" }
-                        .clickable(onClickLabel = if (on) "unlock" else "lock") { toggle(label) },
-            )
         },
-        modifier = Modifier.padding(start = 8.dp),
-    ) { measurables, constraints ->
-        val pill = measurables[0].measure(constraints)
-        val minPx = 48.dp.roundToPx()
-        val touch = measurables[1].measure(Constraints.fixed(maxOf(pill.width, minPx), maxOf(pill.height, minPx)))
-        layout(pill.width, pill.height) {
-            pill.place(0, 0)
-            touch.place((pill.width - touch.width) / 2, (pill.height - touch.height) / 2)
-        }
-    }
+        modifier =
+            Modifier.padding(start = 8.dp).semantics {
+                contentDescription = if (on) "$label locked" else "Lock $label"
+                onClick(if (on) "unlock" else "lock") {
+                    toggle(label)
+                    true
+                }
+            },
+        selected = on,
+    )
 }
 
 @Composable
@@ -279,7 +273,7 @@ internal fun SceneTab(
                     dev.geode.render.TransitionCatalog
                         .library(ctx)
                 }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OpalineFilterChipRow(Modifier.fillMaxWidth()) {
                 dev.geode.render.TransitionCatalog.BUILT_IN_IDS.forEach { id ->
                     OpalineChip(
                         selected = transitionId == id,
@@ -295,21 +289,17 @@ internal fun SceneTab(
                         "so nothing pops off for the length of a switch.",
                 )
                 var query by remember { mutableStateOf("") }
-                OpalineTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text("Search transitions", style = MaterialTheme.typography.labelSmall) },
+                OpalineSearchField(
+                    query,
+                    { query = it },
+                    Modifier.fillMaxWidth(),
+                    placeholder = "Search transitions",
                 )
                 val shown =
                     remember(query, library) {
                         if (query.isBlank()) library else library.filter { it.name.contains(query, ignoreCase = true) }
                     }
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
+                OpalineFilterChipRow(Modifier.fillMaxWidth()) {
                     shown.take(TRANSITION_CHIP_LIMIT).forEach { def ->
                         OpalineChip(
                             selected = transitionId == def.name,
@@ -432,10 +422,7 @@ internal fun ColorTab(
                 "Perceptually even, and cyclic - the two ends join, so a wrap has no seam.",
                 ParamScope.SHADER_LOOK,
             )
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
+            OpalineFilterChipRow(Modifier.fillMaxWidth()) {
                 OpalineChip(
                     selected = p.paletteLut < 0,
                     onClick = { onChange(p.copy(paletteLut = SceneParams.NO_PALETTE_LUT)) },
@@ -532,6 +519,7 @@ private fun LayersSection() {
     }
     if (!layers.enabled) return
     var showLayerPicker by remember { mutableStateOf(false) }
+    var showBlendPicker by remember { mutableStateOf(false) }
     Box {
         OpalineAction(onClick = { showLayerPicker = true }) {
             Text("Layer style: ${layers.sceneId?.let { sceneDisplayLabel(it) } ?: "none"}")
@@ -552,8 +540,22 @@ private fun LayersSection() {
         ControlHint("That style is now the active one, so the layer is idle - pick another.")
     }
     Text("Blend", style = MaterialTheme.typography.labelSmall)
-    ChipRow(BlendMode.entries.map { it.name.lowercase() }, BlendMode.entries.indexOf(layers.blend)) {
-        LayersBus.state.value = layers.copy(blend = BlendMode.entries[it])
+    Box {
+        OpalineAction(onClick = { showBlendPicker = true }) { Text(layers.blend.name.lowercase()) }
+        OpalineDropdownMenu(
+            expanded = showBlendPicker,
+            onDismissRequest = { showBlendPicker = false },
+        ) {
+            BlendMode.entries.forEach { mode ->
+                OpalineDropdownMenuItem(
+                    text = { Text(mode.name.lowercase()) },
+                    onClick = {
+                        LayersBus.state.value = layers.copy(blend = mode)
+                        showBlendPicker = false
+                    },
+                )
+            }
+        }
     }
     Text("Layer mix ${"%.2f".format(layers.mix)}", style = MaterialTheme.typography.labelMedium)
     CreativeSlider(
@@ -572,7 +574,7 @@ private fun ModulatorCard(
 ) {
     var showTargetPicker by remember { mutableStateOf(false) }
     val sceneId = LocalSceneId.current
-    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+    OpalinePanel(Modifier.padding(vertical = 6.dp), recipe = "UI039") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Slot ${index + 1}", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
             CreativeToggle(checked = config.enabled, onCheckedChange = { onChange(config.copy(enabled = it)) })
@@ -664,10 +666,7 @@ private fun ChipRow(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
+    OpalineFilterChipRow(Modifier.fillMaxWidth()) {
         labels.forEachIndexed { index, label ->
             OpalineChip(
                 selected = index == selectedIndex,
@@ -928,16 +927,22 @@ private fun InjectionShaderEditors(
         Text(injectionError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OpalineAction(onClick = {
-            val f = forceSrc.takeIf { editorsUsed && it.isNotBlank() && it != template }
-            val d = dyeSrc.takeIf { editorsUsed && it.isNotBlank() && it != template }
-            onApplyInjectionShaders(f, d)
-        }) { Text("Apply shaders") }
-        OpalineAction(onClick = {
-            forceSrc = template
-            dyeSrc = template
-            onApplyInjectionShaders(null, null)
-        }) { Text("Reset to built-in") }
+        OpalineButton(
+            text = "Apply shaders",
+            onClick = {
+                val f = forceSrc.takeIf { editorsUsed && it.isNotBlank() && it != template }
+                val d = dyeSrc.takeIf { editorsUsed && it.isNotBlank() && it != template }
+                onApplyInjectionShaders(f, d)
+            },
+        )
+        OpalineButton(
+            text = "Reset to built-in",
+            onClick = {
+                forceSrc = template
+                dyeSrc = template
+                onApplyInjectionShaders(null, null)
+            },
+        )
     }
 }
 
@@ -1019,7 +1024,6 @@ private fun LabeledIntSlider(
     }
 }
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun AdsrCard(
     index: Int,
@@ -1028,13 +1032,11 @@ private fun AdsrCard(
 ) {
     var showAdd by remember { mutableStateOf(false) }
     val sceneId = LocalSceneId.current
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+    OpalinePanel(Modifier.padding(vertical = 4.dp), recipe = "UI039") {
         CheckRow("Envelope ${index + 1} on", config.enabled) { onChange(config.copy(enabled = it)) }
-        if (!config.enabled) return@Column
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Targets:", style = MaterialTheme.typography.labelSmall)
-        }
-        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (!config.enabled) return@OpalinePanel
+        Text("Targets:", style = MaterialTheme.typography.labelSmall)
+        OpalineFilterChipRow(Modifier.fillMaxWidth()) {
             config.targets.forEach { t ->
                 OpalineChip(
                     onClick = { onChange(config.copy(targets = config.targets - t)) },

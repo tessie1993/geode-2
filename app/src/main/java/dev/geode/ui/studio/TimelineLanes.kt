@@ -59,6 +59,7 @@ import dev.geode.export.ChapterWriteResult
 import dev.geode.ui.EditorUiState
 import dev.geode.ui.ExportPhase
 import dev.geode.ui.isBusy
+import dev.geode.ui.opaline.OpalineRow
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
 import dev.geode.ui.opaline.creative.CreativeProgress
@@ -107,7 +108,12 @@ private fun handlePickedMedia(
         PickKind.VIDEO, PickKind.AUDIO ->
             actions.describeMedia(uri) { media ->
                 if (target.project.matches(actions)) {
-                    val content = if (target.kind == PickKind.VIDEO) ClipContent.Video(text) else ClipContent.Audio(text)
+                    val content =
+                        if (target.kind == PickKind.VIDEO) {
+                            ClipContent.Video(text)
+                        } else {
+                            ClipContent.Audio(text)
+                        }
                     addClip(target.laneId, content, media.durationMs, media.durationMs)
                 }
             }
@@ -125,8 +131,11 @@ private fun importSrt(
 ) {
     if (uri == null || target == null || !target.matches(actions)) return
     val text =
-        runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull()
-            ?: return
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.use {
+                it.readBytes().toString(Charsets.UTF_8)
+            }
+        }.getOrNull() ?: return
     if (target.matches(actions)) addCaptionClips(Subtitles.parseSrt(text))
 }
 
@@ -474,6 +483,7 @@ fun TimelineEditor(
                 }
             },
             onAddStill = { lane -> pick(lane.id, PickKind.STILL) },
+            modifier = Modifier.weight(1f),
         )
     }
 
@@ -546,7 +556,10 @@ fun TimelineEditor(
     }
 }
 
-/** Which sidecar the user wants for the marker lane, before the system's own save-as sheet opens. */
+/**
+ * Which sidecar the user wants for the marker lane, before the system's own save-as sheet opens:
+ * a UI044 sheet with one UI057 row per format.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChapterFormatDialog(
@@ -561,7 +574,7 @@ private fun ChapterFormatDialog(
                 color = CreativeColors.textPrimary,
             )
             CHAPTER_FORMAT_LABELS.forEach { (format, label) ->
-                CreativeButton(text = stringResource(label), modifier = Modifier.fillMaxWidth(), onClick = { onPick(format) })
+                OpalineRow(title = stringResource(label), onClick = { onPick(format) })
             }
             CreativeButton(text = stringResource(R.string.action_cancel), modifier = Modifier.fillMaxWidth(), onClick = onDismiss)
         }

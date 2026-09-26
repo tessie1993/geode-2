@@ -83,12 +83,15 @@ internal class OpalineTextureView(
     }
 
     private fun schedule() {
-        if (released || pending || renderer == null || !frame.get().active) return
+        if (released || pending) return
+        if (renderer == null || !frame.get().active) return
         if (clock == null) clock = Choreographer.getInstance()
         pending = true
         clock?.postFrameCallback(draw)
     }
 
+    // Any GL, driver or asset failure must fall back to the native controls, not crash the app.
+    @Suppress("TooGenericExceptionCaught")
     private val draw =
         Choreographer.FrameCallback { now ->
             pending = false
@@ -112,6 +115,8 @@ internal class OpalineTextureView(
             }
         }
 
+    // Any EGL, driver or asset failure must fall back to the native controls, not crash the app.
+    @Suppress("TooGenericExceptionCaught")
     override fun onSurfaceTextureAvailable(
         texture: SurfaceTexture,
         width: Int,

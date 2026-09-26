@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,12 +22,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.audio.CaptureFailure
 import dev.geode.audio.PlaybackCaptureService
+import dev.geode.ui.opaline.OpalinePanel
 import dev.geode.ui.opaline.creative.CreativeButton
 import dev.geode.ui.opaline.creative.CreativeColors
-import dev.geode.ui.opaline.creative.CreativeShapes
 import dev.geode.ui.opaline.creative.CreativeToggle
-import dev.geode.ui.opaline.creative.creativeFloat
-import dev.geode.ui.opaline.creative.creativeSurface
 
 @Composable
 fun ExternalAudioSettings(viewModel: PlayerViewModel) {
@@ -159,14 +156,7 @@ private fun RefusedNotice(
     external: ExternalAudioState,
 ) {
     val app = external.refusingApp ?: stringResource(R.string.subtitle_capture_refused_unknown_app)
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .creativeSurface(shape = CreativeShapes.tile, tint = MaterialTheme.colorScheme.error)
-            .creativeFloat(strength = 0.15f)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    OpalinePanel(recipe = "UI039") {
         Text(
             stringResource(R.string.ext_silence_title),
             style = MaterialTheme.typography.labelMedium,
