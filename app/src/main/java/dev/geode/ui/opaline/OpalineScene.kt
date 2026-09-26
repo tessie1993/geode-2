@@ -70,7 +70,8 @@ class OpalinePartEvents internal constructor() {
             val prefix = binding.target.removeSuffix("*")
             for (part in recipe.parts) {
                 val wildcard = prefix != binding.target
-                if (if (wildcard) part.id.startsWith(prefix) else part.id == prefix) {
+                val matches = if (wildcard) part.id.startsWith(prefix) else part.id == prefix
+                if (matches) {
                     targets[part.id] = binding.action
                 }
             }

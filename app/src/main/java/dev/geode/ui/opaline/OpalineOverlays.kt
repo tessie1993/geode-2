@@ -64,14 +64,6 @@ import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
-/** The UI042–UI044 action part a dialog slot hands to the action composed in it. */
-internal class OpalineActionSlot(
-    val composition: String,
-    val part: String,
-    val frame: String,
-    val events: OpalinePartEvents,
-)
-
 internal val LocalOpalineActionSlot = staticCompositionLocalOf<OpalineActionSlot?> { null }
 
 private val LocalOpalineMenu = staticCompositionLocalOf { "UI028" }

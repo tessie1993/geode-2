@@ -63,9 +63,6 @@ import dev.geode.ui.opaline.opalinePart
 import dev.geode.ui.opaline.rememberOpalineComposition
 import dev.geode.ui.opaline.rememberOpalinePartEvents
 
-/** The Now Playing look (plan §12b), worn with any colour pack: V1 glass, V2 bubble, V3 drop. */
-enum class OpalineStyle { GLASS, BUBBLE, DROP }
-
 /** E08's authored width over height (elements.json E08 modelAsset.bounds.size). */
 private const val E08_ASPECT = 1.2575141f / 1.9f
 

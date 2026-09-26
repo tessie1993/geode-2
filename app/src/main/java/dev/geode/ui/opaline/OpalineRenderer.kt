@@ -534,9 +534,9 @@ internal class OpalineRenderer(
         var x = 0
         var y = 0
         var row = 0
-        for (part in parts) {
+        for (part in parts.filter { instances.getValue(it.id).mesh != null }) {
             val instance = instances.getValue(part.id)
-            val mesh = instance.mesh ?: continue
+            val mesh = requireNotNull(instance.mesh)
             instance.shadowed = false
             val scale = instance.metresToWorld
             realmCenter(instance)
@@ -587,7 +587,7 @@ internal class OpalineRenderer(
                 setModel(modelView)
                 val family = family(part, piece.source)
                 cull(pieceModel, material(family).source.doubleSided, shadow = true)
-                drawPiece(part, instance, index, piece, family)
+                drawPiece(part, instance, index, piece)
             }
             // View space to this tile of the atlas.
             Matrix.setIdentityM(tile, 0)
@@ -917,7 +917,7 @@ internal class OpalineRenderer(
                 val material = material(family)
                 cull(pieceModel, material.source.doubleSided, shadow = false)
                 surface.bindMaterial(material, instance.metresToWorld, time)
-                drawPiece(part, instance, index, piece, family)
+                drawPiece(part, instance, index, piece)
             }
             if (part.element == BUBBLE) drawBubble(part, instance, mesh, fromView)
             if (part.element == LIQUID) physics.fluid(part.id)
@@ -983,9 +983,9 @@ internal class OpalineRenderer(
         parts: List<OpalinePart>,
         linear: Boolean,
     ) {
-        for (part in parts) {
+        for (part in parts.filter { instances.getValue(it.id).mesh != null }) {
             val instance = instances.getValue(part.id)
-            val mesh = instance.mesh ?: continue
+            val mesh = requireNotNull(instance.mesh)
             physics.trails(part.id)?.let { (vertices, count) ->
                 realm.drawLines(vertices, count, instance.model, projection, linear)
             }
@@ -1089,7 +1089,6 @@ internal class OpalineRenderer(
         instance: Instance,
         index: Int,
         piece: GpuPiece,
-        family: String,
     ) {
         val source = piece.source
         Matrix.invertM(inverse, 0, instance.poses, index * 16)
