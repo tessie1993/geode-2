@@ -232,8 +232,7 @@ private fun OpalineShell(
                             .fillMaxSize()
                             .background(
                                 Color.Black.copy(alpha = 0.48f * (1f - (gesture?.progress ?: 0f))),
-                            )
-                            .clickable { navigator.back() },
+                            ).clickable { navigator.back() },
                     )
                     Box(
                         Modifier

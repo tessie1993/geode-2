@@ -96,8 +96,7 @@ internal class OpalineCatalogue private constructor(
         @Volatile private var loaded: OpalineCatalogue? = null
 
         /** Parsed once per process from opaline-native/catalogue/compositions.json. */
-        fun get(assets: AssetManager): OpalineCatalogue =
-            loaded ?: synchronized(this) { loaded ?: read(assets).also { loaded = it } }
+        fun get(assets: AssetManager): OpalineCatalogue = loaded ?: synchronized(this) { loaded ?: read(assets).also { loaded = it } }
 
         private fun read(assets: AssetManager): OpalineCatalogue {
             val records = JSONArray(assets.open(SOURCE).bufferedReader().use { it.readText() })
@@ -212,8 +211,7 @@ private fun JSONObject.vec3(
     fallback: OpalineVec3,
 ): OpalineVec3 = optJSONArray(name)?.vec3() ?: fallback
 
-private fun JSONObject.toMap(): Map<String, Any?> =
-    keys().asSequence().associateWith { raw(get(it)) }
+private fun JSONObject.toMap(): Map<String, Any?> = keys().asSequence().associateWith { raw(get(it)) }
 
 /** JSONObject → Map, JSONArray → List and JSONObject.NULL → null, recursively. */
 private fun raw(value: Any?): Any? =

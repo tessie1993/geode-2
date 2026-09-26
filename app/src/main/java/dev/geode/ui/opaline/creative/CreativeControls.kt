@@ -145,15 +145,14 @@ fun CreativeButton(
     enabled: Boolean = true,
     selected: Boolean = false,
     tint: Color? = null,
-) =
-    OpalineButton(
-        text,
-        onClick,
-        modifier,
-        icon = icon,
-        enabled = enabled,
-        selected = selected || tint != null,
-    )
+) = OpalineButton(
+    text,
+    onClick,
+    modifier,
+    icon = icon,
+    enabled = enabled,
+    selected = selected || tint != null,
+)
 
 /**
  * UI019 Horizontal slider (B01/gel), or UI022 Stepped slider (B05/gel) when [steps] gives its

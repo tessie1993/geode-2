@@ -29,13 +29,11 @@ internal class TransitionQuaternion(
         return this
     }
 
-    fun copy(source: TransitionQuaternion): TransitionQuaternion =
-        set(source.x, source.y, source.z, source.w)
+    fun copy(source: TransitionQuaternion): TransitionQuaternion = set(source.x, source.y, source.z, source.w)
 
     fun identity(): TransitionQuaternion = set(0.0, 0.0, 0.0, 1.0)
 
-    fun dot(other: TransitionQuaternion): Double =
-        x * other.x + y * other.y + z * other.z + w * other.w
+    fun dot(other: TransitionQuaternion): Double = x * other.x + y * other.y + z * other.z + w * other.w
 
     fun length(): Double = sqrt(x * x + y * y + z * z + w * w)
 

@@ -266,8 +266,7 @@ internal class OpalineRefractiveCaustics(
         }
     }
 
-    private fun exitLength(packet: Packet): Double =
-        volume?.interval(packet.origin, packet.direction)?.get(1) ?: 0.0
+    private fun exitLength(packet: Packet): Double = volume?.interval(packet.origin, packet.direction)?.get(1) ?: 0.0
 
     private fun attenuate(
         medium: Medium,
@@ -657,7 +656,7 @@ internal class OpalineRefractiveCaustics(
             for (r in 0..2) {
                 out[r] =
                     linear[r * 3] * point[0] + linear[r * 3 + 1] * point[1] +
-                        linear[r * 3 + 2] * point[2] + mesh.matrix[12 + r]
+                    linear[r * 3 + 2] * point[2] + mesh.matrix[12 + r]
             }
         }
 
@@ -822,8 +821,7 @@ private fun dot(
 private fun cross(
     a: DoubleArray,
     b: DoubleArray,
-): DoubleArray =
-    doubleArrayOf(a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+): DoubleArray = doubleArrayOf(a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
 
 /** Vector3.normalize: scaled by 1 / length, a zero vector left as it is. */
 private fun normalize(v: DoubleArray): DoubleArray {

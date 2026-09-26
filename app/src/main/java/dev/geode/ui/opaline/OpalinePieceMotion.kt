@@ -97,7 +97,7 @@ internal object OpalinePieceMotion {
             for (row in 0..3) {
                 out[column * 4 + row] =
                     parent[row] * lx + parent[4 + row] * ly + parent[8 + row] * lz +
-                        parent[12 + row] * cw
+                    parent[12 + row] * cw
             }
         }
     }
@@ -186,13 +186,12 @@ internal object OpalinePieceMotion {
         axis: Int,
         input: OpalineMotionInput,
         rest: Float,
-    ): Float {
-        return when (axis) {
+    ): Float =
+        when (axis) {
             X -> rest + (input.value - .5f) * PI_FLOAT
             Y -> rest + (input.secondaryValue - .5f) * PI_FLOAT
             else -> rest
         }
-    }
 
     /** `rotation.x=(v2-.5)*(c.maxAngle||.5)*2; rotation.y=(pv-.5)*(c.maxAngle||.5)*2`. */
     private fun joystick(

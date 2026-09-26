@@ -502,6 +502,5 @@ internal class BubblePairCoupling(
         k: Int,
         plane: DoubleArray,
         n: DoubleArray,
-    ): Double =
-        (p(k) - plane[0]) * n[0] + (p(k + 1) - plane[1]) * n[1] + (p(k + 2) - plane[2]) * n[2]
+    ): Double = (p(k) - plane[0]) * n[0] + (p(k + 1) - plane[1]) * n[1] + (p(k + 2) - plane[2]) * n[2]
 }

@@ -640,6 +640,7 @@ internal class OpalineRealm(
         private const val MIRROR_Y = -.2f
         private const val MIRROR_COLOR = 0x496C8E
         private const val CLIP_BIAS = .003f
+
         /** Reflector `textureWidth` / `textureHeight`. */
         const val REFLECTION_SIZE = 1536
         private const val REFLECTION_SAMPLES = 4

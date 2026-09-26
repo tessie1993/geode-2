@@ -136,8 +136,7 @@ private class Lineage(
     val joint: OpalineMesh.Joint,
     val child: FloatArray,
 ) {
-    fun below(local: FloatArray) =
-        Lineage(motion, index, anchor, travel, joint, multiply(child, local))
+    fun below(local: FloatArray) = Lineage(motion, index, anchor, travel, joint, multiply(child, local))
 }
 
 /** One GLB's default scene walked into pieces, with the element bounds they span. */
@@ -360,8 +359,7 @@ private class GlbReader(
         }
     }
 
-    private fun view(accessor: JSONObject) =
-        root.getJSONArray("bufferViews").getJSONObject(accessor.getInt("bufferView"))
+    private fun view(accessor: JSONObject) = root.getJSONArray("bufferViews").getJSONObject(accessor.getInt("bufferView"))
 
     private companion object {
         /** motion.js's configless part kind. */

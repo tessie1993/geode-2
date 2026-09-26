@@ -1230,8 +1230,7 @@ internal class OpalineRenderer(
         Matrix.multiplyMV(center, 0, realm.inverseView, 0, moved, 0)
     }
 
-    private fun read(element: String): OpalineMesh =
-        OpalineMesh.read(assets.open("opaline-native/$element.glb").use { it.readBytes() })
+    private fun read(element: String): OpalineMesh = OpalineMesh.read(assets.open("opaline-native/$element.glb").use { it.readBytes() })
 
     /** The scene at the workbench `ultra` pixel ratio of 2 (per dp), within the device's limits. */
     private fun resize(frame: OpalineFrame) {
@@ -1398,7 +1397,7 @@ private fun rotate(
     for (row in 0..2) {
         out[to + row] =
             view[row] * source[from] + view[4 + row] * source[from + 1] +
-                view[8 + row] * source[from + 2]
+            view[8 + row] * source[from + 2]
     }
 }
 

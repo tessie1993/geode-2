@@ -248,7 +248,9 @@ internal class TransitionSystem(
                 entry.end = (origin ?: entry.start).clone()
                 if (origin == null) {
                     val stack = TransitionVector(0.0, order * (options.spacing ?: .26), -i * .06)
-                    entry.end.position.copy(handle.center).add(stack)
+                    entry.end.position
+                        .copy(handle.center)
+                        .add(stack)
                 }
             }
             "L13" -> p.add(options.offset ?: TransitionVector(1.8, 0.0, .5))
@@ -289,7 +291,10 @@ internal class TransitionSystem(
             p.copy(handle.center).add(socket)
             return
         }
-        val d = entry.start.position.clone().sub(handle.center)
+        val d =
+            entry.start.position
+                .clone()
+                .sub(handle.center)
         if (d.length() < .01) d.set(.65 + count * .12, 0.0, 0.0)
         d.applyYRotation(options.angle ?: (PI * .85))
         p.copy(handle.center).add(d)
@@ -311,7 +316,11 @@ internal class TransitionSystem(
         val material =
             options.material
                 ?: TransitionMaterial(
-                    color = handle.entries[0].subject.meshes.firstOrNull()?.color ?: 0xD6E9F4,
+                    color =
+                        handle.entries[0]
+                            .subject.meshes
+                            .firstOrNull()
+                            ?.color ?: 0xD6E9F4,
                     roughness = .18,
                     transmission = .65,
                     thickness = .12,
@@ -524,7 +533,10 @@ internal class TransitionSystem(
     ) {
         val options = handle.options
         val s = smooth(t)
-        val delta = entry.start.position.clone().sub(handle.center)
+        val delta =
+            entry.start.position
+                .clone()
+                .sub(handle.center)
         val angle = options.angle ?: (PI * .85)
         if (delta.length() < .01) delta.set(.65 + handle.entries.size * .12, 0.0, 0.0)
         val orbit = delta.clone().applyYRotation(angle * s)
@@ -550,7 +562,10 @@ internal class TransitionSystem(
             val points = listOf(entry.start.position) + path + target.position
             val curve = handle.cameraPath ?: TransitionCurve(points.map { it.clone() })
             handle.cameraPath = curve
-            val linear = entry.start.position.clone().lerp(target.position, s)
+            val linear =
+                entry.start.position
+                    .clone()
+                    .lerp(target.position, s)
             p.position.add(curve.getPoint(s).sub(linear))
         }
         val look = options.lookAt ?: return
@@ -776,7 +791,11 @@ internal class TransitionSystem(
         val correction = (reach - distance) * .5
         pa.position.addScaled(normal, -correction)
         pb.position.addScaled(normal, correction)
-        val approach = b.velocity.clone().sub(a.velocity).dot(normal)
+        val approach =
+            b.velocity
+                .clone()
+                .sub(a.velocity)
+                .dot(normal)
         if (approach < 0) {
             val impulse = -(1 + (handle.options.restitution ?: .15)) * approach * .5
             a.velocity.addScaled(normal, -impulse)
@@ -854,10 +873,16 @@ internal class TransitionSystem(
         for (entry in handle.entries) {
             val pose = pose(handle, entry, t)
             setWorldPose(entry.subject, pose)
-            entry.velocity.copy(pose.position).sub(entry.last.position).divideScalar(step)
+            entry.velocity
+                .copy(pose.position)
+                .sub(entry.last.position)
+                .divideScalar(step)
             val spin = entry.angularVelocity
             TransitionMath.angularVelocity(entry.last.quaternion, pose.quaternion, step, spin)
-            entry.scaleVelocity.copy(pose.scale).sub(entry.last.scale).divideScalar(step)
+            entry.scaleVelocity
+                .copy(pose.scale)
+                .sub(entry.last.scale)
+                .divideScalar(step)
         }
         return t >= 1
     }
@@ -912,8 +937,7 @@ internal class TransitionSystem(
     private fun memory(entry: TransitionEntry): Motion =
         Motion(entry.velocity.clone(), entry.angularVelocity.clone(), entry.scaleVelocity.clone())
 
-    private fun worldPose(subject: TransitionObject): TransitionPose =
-        TransitionPose().also { subject.readWorldPose(it) }
+    private fun worldPose(subject: TransitionObject): TransitionPose = TransitionPose().also { subject.readWorldPose(it) }
 
     private fun setWorldPose(
         subject: TransitionObject,

@@ -181,8 +181,7 @@ internal class OpalinePhysicsCatalogue private constructor(
     }
 
     /** contacts.js `createContactRecipe(id)`. */
-    fun createContactRecipe(id: String): ContactRecipe =
-        ContactRecipe(id, requireNotNull(recipes[id]) { "Unknown contact recipe $id" })
+    fun createContactRecipe(id: String): ContactRecipe = ContactRecipe(id, requireNotNull(recipes[id]) { "Unknown contact recipe $id" })
 
     companion object {
         @Volatile private var loaded: OpalinePhysicsCatalogue? = null
@@ -218,19 +217,17 @@ internal class OpalinePhysicsCatalogue private constructor(
         private fun readField(
             id: String,
             json: JSONObject,
-        ) =
-            FieldPreset(
-                id,
-                json.getString("name"),
-                json.getString("kind"),
-                json.getJSONObject("options").toMap(),
-                if (json.has("limitation")) json.getString("limitation") else null,
-            )
+        ) = FieldPreset(
+            id,
+            json.getString("name"),
+            json.getString("kind"),
+            json.getJSONObject("options").toMap(),
+            if (json.has("limitation")) json.getString("limitation") else null,
+        )
     }
 }
 
-private fun JSONObject.toMap(): Map<String, Any?> =
-    keys().asSequence().associateWith { raw(get(it)) }
+private fun JSONObject.toMap(): Map<String, Any?> = keys().asSequence().associateWith { raw(get(it)) }
 
 /** JSONObject → Map, JSONArray → List and JSONObject.NULL → null, recursively. */
 private fun raw(value: Any?): Any? =

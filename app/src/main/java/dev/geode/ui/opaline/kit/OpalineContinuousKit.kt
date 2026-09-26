@@ -344,16 +344,15 @@ private fun Modifier.valueSemantics(
     range: ClosedFloatingPointRange<Float>,
     enabled: Boolean,
     onValueChange: (Float) -> Unit,
-) =
-    semantics {
-        if (label != null) contentDescription = label
-        progressBarRangeInfo = ProgressBarRangeInfo(value.coerceIn(range), range)
-        if (!enabled) disabled()
-        setProgress {
-            if (enabled) onValueChange(it.coerceIn(range))
-            enabled
-        }
+) = semantics {
+    if (label != null) contentDescription = label
+    progressBarRangeInfo = ProgressBarRangeInfo(value.coerceIn(range), range)
+    if (!enabled) disabled()
+    setProgress {
+        if (enabled) onValueChange(it.coerceIn(range))
+        enabled
     }
+}
 
 /** A behaviour binding's `range` [low, high]. */
 private fun Any?.range(): ClosedFloatingPointRange<Float> {

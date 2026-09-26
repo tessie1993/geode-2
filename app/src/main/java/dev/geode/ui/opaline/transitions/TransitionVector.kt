@@ -34,8 +34,7 @@ internal class TransitionVector(
     fun sub(other: TransitionVector): TransitionVector = set(x - other.x, y - other.y, z - other.z)
 
     /** Component-wise product (`Vector3.multiply`). */
-    fun multiply(other: TransitionVector): TransitionVector =
-        set(x * other.x, y * other.y, z * other.z)
+    fun multiply(other: TransitionVector): TransitionVector = set(x * other.x, y * other.y, z * other.z)
 
     fun multiplyScalar(scalar: Double): TransitionVector = set(x * scalar, y * scalar, z * scalar)
 
@@ -44,14 +43,12 @@ internal class TransitionVector(
     fun addScaled(
         other: TransitionVector,
         scalar: Double,
-    ): TransitionVector =
-        set(x + other.x * scalar, y + other.y * scalar, z + other.z * scalar)
+    ): TransitionVector = set(x + other.x * scalar, y + other.y * scalar, z + other.z * scalar)
 
     fun lerp(
         other: TransitionVector,
         alpha: Double,
-    ): TransitionVector =
-        set(x + (other.x - x) * alpha, y + (other.y - y) * alpha, z + (other.z - z) * alpha)
+    ): TransitionVector = set(x + (other.x - x) * alpha, y + (other.y - y) * alpha, z + (other.z - z) * alpha)
 
     fun dot(other: TransitionVector): Double = x * other.x + y * other.y + z * other.z
 
@@ -78,8 +75,7 @@ internal class TransitionVector(
     fun cross(
         a: TransitionVector,
         b: TransitionVector,
-    ): TransitionVector =
-        set(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x)
+    ): TransitionVector = set(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x)
 
     /** `Vector3.applyAxisAngle(V(0,1,0), angle)`: the quaternion (0, sin(a/2), 0, cos(a/2)). */
     fun applyYRotation(angle: Double): TransitionVector {

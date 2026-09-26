@@ -174,8 +174,7 @@ internal fun addRadialImpulse(
 internal fun Map<*, *>.number(key: String): Double? = (this[key] as? Number)?.toDouble()
 
 /** A JSON number-array option, or null when absent. */
-internal fun Map<*, *>.vector(key: String): DoubleArray? =
-    (this[key] as? List<*>)?.map { (it as Number).toDouble() }?.toDoubleArray()
+internal fun Map<*, *>.vector(key: String): DoubleArray? = (this[key] as? List<*>)?.map { (it as Number).toDouble() }?.toDoubleArray()
 
 /** common.js `seededRandom(seed)` (mulberry32 in 32-bit integer arithmetic). */
 internal class SeededRandom(

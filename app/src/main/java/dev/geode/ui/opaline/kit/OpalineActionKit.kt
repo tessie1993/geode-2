@@ -168,8 +168,7 @@ fun OpalineActionCluster(
                         selected = active,
                         enabled = active,
                         events = events,
-                    )
-                    .clickable(active, role = Role.Button) { onSatellite(index) },
+                    ).clickable(active, role = Role.Button) { onSatellite(index) },
             ) {
                 if (item != null) {
                     val (glyph, label) = item

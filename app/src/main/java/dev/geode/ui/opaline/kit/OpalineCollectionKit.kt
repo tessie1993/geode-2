@@ -221,7 +221,12 @@ fun <T> OpalineCardGrid(
     BoxWithConstraints(modifier) {
         val scale = maxWidth.value / (boxes.maxOf { it.right } - boxes.minOf { it.left })
         LazyVerticalGrid(
-            GridCells.Fixed(recipe.parts.map { it.position.x }.distinct().size),
+            GridCells.Fixed(
+                recipe.parts
+                    .map { it.position.x }
+                    .distinct()
+                    .size,
+            ),
             Modifier.fillMaxWidth(),
             verticalArrangement =
                 Arrangement.spacedBy(((boxes[2].top - boxes[0].bottom) * scale).dp),

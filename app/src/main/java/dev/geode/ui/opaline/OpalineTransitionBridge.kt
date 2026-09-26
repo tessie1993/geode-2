@@ -154,9 +154,10 @@ internal class OpalineTransitionBridge(
         val handle = system.playAction(action, TransitionOptions(subject = subject)) ?: return false
         if (events != null) {
             val current = handles[events]?.takeIf { it.first == events.serial }
-            val list = current?.second ?: mutableListOf<TransitionHandle>().also {
-                handles[events] = events.serial to it
-            }
+            val list =
+                current?.second ?: mutableListOf<TransitionHandle>().also {
+                    handles[events] = events.serial to it
+                }
             list += handle
         }
         finish(handle, reduced)

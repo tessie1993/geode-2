@@ -91,8 +91,7 @@ fun SettingsDialog(
             )
         }
 
-    fun persistDefaults() =
-        exportPrefs.save(ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId))
+    fun persistDefaults() = exportPrefs.save(ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId))
     val chooserTitle = stringResource(R.string.export_upload_share_to)
 
     Column(Modifier.fillMaxWidth()) {

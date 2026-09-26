@@ -41,8 +41,7 @@ internal class OpalineProgram(
             INCLUDE.matchEntire(line.trim())?.let { read(it.groupValues[1]) } ?: line
         }
 
-    private fun read(file: String): String =
-        assets.open("opaline-native/shaders/$file").bufferedReader().use { it.readText() }
+    private fun read(file: String): String = assets.open("opaline-native/shaders/$file").bufferedReader().use { it.readText() }
 
     fun location(name: String): Int = locations.getOrPut(name) { GL.glGetUniformLocation(id, name) }
 

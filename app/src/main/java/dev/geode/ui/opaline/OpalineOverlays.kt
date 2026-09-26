@@ -387,12 +387,11 @@ private fun Styled(
     style: TextStyle,
     color: Color,
     content: @Composable () -> Unit,
-) =
-    CompositionLocalProvider(
-        LocalTextStyle provides style,
-        LocalContentColor provides color,
-        content = content,
-    )
+) = CompositionLocalProvider(
+    LocalTextStyle provides style,
+    LocalContentColor provides color,
+    content = content,
+)
 
 /**
  * UI028 Dropdown menu: body C03/shell, rows A05/gel; [recipe] = "UI027" is the context menu. The
@@ -559,9 +558,10 @@ fun OpalineRangeSlider(
                 if (next.start != start) {
                     next.start.coerceAtMost(end - gap).coerceAtLeast(valueRange.start)..end
                 } else {
-                    start..next.endInclusive
-                        .coerceAtLeast(start + gap)
-                        .coerceAtMost(valueRange.endInclusive)
+                    start..
+                        next.endInclusive
+                            .coerceAtLeast(start + gap)
+                            .coerceAtMost(valueRange.endInclusive)
                 },
             )
         },
