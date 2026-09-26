@@ -1,0 +1,192 @@
+name: Opaline reference renders
+
+# Path-traced quality references for judging the native Opaline renderer.
+# Runs the library's own tools/render_cycles.py in Blender Cycles on the CPU
+# with the commands from
+# ui-system/Opaline-3D-Library/docs/PATH-TRACED-REFERENCE.md, for every
+# requested theme: the three-quarter component renders and the specimen. The
+# PNGs, their JSON sidecars and render-index.json are uploaded as a build
+# artifact. Nothing is committed back and nothing here ships in the APK.
+
+on:
+  workflow_dispatch:
+    inputs:
+      themes:
+        description: Themes to render, space-separated
+        default: tidal opal moss obsidian aurora amber
+        required: true
+      ids:
+        description: Component ids for the three-quarter renders, space-separated
+        default: A01 B01 C03 C10 E08 F01
+        required: true
+      samples:
+        description: Maximum Cycles samples for each component render
+        type: number
+        default: 128
+        required: true
+      specimen_samples:
+        description: Maximum Cycles samples for each theme's specimen
+        type: number
+        default: 256
+        required: true
+
+permissions:
+  contents: read
+
+# A second dispatch waits for the running one instead of cancelling hours of
+# rendering.
+concurrency:
+  group: opaline-reference-renders-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  LIBRARY_DIR: ui-system/Opaline-3D-Library
+  # The version recorded in the library's committed sidecars
+  # (assets/pathtraced/*.json "blenderVersion": "4.5.3 LTS"); the script
+  # itself refuses anything older than 4.5. The hash is the linux-x64 line of
+  # the official https://download.blender.org/release/Blender4.5/blender-4.5.3.sha256.
+  BLENDER_VERSION: 4.5.3
+  BLENDER_SHA256: 975c58fcb244273838534bba771e64ad87739216b0f9b39a888531a49a72d845
+
+jobs:
+  plan:
+    name: Plan theme matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      themes: ${{ steps.themes.outputs.json }}
+
+    steps:
+      - name: Turn the theme list into a matrix
+        id: themes
+        shell: bash
+        env:
+          THEMES: ${{ inputs.themes }}
+        # Unknown names are left to render_cycles.py, whose --theme only
+        # accepts its own THEMES keys.
+        run: |
+          set -euo pipefail
+          json=$(jq -cn --arg themes "$THEMES" \
+            '$themes | gsub(","; " ") | split(" ") | map(select(length > 0)) | unique')
+          if [ "$json" = "[]" ]; then
+            echo "::error::No theme given."
+            exit 1
+          fi
+          echo "json=$json" >> "$GITHUB_OUTPUT"
+
+  render:
+    name: Render ${{ matrix.theme }} ${{ matrix.part }}
+    needs: plan
+    runs-on: ubuntu-latest
+    # The GitHub-hosted maximum. The library's own tidal sidecars took 92-299 s
+    # per component and 366 s for a 1024 x 768, 128-sample specimen on an
+    # 8-thread CPU; the doc's specimen (1600 px, 256 samples) is about five
+    # times that work, on a runner with fewer cores.
+    timeout-minutes: 360
+    strategy:
+      # Each theme and part renders on its own: one failure must not cancel
+      # the others' hours of rendering.
+      fail-fast: false
+      matrix:
+        theme: ${{ fromJSON(needs.plan.outputs.themes) }}
+        part: [components, specimen]
+
+    steps:
+      - name: Check out the Opaline library
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: ${{ env.LIBRARY_DIR }}
+
+      # Official Linux build from download.blender.org, verified against the
+      # pinned hash. The apt packages are the X11, XKB and GL client libraries
+      # the official build expects on the system; the runner image usually has
+      # them already, and the version check below fails early if one is missing.
+      - name: Install Blender ${{ env.BLENDER_VERSION }} LTS
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 \
+            libgl1 \
+            libsm6 \
+            libx11-6 \
+            libxext6 \
+            libxfixes3 \
+            libxi6 \
+            libxkbcommon0 \
+            libxrender1 \
+            libxxf86vm1
+          archive="blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" \
+            "https://download.blender.org/release/Blender${BLENDER_VERSION%.*}/$archive"
+          echo "$BLENDER_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/blender-${BLENDER_VERSION}-linux-x64" >> "$GITHUB_PATH"
+
+      - name: Show Blender version
+        run: blender --background --version
+
+      # The doc's commands, with this matrix entry's theme, the CPU device
+      # named explicitly, one render thread per runner core (the script's
+      # default is 8) and --no-blend, which the doc gives for writing just
+      # renders and metadata. Blender exits 0 after an uncaught Python
+      # exception unless --python-exit-code says otherwise, so a failed render
+      # fails the step.
+      - name: Render ${{ matrix.part }} (${{ matrix.theme }})
+        working-directory: ${{ env.LIBRARY_DIR }}
+        shell: bash
+        env:
+          THEME: ${{ matrix.theme }}
+          PART: ${{ matrix.part }}
+          IDS: ${{ inputs.ids }}
+          SAMPLES: ${{ inputs.samples }}
+          SPECIMEN_SAMPLES: ${{ inputs.specimen_samples }}
+        run: |
+          set -euo pipefail
+          # The checkout carries the library's committed tidal references.
+          # Clearing them in this workspace keeps the artifact and the
+          # render-index.json the script writes to this run's renders.
+          rm -rf assets/pathtraced
+          if [ "$PART" = specimen ]; then
+            args=(--specimen --size 1600 --samples "$SPECIMEN_SAMPLES")
+          else
+            read -ra ids <<< "${IDS//,/ }"
+            args=(--ids "${ids[@]}" --views threequarter --size 1024 --samples "$SAMPLES")
+          fi
+          blender --background --python-exit-code 1 --python tools/render_cycles.py -- \
+            "${args[@]}" \
+            --theme "$THEME" \
+            --device CPU \
+            --threads "$(nproc)" \
+            --no-blend
+
+      - name: Upload renders and sidecars
+        uses: actions/upload-artifact@v7
+        with:
+          name: pathtraced-${{ matrix.theme }}-${{ matrix.part }}
+          path: ${{ env.LIBRARY_DIR }}/assets/pathtraced/
+          if-no-files-found: error
+          # Only needs to outlive the collect job; the merged artifact is the
+          # one to download.
+          retention-days: 1
+
+  collect:
+    name: Collect reference renders
+    needs: render
+    # Keep every theme that did render, even when another one failed.
+    if: ${{ !cancelled() && needs.render.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # One directory per theme and part, each with its own render-index.json.
+      # The per-job artifacts are kept for their one day, so re-running a
+      # failed render job within that day still collects the complete set.
+      - name: Merge into one artifact
+        uses: actions/upload-artifact/merge@v7
+        with:
+          name: opaline-reference-renders-${{ github.run_number }}-${{ github.run_attempt }}
+          pattern: pathtraced-*
+          separate-directories: true
+          retention-days: 14
