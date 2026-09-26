@@ -70,7 +70,7 @@ internal class PlayerSettingsController(
             it.setHandleAudioBecomingNoisy(p.pauseOnNoisy)
         }
         (player as? NativePlayer)?.let {
-            it.applyPrefs(p.crossfadeMs, p.crossfadeCurve, p.gapless)
+            it.applyPrefs(p.crossfadeMs, p.crossfadeCurve, p.gapless, p.pauseOnNoisy)
             host.applyBitPerfect(p.bitPerfect)
         }
         replayGain.configure(p.replayGainMode, p.replayGainPreampDb, p.replayGainClipGuard)
